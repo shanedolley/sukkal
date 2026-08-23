@@ -4,15 +4,139 @@
   "complexity": "complex",
   "phase": "plan",
   "branch": "docs/slice-one-plan",
-  "baseline": null,
+  "baseline": {
+    "tests": "none: the repository holds documents only, so there is no suite to run",
+    "build": "none: no package.json, no build step",
+    "workingTree": "clean",
+    "checkedAt": "2026-08-24"
+  },
   "tracker": {
     "kind": "jira",
     "site": "koinon",
     "project": "KPA",
-    "epics": [],
-    "planningComplete": false
+    "epics": [
+      {
+        "key": "KPA-1",
+        "title": "Slice one: migrate the memory",
+        "rationale": "Proposed as one epic and approved. The platform stories and the migration stories are one system, neither half ships alone, and the epic's definition of done is the empty diff, which needs every story. Risk profile is the one test that argued for a split, and it would have produced two epics that must both finish before either is useful."
+      }
+    ],
+    "planningComplete": true
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "2",
+      "jiraKey": "KPA-2",
+      "title": "Provision PostgreSQL with pgvector on amaterasu",
+      "status": "pending",
+      "estimate": 8
+    },
+    {
+      "id": "3",
+      "jiraKey": "KPA-3",
+      "title": "Scaffold the repository and migration tooling",
+      "status": "pending",
+      "estimate": 5
+    },
+    {
+      "id": "4",
+      "jiraKey": "KPA-4",
+      "title": "Create the core schema",
+      "status": "pending",
+      "estimate": 8
+    },
+    {
+      "id": "5",
+      "jiraKey": "KPA-5",
+      "title": "Read and validate the vault's markdown",
+      "status": "pending",
+      "estimate": 5
+    },
+    {
+      "id": "6",
+      "jiraKey": "KPA-6",
+      "title": "Turn wikilinks into typed edges",
+      "status": "pending",
+      "estimate": 3
+    },
+    {
+      "id": "7",
+      "jiraKey": "KPA-7",
+      "title": "Turn inline tasks into rows",
+      "status": "pending",
+      "estimate": 3
+    },
+    {
+      "id": "9",
+      "jiraKey": "KPA-9",
+      "title": "Implement the four gates as tested code",
+      "status": "pending",
+      "estimate": 8
+    },
+    {
+      "id": "10",
+      "jiraKey": "KPA-10",
+      "title": "Implement retirement with valid_from and valid_to",
+      "status": "pending",
+      "estimate": 5
+    },
+    {
+      "id": "11",
+      "jiraKey": "KPA-11",
+      "title": "Port check.py: the staleness sweep and the advisory checks",
+      "status": "pending",
+      "estimate": 8
+    },
+    {
+      "id": "12",
+      "jiraKey": "KPA-12",
+      "title": "Chunk and embed the sources through Voyage AI",
+      "status": "pending",
+      "estimate": 5
+    },
+    {
+      "id": "13",
+      "jiraKey": "KPA-13",
+      "title": "Verify the migration by diffing the two reports",
+      "status": "pending",
+      "estimate": 5
+    },
+    {
+      "id": "14",
+      "jiraKey": "KPA-14",
+      "title": "Freeze the vault: pause the three launchd jobs and record the commit",
+      "status": "pending",
+      "estimate": 1
+    },
+    {
+      "id": "15",
+      "jiraKey": "KPA-15",
+      "title": "Reach amaterasu's Postgres from the Mac over TLS",
+      "status": "pending",
+      "estimate": 3
+    },
+    {
+      "id": "16",
+      "jiraKey": "KPA-16",
+      "title": "Keep every secret out of the repository and out of the unit file",
+      "status": "pending",
+      "estimate": 3
+    },
+    {
+      "id": "17",
+      "jiraKey": "KPA-17",
+      "title": "Run the checks on every push, and record the repository's conventions",
+      "status": "pending",
+      "estimate": 3
+    },
+    {
+      "id": "18",
+      "jiraKey": "KPA-18",
+      "title": "Give the vault's log.md a destination",
+      "status": "pending",
+      "estimate": 3
+    }
+  ],
   "artifacts": {
     "discovery": "discovery.md",
     "design": "design.md",
