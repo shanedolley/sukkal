@@ -296,6 +296,16 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | First slice | Migrate the memory | Proves the model before any volume reaches it. |
 | Jira stories | Spec carrying | Each story states its acceptance criteria, the files it touches, its test, and a definition of done an agent can verify alone. |
 | Repository | Git from the first commit, private on GitHub | Matches nabium and the memory vault. The design carries history from line one. |
+| Scope of replacement | KPA replaces the whole markdown system | The vault, `journal/`, the three launchd jobs and the Gmail filter rules. Nothing of it keeps running alongside. |
+| Gmail labelling | KPA takes it over | The 15 rules in `gmail-filters/collibra.xml` import as the starting policy rather than being rewritten from nothing. |
+| Drafting voice | The `draft-email` skill's rules | Already written, already tuned, already covers all three accounts. KPA implements them rather than learning a voice from sent mail. |
+| Retirement | Only a source or a human sets `valid_to` | Time alone never retires a fact. The staleness sweep flags and re-confirms. |
+| Offline | Rescan on return | No queueing on the Mac and no catch-up logic. When the box comes back it scans from the last watermark, which is the same path a normal poll takes. |
+| Backup | Copy nabium's runbook | `docs/runbooks/database-backup.md` already exists and already covers Postgres on this hardware. |
+| Employer policy checklist | Not a gate | Shane is the decision maker and has accepted the risk directly. Recorded, not chased. |
+| Mail triage rule | Carries forward unchanged | If a person composed the words it stays in the inbox, and the sending address proves nothing. The rule earned itself through use in `docs/mail-triage-method.md`. |
+| Identity | WorkOS AuthKit, wired into Cloudflare Access as an OIDC provider | Shane creates and invites accounts in WorkOS. Access still enforces the wall, so the application never sees an unauthenticated request. |
+| Users | One, Shane, for now | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means him. |
 
 **A note on the memory store decision.** Row-level security enforcing the
 Collibra and Koinon wall was the tiebreaker that chose Postgres over Neo4j. That
@@ -392,9 +402,47 @@ The markdown system's structure survives the move to Postgres.
 rather than removing a row. Asking what was true in March stays a plain query,
 and decay stays visible.
 
+### What sets `valid_to`
+
+**Only a source or a human. Time alone never does.**
+
+A **contradicting source** sets it to the date the change took effect according
+to that source, not the date KPA learned of it. An email saying Nigel left in
+June retires the fact as of June. Where the source gives no date, `valid_to`
+takes the source's own date and the fact records that the date was inferred
+rather than stated, because recording the uncertainty is what the vault's
+never-guess rule requires.
+
+A **superseding fact** sets it to the replacement's `valid_from`, with a
+`supersedes` edge between them. One answer stands at any date.
+
+**Shane** sets it to whatever date he gives.
+
+**The staleness sweep never sets it.** A stale fact is due for review, not false.
+The vault's own rule already says so: a stale fact is a fact doing its job rather
+than a defect. The sweep flags and re-confirms; it never retires.
+
+One consequence of choosing `valid_from` and `valid_to` over full bitemporal:
+KPA answers what was true in March, but not what it believed in March. A
+backdated retirement rewrites the answer to the first question with no record
+that the answer used to differ. Adding a `recorded_at` column later upgrades this
+without a rewrite.
+
 Entity resolution is KPA's job. Nabium's `people` and `engagements` feed in and
 merge against KPA's own, because KPA sees mail as well as meetings and mail is
 the wider source of people.
+
+### One user, with one hedge
+
+KPA is single user. No permission model, no per-user partitioning, no sharing.
+Building any of that now would be building a different product.
+
+The one concession to "for now" is an `owner_id` column on `sources`, `facts` and
+`tasks`, defaulted to a single row in `users`. It costs one column and one
+default today. Adding it later means migrating every table that holds anything
+personal, which is all of them. This is a hedge against a stated uncertainty
+rather than a speculative feature, and nothing else in the design may assume more
+than one user exists.
 
 ### A fact's life
 
@@ -558,12 +606,11 @@ surface on the briefing.
 sovereignty flag, so BHP Ironclad and Meridian material reaches Claude or
 OpenRouter along with everything else. Accepted 23 August 2026.
 
-**Employer data on personal infrastructure.** Whether Shane's employment terms
-permit sending Collibra customer data to a personal system on personal hardware
-is a question this project has not asked. Nabium already carries a checklist for
-exactly this, at `docs/employer-policy-checklist.md`, and it is unsigned. It is a
-compliance question rather than a technical one, and building around it later
-costs more than answering it now.
+**Employer data on personal infrastructure.** Collibra customer data reaches a
+personal system on personal hardware and a third-party model vendor. Nabium
+carries an unsigned checklist covering exactly this, at
+`docs/employer-policy-checklist.md`. Shane has decided it is not a gate: he is
+the decision maker and accepts the exposure directly. Recorded, not chased.
 
 **OpenRouter routes to whichever upstream wins the bid.** Retention guarantees
 vary by provider and the payload reaches a broker as well as a model vendor. For
@@ -624,29 +671,53 @@ intact, the four gates run as testable code rather than prompt instructions, the
 staleness sweep reports the same notes the vault's `check.py` reports today, and
 retiring a fact sets `valid_to` rather than deleting a row.
 
+#### What the migration involves
+
+Moving 17 facts is trivial. The work is the schema they land in, and the slice
+should be judged on that rather than on whether 17 rows arrived.
+
+1. **Design the schema.** `sources`, `source_chunks`, `facts`, `edges`,
+   `entities`, `tasks`, `questions`, `rejections`, `policies`, `audit`. Every
+   frontmatter field in the vault becomes a column or an edge, and anything that
+   does not fit is a schema gap found now rather than after ingestion starts.
+2. **Parse and validate.** A reader for each markdown file that checks
+   frontmatter against the schema and **fails loudly** on anything unexpected.
+   Silence here means a fact arrives subtly wrong and is read as true for months.
+3. **Turn links into edges.** Every `[[wikilink]]` becomes a typed edge.
+   Backlinks come free once the edges exist, which is what Obsidian was giving
+   and Postgres has to replace.
+4. **Turn inline tasks into rows.** The `- [ ]` items with their due, start and
+   done signifiers attach to the fact they sit on, never to a standalone list.
+5. **Port the two tables on `index.md`.** The open questions and the Decisions
+   table become rows, since both are workflow rather than prose.
+6. **Write the four gates as code.** Each gate gets its own test. This is the
+   part that must stop being a prompt instruction.
+7. **Port `check.py`.** The staleness sweep and the advisory checks: orphans,
+   cross-space links, uncompiled source ratio, review pile-up.
+8. **Chunk and embed** the 32 sources through Voyage.
+
+**How it is verified.** Run the vault's `check.py` against the vault, run the new
+equivalent against Postgres, and diff the two reports. They must agree. That is a
+real test rather than an inspection, and it is available only because the old
+system still exists at migration time. It stops being available the moment the
+vault retires, which is an argument for building it now.
+
+#### The journal crosses a machine boundary
+
+KPA replaces `journal/` along with the rest of the markdown system, and
+`journal.py` renders that journal from Claude Code's transcripts in
+`~/.claude/projects/`. Those live on Shane's Mac. KPA runs on amaterasu.
+
+So the journal needs the same treatment as nabium: something on the Mac ships the
+transcripts across. The cheapest version reuses the pattern already chosen, a
+push over the LAN, rather than inventing a second mechanism.
+
 ## Open questions
 
-### Ingestion
-
-1. Nabium's Teams and chat collectors are the only route to customer-tenant
-   material. Are they built yet, and what do they currently produce?
-
-### Memory
-
-2. What does the migration of the 17 facts and 32 sources actually involve, and
-   who runs it?
-3. How does a fact's `valid_to` get set? By a contradicting source, by the
-   staleness sweep, or by hand?
-
-### Operations
-
-4. What happens when the box is off, or the internet is down?
-5. What is the backup and recovery story? Nabium has a runbook worth copying.
-6. Which Cloudflare Access policy governs entry, and what is the second factor?
-
-### Delivery
-
-7. Does this repository become a git repository now?
-8. How do epics and stories get structured in KPA so AI agents can work them
-   unsupervised?
-9. What is the first shippable slice, and what does it prove?
+1. Which second factor does WorkOS enforce? The recommendation is a hardware key
+   or TOTP rather than an emailed one-time code.
+2. Are nabium's Teams and chat collectors built, and what do they produce? The
+   only route to customer-tenant material. Deferred by Shane, to be decided
+   later.
+3. Push notification: agreed in principle, deferred. The channel is undecided,
+   and an iMessage integration already exists.
