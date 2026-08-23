@@ -305,6 +305,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Employer policy checklist | Not a gate | Shane is the decision maker and has accepted the risk directly. Recorded, not chased. |
 | Mail triage rule | Carries forward unchanged | If a person composed the words it stays in the inbox, and the sending address proves nothing. The rule earned itself through use in `docs/mail-triage-method.md`. |
 | Identity | WorkOS AuthKit, wired into Cloudflare Access as an OIDC provider | Shane creates and invites accounts in WorkOS. Access still enforces the wall, so the application never sees an unauthenticated request. |
+| Users | One, Shane, for now | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means him. |
 
 **A note on the memory store decision.** Row-level security enforcing the
 Collibra and Koinon wall was the tiebreaker that chose Postgres over Neo4j. That
@@ -430,6 +431,18 @@ without a rewrite.
 Entity resolution is KPA's job. Nabium's `people` and `engagements` feed in and
 merge against KPA's own, because KPA sees mail as well as meetings and mail is
 the wider source of people.
+
+### One user, with one hedge
+
+KPA is single user. No permission model, no per-user partitioning, no sharing.
+Building any of that now would be building a different product.
+
+The one concession to "for now" is an `owner_id` column on `sources`, `facts` and
+`tasks`, defaulted to a single row in `users`. It costs one column and one
+default today. Adding it later means migrating every table that holds anything
+personal, which is all of them. This is a hedge against a stated uncertainty
+rather than a speculative feature, and nothing else in the design may assume more
+than one user exists.
 
 ### A fact's life
 
@@ -701,14 +714,10 @@ push over the LAN, rather than inventing a second mechanism.
 
 ## Open questions
 
-1. WorkOS lets Shane invite accounts, which implies people other than him may
-   reach the application. **Is KPA single user?** The memory model assumes one
-   person throughout: one set of facts, one inbox, one voice, one review queue.
-   Multiple users is not a settings change, it is a different product.
-2. Which second factor does WorkOS enforce? The recommendation is a hardware key
+1. Which second factor does WorkOS enforce? The recommendation is a hardware key
    or TOTP rather than an emailed one-time code.
-3. Are nabium's Teams and chat collectors built, and what do they produce? The
+2. Are nabium's Teams and chat collectors built, and what do they produce? The
    only route to customer-tenant material. Deferred by Shane, to be decided
    later.
-4. Push notification: agreed in principle, deferred. The channel is undecided,
+3. Push notification: agreed in principle, deferred. The channel is undecided,
    and an iMessage integration already exists.
