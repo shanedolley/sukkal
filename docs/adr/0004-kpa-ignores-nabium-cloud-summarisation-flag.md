@@ -23,6 +23,7 @@ else. Decided by Shane on 23 August 2026, after the alternative was raised.
   built and costs nothing to run, but it no longer protects the engagements it
   was written to protect once KPA ingests them.
 - Nabium's `docs/employer-policy-checklist.md` is unsigned, and its message
-  capture section asks the exact question this decision answers by default.
-  Completing it is now more urgent, not less.
+  capture section asks the exact question this decision answers by default. Shane
+  has decided the checklist is not a gate: he is the decision maker and accepts
+  the exposure directly. Recorded here rather than chased.
 - Reversing this later does not recall what has already been sent.
