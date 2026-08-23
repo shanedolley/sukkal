@@ -1,0 +1,25 @@
+{
+  "slug": "slice-one-plan",
+  "goal": "Verify and consolidate the KPA slice one plan: write the PRD, correct the inverted blocking graph, score and expand the stories, and add stories for the four gaps research found.",
+  "complexity": "complex",
+  "phase": "plan",
+  "branch": "docs/slice-one-plan",
+  "baseline": null,
+  "tracker": {
+    "kind": "jira",
+    "site": "koinon",
+    "project": "KPA",
+    "epics": [],
+    "planningComplete": false
+  },
+  "tasks": [],
+  "artifacts": {
+    "discovery": "discovery.md",
+    "design": "design.md",
+    "plan": "plan.md",
+    "review": "review.md",
+    "verification": "verification.md",
+    "summary": "summary.md"
+  },
+  "pr": null
+}
