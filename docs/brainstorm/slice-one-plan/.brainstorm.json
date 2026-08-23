@@ -2,7 +2,7 @@
   "slug": "slice-one-plan",
   "goal": "Verify and consolidate the KPA slice one plan: write the PRD, correct the inverted blocking graph, score and expand the stories, and add stories for the four gaps research found.",
   "complexity": "complex",
-  "phase": "plan",
+  "phase": "build",
   "branch": "docs/slice-one-plan",
   "baseline": {
     "tests": "none: the repository holds documents only, so there is no suite to run",
