@@ -688,8 +688,11 @@ should be judged on that rather than on whether 17 rows arrived.
    and Postgres has to replace.
 4. **Turn inline tasks into rows.** The `- [ ]` items with their due, start and
    done signifiers attach to the fact they sit on, never to a standalone list.
-5. **Port the two tables on `index.md`.** The open questions and the Decisions
-   table become rows, since both are workflow rather than prose.
+5. **Create the tables the two `index.md` tables need, and migrate nothing.**
+   The open questions and the Decisions table are workflow rather than prose, so
+   `questions` and `rejections` exist in the schema. Both tables on `index.md`
+   carry headers and no rows as of 24 August 2026, so there is nothing to move.
+   A later brainstorm rescopes the parser that would read them.
 6. **Write the four gates as code.** Each gate gets its own test. This is the
    part that must stop being a prompt instruction.
 7. **Port `check.py`.** The staleness sweep and the advisory checks: orphans,
