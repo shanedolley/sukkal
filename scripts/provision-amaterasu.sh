@@ -209,15 +209,23 @@ else
   say "  ${YELLOW}--${RESET}  apt-get will prompt for your password"
 fi
 
-SRC_IP=$(ssh -o BatchMode=yes "$HOST" 'echo $SSH_CLIENT' 2>/dev/null | awk '{print $1}')
-SRC_NET=$(echo "$SRC_IP" | awk -F. '{print $1"."$2"."$3".0/24"}')
+# `|| true` on every assignment below: the library sets `set -e`, and a bare
+# assignment takes the exit status of its command substitution, so a failed ssh
+# would kill the wizard mid-sentence instead of being reported here.
+SRC_IP=$(ssh -o BatchMode=yes "$HOST" 'echo $SSH_CLIENT' 2>/dev/null | awk '{print $1}' || true)
+if [[ ! "$SRC_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  say "  ${RED}no${RESET}  could not read the address $HOST sees this Mac as."
+  say "      pg_hba would get a malformed network, so stop here."
+  ok=0
+fi
+SRC_NET=$(echo "$SRC_IP" | awk -F. '{print $1"."$2"."$3".0/24"}' || true)
 say "  ${GREEN}ok${RESET}  $HOST sees this Mac as $SRC_IP, so pg_hba will allow $SRC_NET"
 echo
 say "${YELLOW}That address is the wired interface, not Wi-Fi.${RESET}"
 say "If you unplug and fall back to Wi-Fi, Postgres will refuse the connection."
 echo
 
-RAM_MB=$(ssh -o BatchMode=yes "$HOST" "awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo")
+RAM_MB=$(ssh -o BatchMode=yes "$HOST" "awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo" || true)
 say "  $HOST reports ${RAM_MB} MB of RAM. The tuning below is sized for that."
 say "  nabium's runbook targets a 32 GB host, so its numbers are scaled down"
 say "  rather than copied. shared_buffers 512MB, work_mem 16MB,"
@@ -240,7 +248,14 @@ confirm "Provision $HOST now?" || { say "Nothing changed."; exit 0; }
 stage "Provision the server"
 say "Generating a password for the kpa role on this Mac."
 say "It is written to .env here and set on the server. It is never printed."
-KPA_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
+# head closes the pipe once it has 32 bytes, so tr takes SIGPIPE and exits 141.
+# With pipefail that kills the wizard here on every single run. Guard it, then
+# check the result: a silently empty password would be set on the role.
+KPA_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 || true)
+if [[ ${#KPA_PASSWORD} -ne 32 ]]; then
+  say "  ${RED}no${RESET}  could not generate a password. Nothing was changed."
+  exit 1
+fi
 
 say "Copying the root script to $HOST."
 sed -e "s|@@PGVER@@|$PGVER|g" -e "s|@@SRCNET@@|$SRC_NET|g" \
@@ -259,7 +274,11 @@ pause "Continue to verification?"
 stage "Verify from this Mac"
 say "Every check below runs from here, over the LAN, exactly as the migration will."
 echo
-HOST_IP=$(ssh -o BatchMode=yes "$HOST" "hostname -I | awk '{print \$1}'")
+HOST_IP=$(ssh -o BatchMode=yes "$HOST" "hostname -I | awk '{print \$1}'" || true)
+if [[ ! "$HOST_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  say "  ${RED}no${RESET}  could not read $HOST's own address. Cannot verify."
+  exit 1
+fi
 export PGPASSWORD="$KPA_PASSWORD"
 PSQL_BASE="psql -h $HOST_IP -U kpa -d kpa -tAX"
 

@@ -231,8 +231,12 @@ fi
 # predates this change reads as one this change caused. Stage 5 learned that
 # the hard way: it told a user to remove a file that had just parsed cleanly.
 # /etc/sudoers.d is world-readable, so this needs no password.
+# `|| true` matters: the library sets `set -e`, and a bare assignment takes the
+# exit status of its command substitution. The remote loop returns non-zero
+# whenever the last file it checks is not mode 440, which would kill the wizard
+# here for no reason.
 PREEXISTING=$(ssh -o BatchMode=yes "$HOST" \
-  'for f in /etc/sudoers.d/*; do m=$(stat -c %a "$f"); [ "$m" = "440" ] || printf "%s (mode %s)\n" "$f" "$m"; done' 2>/dev/null)
+  'for f in /etc/sudoers.d/*; do m=$(stat -c %a "$f"); [ "$m" = "440" ] || printf "%s (mode %s)\n" "$f" "$m"; done' 2>/dev/null || true)
 if [[ -n "$PREEXISTING" ]]; then
   echo
   warn "these files already fail visudo -c, before this run changes anything:"
@@ -316,7 +320,16 @@ FAILED=0
 # exit code alone, called the tree broken, and told a user to remove a file
 # whose own line said "parsed OK". Only the line for $TARGET decides whether
 # this change is at fault.
-TREE=$(ssh -o BatchMode=yes "$HOST" 'sudo -n visudo -c' 2>&1)
+# `|| true` is load bearing. The library sets `set -e`, and a bare assignment
+# takes the exit status of its command substitution. visudo -c returns non-zero
+# whenever any file in the tree fails, which is the normal case this stage
+# exists to interpret. Without the guard the wizard dies on this line, printing
+# the stage header and nothing else.
+TREE=$(ssh -o BatchMode=yes "$HOST" 'sudo -n visudo -c' 2>&1 || true)
+if [[ -z "$TREE" ]]; then
+  say "  ${RED}no${RESET}  visudo produced no output. The check cannot be trusted."
+  exit 1
+fi
 printf '%s\n' "$TREE" | sed 's/^/    /'
 
 if printf '%s\n' "$TREE" | grep -q "^$TARGET: parsed OK"; then
