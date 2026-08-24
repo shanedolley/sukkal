@@ -226,6 +226,21 @@ if ssh -o BatchMode=yes "$HOST" "test -f $TARGET" 2>/dev/null; then
   warn "$TARGET already exists on $HOST. This run will overwrite it."
 fi
 
+# Baseline the drop-ins that are already there. visudo -c fails on any file
+# whose mode is not 0440, and it reports every file in one run, so a fault that
+# predates this change reads as one this change caused. Stage 5 learned that
+# the hard way: it told a user to remove a file that had just parsed cleanly.
+# /etc/sudoers.d is world-readable, so this needs no password.
+PREEXISTING=$(ssh -o BatchMode=yes "$HOST" \
+  'for f in /etc/sudoers.d/*; do m=$(stat -c %a "$f"); [ "$m" = "440" ] || printf "%s (mode %s)\n" "$f" "$m"; done' 2>/dev/null)
+if [[ -n "$PREEXISTING" ]]; then
+  echo
+  warn "these files already fail visudo -c, before this run changes anything:"
+  printf '%s\n' "$PREEXISTING" | sed 's/^/      /'
+  note "sudo still honours them at run time. visudo -c is stricter than sudo is."
+  note "Stage 5 knows about these and will not blame them on the new file."
+fi
+
 echo
 say "${BOLD}What you have now:${RESET}"
 ssh -o BatchMode=yes "$HOST" 'sudo -n -l 2>/dev/null | sed -n "/may run/,\$p"' | sed 's/^/    /'
@@ -293,16 +308,40 @@ echo
 
 FAILED=0
 
-# The whole tree, not just the new file. A drop-in can parse alone and still
-# conflict with what is already there.
-if ssh -o BatchMode=yes "$HOST" 'sudo -n visudo -c' 2>&1 | sed 's/^/    /'; then
-  say "  ${GREEN}ok${RESET}  the whole sudoers tree parses"
-else
-  say "  ${RED}no${RESET}  the sudoers tree is broken"
+# Check the whole tree, because a drop-in can parse alone and still conflict
+# with what is there. But read the result per file, not by exit code.
+#
+# visudo -c returns non-zero when ANY file fails, including one that was
+# already failing before this run. An earlier version of this stage read the
+# exit code alone, called the tree broken, and told a user to remove a file
+# whose own line said "parsed OK". Only the line for $TARGET decides whether
+# this change is at fault.
+TREE=$(ssh -o BatchMode=yes "$HOST" 'sudo -n visudo -c' 2>&1)
+printf '%s\n' "$TREE" | sed 's/^/    /'
+
+if printf '%s\n' "$TREE" | grep -q "^$TARGET: parsed OK"; then
+  say "  ${GREEN}ok${RESET}  $TARGET parses"
+elif printf '%s\n' "$TREE" | grep -q "^$TARGET"; then
+  say "  ${RED}no${RESET}  $TARGET is the file at fault"
   echo
   say "${RED}${BOLD}Use the second terminal now:${RESET}"
   say "  ${BOLD}sudo rm $TARGET${RESET}"
   exit 1
+else
+  say "  ${RED}no${RESET}  visudo did not report on $TARGET at all"
+  say "      Check that the file installed and that its name has no dot."
+  exit 1
+fi
+
+# Anything else that failed. Name it, and say plainly that it is not this run's
+# doing, so nobody removes a working file to chase someone else's problem.
+OTHERS=$(printf '%s\n' "$TREE" | grep -v ': parsed OK$' | grep -v '^$' || true)
+if [[ -n "$OTHERS" ]]; then
+  echo
+  warn "other files in the tree have problems that predate this run:"
+  printf '%s\n' "$OTHERS" | sed 's/^/      /'
+  note "sudo still honours those files. Fix them separately, or leave them."
+  SKIPPED+=("pre-existing visudo -c complaints, listed above, unrelated to this change")
 fi
 
 if ssh -o BatchMode=yes "$HOST" 'sudo -n true' 2>/dev/null; then
