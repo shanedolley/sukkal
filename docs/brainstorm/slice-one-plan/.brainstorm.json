@@ -28,8 +28,9 @@
       "id": "2",
       "jiraKey": "KPA-2",
       "title": "Provision PostgreSQL with pgvector on amaterasu",
-      "status": "pending",
-      "estimate": 8
+      "status": "blocked",
+      "estimate": 8,
+      "blockedBy": "needs a human: amaterasu has no passwordless sudo for systemctl or root config writes. scripts/provision-amaterasu.sh is written and waits to be run."
     },
     {
       "id": "3",
@@ -106,7 +107,8 @@
       "jiraKey": "KPA-14",
       "title": "Freeze the vault: pause the three launchd jobs and record the commit",
       "status": "pending",
-      "estimate": 1
+      "estimate": 1,
+      "blockedBy": "partially delivered: runbook and script written and tested. The freeze itself is deferred by decision until KPA-5."
     },
     {
       "id": "15",
