@@ -16,6 +16,7 @@ import { Region, type RegionStatus } from "@/components/dashboard/region";
 import { StaleFacts } from "@/components/dashboard/stale-facts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatLongDay } from "@/lib/format";
 import { MEETINGS, NEEDS_YOU, TODAY } from "@/lib/fixtures";
 import { NeedsYou } from "@/components/dashboard/needs-you";
 import { useReview } from "@/lib/review-context";
@@ -23,14 +24,6 @@ import { isProposed, isStale } from "@/lib/review-state";
 import { inSpace, useSpace } from "@/lib/space-context";
 
 const STATUSES: RegionStatus[] = ["ready", "loading", "error", "empty"];
-
-function longDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-AU", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-}
 
 export function Briefing() {
   const { space } = useSpace();
@@ -54,7 +47,7 @@ export function Briefing() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold tracking-tight">
-            {longDate(TODAY)}
+            {formatLongDay(TODAY)}
           </h1>
           {/* The summary counts rows. While a region is busy or broken there
               is nothing to count, and a confident number beside a spinner is

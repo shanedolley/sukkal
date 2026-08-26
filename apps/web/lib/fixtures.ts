@@ -11,6 +11,11 @@ import type {
   Source,
 } from "./types";
 
+/** Resolve a provenance or a citation to the source it points at. */
+export function findSource(sourceId: string): Source | undefined {
+  return SOURCES.find((source) => source.id === sourceId);
+}
+
 /** The day the prototype renders. The brief's sketch reads "Tuesday 25 Aug". */
 export const TODAY = "2026-08-25";
 
@@ -80,6 +85,24 @@ export const SOURCES: Source[] = [
       {
         id: "c1",
         text: "Principal consulting rate is 2,400 AUD per day, excluding GST, for engagements under twenty days.",
+      },
+    ],
+  },
+  {
+    id: "src-tax-receipts",
+    kind: "mail",
+    title: "2026 tax return: the receipts I still need",
+    date: "2026-08-18",
+    space: "personal",
+    author: "hannah@brightonpartners.com.au",
+    chunks: [
+      {
+        id: "c1",
+        text: "Hi Shane, I have everything except the home office receipts for the second half of the year. Send those and I can lodge before the deadline.",
+      },
+      {
+        id: "c2",
+        text: "The lodgement deadline for your circumstances is 31 October 2026.",
       },
     ],
   },
@@ -202,6 +225,45 @@ export const FACTS: Fact[] = [
     generatedByAgent: false,
   },
   {
+    id: "fact-tax-deadline",
+    statement: "Shane's 2026 tax return is due for lodgement by 31 October 2026.",
+    state: "verified",
+    space: "personal",
+    entity: "Brighton Partners",
+    validFrom: "2026-08-18",
+    validTo: null,
+    staleAfter: "2026-11-01",
+    provenance: { sourceId: "src-tax-receipts", chunkId: "c2" },
+    generatedByAgent: true,
+  },
+  {
+    id: "fact-tax-receipts-outstanding",
+    statement:
+      "Shane owes Brighton Partners the home office receipts for the second half of the year.",
+    state: "stale",
+    space: "personal",
+    entity: "Brighton Partners",
+    validFrom: "2026-08-18",
+    validTo: null,
+    staleAfter: "2026-08-22",
+    provenance: { sourceId: "src-tax-receipts", chunkId: "c1" },
+    generatedByAgent: true,
+  },
+  {
+    id: "fact-meridian-seven-years",
+    statement: "BHP Meridian retains lineage records for seven years.",
+    state: "rejected",
+    space: "collibra",
+    entity: "BHP Meridian",
+    validFrom: "2026-08-19",
+    validTo: null,
+    staleAfter: null,
+    provenance: { sourceId: "src-meridian-retention", chunkId: "c1" },
+    generatedByAgent: true,
+    rejectionReason:
+      "Seven years is what legal asked for, not what was agreed. The agreement is three hot and four archived.",
+  },
+  {
     id: "fact-maybank-scope",
     statement: "The Maybank engagement covers data governance advisory only.",
     state: "candidate",
@@ -248,6 +310,16 @@ export const NEEDS_YOU: NeedsYouItem[] = [
     gmailUrl: "https://mail.google.com/mail/u/0/#drafts",
   },
   {
+    id: "need-tax-receipts",
+    kind: "deadline",
+    title: "Brighton Partners is waiting on receipts",
+    detail:
+      "Asked on 18 August. The lodgement deadline is 31 October, and nothing has gone back.",
+    space: "personal",
+    entity: "Brighton Partners",
+    raisedAt: "2026-08-25T07:42:00+10:00",
+  },
+  {
     id: "need-denied-calendar",
     kind: "denied-action",
     title: "Calendar hold refused: Sydney Water follow-up",
@@ -278,6 +350,15 @@ export const MEETINGS: Meeting[] = [
     engagement: "Maybank",
     space: "koinon",
     attendees: ["Adrian Wong", "Shane Dolley"],
+  },
+  {
+    id: "meet-tax-call",
+    start: "2026-08-25T17:00:00+10:00",
+    end: "2026-08-25T17:30:00+10:00",
+    title: "Brighton Partners: tax return check-in",
+    engagement: "Brighton Partners",
+    space: "personal",
+    attendees: ["Hannah Reid", "Shane Dolley"],
   },
 ];
 

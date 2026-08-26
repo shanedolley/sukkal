@@ -12,7 +12,7 @@ import {
   ExternalLinkIcon,
   CopyIcon,
   StarIcon,
-  Trash2Icon,
+  EyeOffIcon,
 } from "lucide-react"
 
 import { AUDIT, MEETINGS, NEEDS_YOU } from "@/lib/fixtures"
@@ -25,7 +25,6 @@ export type NavChild = {
   id: string
   label: string
   href: string
-  isActive?: boolean
 }
 
 export type NavItem = {
@@ -82,18 +81,18 @@ export const WORKSPACES: Workspace[] = [
     id: "collibra",
     name: "Collibra",
     tier: "Employer",
-    avatarClassName: "bg-violet-500 text-white",
+    avatarClassName: "bg-info text-info-foreground",
   },
   {
     id: "koinon",
     name: "Koinon",
     tier: "Own company",
-    avatarClassName: "bg-emerald-500 text-white",
+    avatarClassName: "bg-primary text-primary-foreground",
   },
   {
     id: "personal",
     name: "Personal",
-    avatarClassName: "bg-amber-500 text-white",
+    avatarClassName: "bg-warning text-warning-foreground",
   },
 ]
 
@@ -161,10 +160,10 @@ export function navMain(space: SpaceFilter, facts: Fact[]): NavItem[] {
 // ── Pinned engagements ──
 
 export const PINNED_RESOURCES: PinnedResource[] = [
-  { id: "meridian", name: "BHP Meridian", color: "bg-violet-500", env: "Collibra" },
-  { id: "maybank", name: "Maybank", color: "bg-emerald-500", env: "Koinon" },
-  { id: "sydney-water", name: "Sydney Water", color: "bg-violet-500", env: "Collibra" },
-  { id: "tfnsw", name: "Transport for NSW", color: "bg-violet-500", env: "Collibra" },
+  { id: "meridian", name: "BHP Meridian", color: "bg-info", env: "Collibra" },
+  { id: "maybank", name: "Maybank", color: "bg-primary", env: "Koinon" },
+  { id: "sydney-water", name: "Sydney Water", color: "bg-info", env: "Collibra" },
+  { id: "tfnsw", name: "Transport for NSW", color: "bg-info", env: "Collibra" },
 ]
 
 // ── Nav Secondary ──
@@ -205,8 +204,8 @@ export const ITEM_ACTIONS: ItemAction[] = [
   },
   {
     id: "hide",
-    label: "Hide from sidebar",
-    icon: <Trash2Icon aria-hidden="true" />,
-    destructive: true,
+    label: "Remove from sidebar",
+    icon: <EyeOffIcon aria-hidden="true" />,
+    destructive: false,
   },
 ]

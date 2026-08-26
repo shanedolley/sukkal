@@ -40,13 +40,16 @@ for (const fact of FACTS) {
   );
 }
 
-// 3. All five fact states appear, so every badge variant has a row.
+// 3. Every fact state appears, so every badge variant has a row behind it.
+//    This list must match FactState exactly. It said five when the type had
+//    six, so the rejected badge and the rejection-reason line went untested.
 const STATES: FactState[] = [
   "candidate",
   "proposed",
   "verified",
   "stale",
   "retired",
+  "rejected",
 ];
 for (const state of STATES) {
   assert.ok(
@@ -65,14 +68,34 @@ for (const entry of AUDIT) {
   }
 }
 
-// 5. Every space carries rows, so the space filter has something to narrow.
+// 5. Every collection carries a row in every space, checked per collection
+//    rather than pooled. Pooled, one personal audit entry satisfied the whole
+//    check while four dashboard regions rendered empty under that filter.
 const SPACES: Space[] = ["collibra", "koinon", "personal"];
-const everything = [...FACTS, ...NEEDS_YOU, ...MEETINGS, ...AUDIT, ...SOURCES];
-for (const space of SPACES) {
-  assert.ok(
-    everything.some((row) => row.space === space),
-    `no fixture row sits in the "${space}" space`
-  );
+const COLLECTIONS: Record<string, { space: Space }[]> = {
+  SOURCES,
+  FACTS,
+  NEEDS_YOU,
+  MEETINGS,
+  AUDIT,
+};
+for (const [name, rows] of Object.entries(COLLECTIONS)) {
+  for (const space of SPACES) {
+    assert.ok(
+      rows.some((row) => row.space === space),
+      `${name} has no row in the "${space}" space, so that filter renders empty`
+    );
+  }
+}
+
+// 5b. A rejected fact records why. Without it a later run raises it again.
+for (const fact of FACTS) {
+  if (fact.state === "rejected") {
+    assert.ok(
+      fact.rejectionReason,
+      `rejected fact ${fact.id} records no reason`
+    );
+  }
 }
 
 // 6. A retired fact carries valid_to. Nothing else does.

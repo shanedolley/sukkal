@@ -10,7 +10,7 @@
 // The table is the ReUI DataGrid rather than hand-rolled markup. The four
 // fields are prose, so they open in a panel instead of becoming columns.
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useTable, type ColumnDef } from "@tanstack/react-table";
 import { CheckCircle2Icon, ShieldXIcon } from "lucide-react";
 
@@ -32,20 +32,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AUDIT } from "@/lib/fixtures";
+import { formatStamp } from "@/lib/format";
+import { useForcedStatus } from "@/lib/forced-state";
+import { PageError, PageLoading } from "@/components/page-status";
+import { Skeleton } from "@/components/ui/skeleton";
 import { inSpace, useSpace } from "@/lib/space-context";
 import { SPACE_LABELS, type AuditEntry, type AuditOutcome } from "@/lib/types";
 
 type OutcomeFilter = AuditOutcome | "all";
-
-function stamp(iso: string) {
-  return new Date(iso).toLocaleString("en-AU", {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
 
 function OutcomeBadge({ outcome }: { outcome: AuditOutcome }) {
   return outcome === "allowed" ? (
@@ -70,17 +64,25 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function AuditPage() {
+function AuditLog() {
+  const status = useForcedStatus();
   const { space } = useSpace();
   const [outcome, setOutcome] = useState<OutcomeFilter>("all");
   const [selected, setSelected] = useState<AuditEntry | null>(null);
 
   const rows = useMemo(() => {
+    if (status === "empty") return [];
     const bySpace = inSpace(AUDIT, space);
-    return outcome === "all"
-      ? bySpace
-      : bySpace.filter((entry) => entry.outcome === outcome);
-  }, [space, outcome]);
+    const filtered =
+      outcome === "all"
+        ? bySpace
+        : bySpace.filter((entry) => entry.outcome === outcome);
+    // Newest first. The fixtures are written in narrative order, and a log
+    // that is not in time order is not a log.
+    return [...filtered].sort(
+      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
+    );
+  }, [space, outcome, status]);
 
   const columns = useMemo<ColumnDef<DataGridFeatures, AuditEntry>[]>(
     () => [
@@ -91,7 +93,7 @@ export default function AuditPage() {
         size: 110,
         cell: ({ row }) => (
           <span className="text-muted-foreground text-xs tabular-nums">
-            {stamp(row.original.at)}
+            {formatStamp(row.original.at)}
           </span>
         ),
       },
@@ -179,6 +181,10 @@ export default function AuditPage() {
       {/* min-w-0 matters: a flex child will not shrink below its content, so
           without it the fixed-width table grew the whole page instead of
           scrolling inside its own card. */}
+      {status === "loading" && <PageLoading label="the audit log" rows={5} />}
+      {status === "error" && <PageError what="The audit log" />}
+
+      {status !== "loading" && status !== "error" && (
       <DataGrid
         table={table}
         recordCount={rows.length}
@@ -193,6 +199,7 @@ export default function AuditPage() {
           </DataGridScrollArea>
         </DataGridContainer>
       </DataGrid>
+      )}
 
       <Sheet
         open={selected !== null}
@@ -210,7 +217,7 @@ export default function AuditPage() {
                     {SPACE_LABELS[selected.space]}
                   </Badge>
                   <span className="text-muted-foreground text-xs tabular-nums">
-                    {stamp(selected.at)}
+                    {formatStamp(selected.at)}
                   </span>
                 </div>
                 <SheetTitle className="text-left text-base">
@@ -234,5 +241,13 @@ export default function AuditPage() {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+export default function AuditPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+      <AuditLog />
+    </Suspense>
   );
 }

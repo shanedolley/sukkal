@@ -89,9 +89,8 @@ export interface Meeting {
   attendees: string[];
 }
 
-export interface Citation {
-  sourceId: string;
-  chunkId: string;
+/** A provenance the reader can see: the same pointer, plus what to call it. */
+export interface Citation extends Provenance {
   label: string;
 }
 

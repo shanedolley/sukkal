@@ -3,6 +3,9 @@
 import { usePathname } from "next/navigation";
 
 import { AppShell } from "@/components/blocks/app-shell-1/components/app-shell";
+import { SourceDrawerProvider } from "@/components/source-drawer";
+import { ReviewProvider } from "@/lib/review-context";
+import { SpaceProvider } from "@/lib/space-context";
 
 const CRUMBS: Record<string, string[]> = {
   "/dashboard": ["Assistant", "Briefing"],
@@ -12,5 +15,15 @@ const CRUMBS: Record<string, string[]> = {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  return <AppShell crumb={CRUMBS[pathname] ?? ["Assistant"]}>{children}</AppShell>;
+  return (
+    <SpaceProvider>
+      <ReviewProvider>
+        <SourceDrawerProvider>
+          <AppShell crumb={CRUMBS[pathname] ?? ["Assistant"]}>
+            {children}
+          </AppShell>
+        </SourceDrawerProvider>
+      </ReviewProvider>
+    </SpaceProvider>
+  );
 }

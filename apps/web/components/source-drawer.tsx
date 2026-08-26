@@ -16,7 +16,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { SOURCES } from "@/lib/fixtures";
+import { findSource } from "@/lib/fixtures";
+import { formatFullDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { SPACE_LABELS, type SourceKind } from "@/lib/types";
 
@@ -63,9 +64,7 @@ export function SourceDrawerProvider({
   const open = useCallback((next: OpenTarget) => setTarget(next), []);
   const value = useMemo(() => ({ open }), [open]);
 
-  const source = target
-    ? SOURCES.find((s) => s.id === target.sourceId)
-    : undefined;
+  const source = target ? findSource(target.sourceId) : undefined;
   const Icon = source ? KIND_ICON[source.kind] : FileTextIcon;
 
   return (
@@ -91,11 +90,7 @@ export function SourceDrawerProvider({
                   </Badge>
                   <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
                     <CalendarIcon className="size-3" aria-hidden="true" />
-                    {new Date(source.date).toLocaleDateString("en-AU", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
+                    {formatFullDay(source.date)}
                   </span>
                 </div>
                 <SheetTitle className="text-left text-base leading-snug">

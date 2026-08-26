@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check": "node --experimental-strip-types scripts/check-fixtures.ts"
+    "check": "node --experimental-strip-types scripts/check-fixtures.ts && node --experimental-strip-types scripts/check-review-rules.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

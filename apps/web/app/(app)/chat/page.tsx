@@ -7,7 +7,7 @@
 // Koinon apart as a guideline: nothing blocks an answer that draws on both,
 // but the answer has to say so.
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import {
   ArrowUpIcon,
   InfoIcon,
@@ -23,6 +23,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import { Textarea } from "@/components/ui/textarea";
 import { CHAT_ANSWERS } from "@/lib/fixtures";
+import { useForcedStatus } from "@/lib/forced-state";
+import { PageError, PageLoading } from "@/components/page-status";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SPACE_LABELS, type ChatAnswer } from "@/lib/types";
 
 const SUGGESTIONS = CHAT_ANSWERS.map((a) => a.question);
@@ -97,7 +100,8 @@ function Answer({ answer }: { answer: ChatAnswer }) {
   );
 }
 
-export default function ChatPage() {
+function Chat() {
+  const status = useForcedStatus();
   const [asked, setAsked] = useState<ChatAnswer[]>([]);
   const [question, setQuestion] = useState("");
 
@@ -117,7 +121,9 @@ export default function ChatPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6">
       <div className="flex flex-1 flex-col gap-6">
-        {asked.length === 0 ? (
+        {status === "loading" && <PageLoading label="your answer" rows={3} />}
+        {status === "error" && <PageError what="This answer" />}
+        {status !== "loading" && status !== "error" && asked.length === 0 ? (
           <Empty className="flex-1 border-none">
             <EmptyTitle className="text-base">Ask about anything</EmptyTitle>
             <EmptyDescription>
@@ -139,6 +145,7 @@ export default function ChatPage() {
             </ul>
           </Empty>
         ) : (
+          status === "ready" &&
           asked.map((answer, index) => (
             <Answer key={`${answer.id}-${index}`} answer={answer} />
           ))
@@ -182,5 +189,13 @@ export default function ChatPage() {
         </p>
       </form>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<Skeleton className="mx-auto h-96 w-full max-w-3xl" />}>
+      <Chat />
+    </Suspense>
   );
 }

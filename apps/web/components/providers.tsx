@@ -1,11 +1,11 @@
 "use client";
 
+// Root providers only: the theme and tooltips, which every route uses.
+// Anything that needs data lives under app/(app)/layout.tsx instead.
+
 import { ThemeProvider } from "next-themes";
 
-import { SourceDrawerProvider } from "@/components/source-drawer";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ReviewProvider } from "@/lib/review-context";
-import { SpaceProvider } from "@/lib/space-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -15,13 +15,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <TooltipProvider>
-        <SpaceProvider>
-          <ReviewProvider>
-            <SourceDrawerProvider>{children}</SourceDrawerProvider>
-          </ReviewProvider>
-        </SpaceProvider>
-      </TooltipProvider>
+      <TooltipProvider>{children}</TooltipProvider>
     </ThemeProvider>
   );
 }

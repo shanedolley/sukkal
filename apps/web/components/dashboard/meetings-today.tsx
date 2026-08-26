@@ -5,15 +5,8 @@
 import { UsersIcon } from "lucide-react";
 
 import { Badge } from "@/components/reui/badge";
+import { formatTime } from "@/lib/format";
 import { SPACE_LABELS, type Meeting } from "@/lib/types";
-
-function time(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-AU", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
 
 export function MeetingsToday({ meetings }: { meetings: Meeting[] }) {
   return (
@@ -26,10 +19,10 @@ export function MeetingsToday({ meetings }: { meetings: Meeting[] }) {
           {/* The time is the thing scanned first, so it leads the row. */}
           <div className="flex w-16 shrink-0 flex-col">
             <span className="text-sm font-medium tabular-nums">
-              {time(meeting.start)}
+              {formatTime(meeting.start)}
             </span>
             <span className="text-muted-foreground text-xs tabular-nums">
-              {time(meeting.end)}
+              {formatTime(meeting.end)}
             </span>
           </div>
 

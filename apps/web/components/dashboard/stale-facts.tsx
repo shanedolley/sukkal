@@ -11,12 +11,8 @@ import { RotateCcwIcon } from "lucide-react";
 
 import { FactCard } from "@/components/fact-card";
 import { Button } from "@/components/ui/button";
+import { daysPast } from "@/lib/format";
 import type { Fact } from "@/lib/types";
-
-function daysOverdue(staleAfter: string, today: string) {
-  const ms = new Date(today).getTime() - new Date(staleAfter).getTime();
-  return Math.max(0, Math.round(ms / 86_400_000));
-}
 
 export function StaleFacts({
   facts,
@@ -34,7 +30,7 @@ export function StaleFacts({
           <div className="flex shrink-0 items-center gap-3">
             {fact.staleAfter && (
               <span className="text-muted-foreground text-xs">
-                {daysOverdue(fact.staleAfter, today)} days past review
+                {daysPast(fact.staleAfter, today)} days past review
               </span>
             )}
             <Button

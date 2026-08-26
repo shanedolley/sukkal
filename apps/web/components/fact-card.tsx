@@ -7,7 +7,8 @@ import { ArrowUpRightIcon } from "lucide-react";
 
 import { Badge } from "@/components/reui/badge";
 import { useSourceDrawer } from "@/components/source-drawer";
-import { SOURCES } from "@/lib/fixtures";
+import { formatDay } from "@/lib/format";
+import { findSource } from "@/lib/fixtures";
 import { FACT_STATE_LABELS, SPACE_LABELS, type Fact, type FactState } from "@/lib/types";
 
 // A colour per state, so the queue reads at a glance. Verified is calm,
@@ -23,14 +24,6 @@ const STATE_VARIANT: Record<
   retired: "outline",
   rejected: "destructive-light",
 };
-
-function formatDay(iso: string) {
-  return new Date(iso).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 export function FactStateBadge({ state }: { state: FactState }) {
   return (
@@ -49,7 +42,7 @@ export function FactCard({
   children?: React.ReactNode;
 }) {
   const { open } = useSourceDrawer();
-  const source = SOURCES.find((s) => s.id === fact.provenance.sourceId);
+  const source = findSource(fact.provenance.sourceId);
 
   return (
     <li className="border-border/70 flex flex-col gap-3 rounded-lg border p-3">
