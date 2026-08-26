@@ -538,3 +538,86 @@ When Actions recovers:
 
 The branch is pushed and holds `test/deliberately-failing.test.ts` ready for
 step 2.
+
+## KPA-9: the four gates as tested code, with subtasks KPA-27 to KPA-31
+
+| Acceptance criterion | Evidence |
+|---|---|
+| Each gate is a separate function with its own tests, returning a pass or a fail with a reason | Four exported functions in `src/memory/gates.ts`, all returning `GateResult`. 21 new tests |
+| A candidate failing any gate is rejected, and the reason recorded so a later run does not re-raise it | `admit` writes to `rejections` naming the gate. A second run reads it and never calls a gate |
+| Gate 3 checks against existing facts before writing, not after | `notAlreadyRecorded` queries `facts`; `write` runs only after all four pass |
+| Gate 4 retires what it contradicts in the same transaction that writes the replacement | One `BEGIN`, the insert, the retirement, the `supersedes` edge, one `COMMIT` |
+| Prompts live in version-controlled files, not inline strings | `src/memory/prompts/*.md`, read on every call |
+| The default is to reject. A gate that errors rejects rather than passes | Three separate tests: a throw, an unrecorded answer, and an unreadable one |
+
+### The default really is to reject
+
+Four ways a gate can fail to give a clean answer, and all four reject.
+
+| Case | Result |
+|---|---|
+| The model hedges: `It could go either way.` | `unreadable answer`, rejected |
+| The model refuses: `I cannot answer that.` | `unreadable answer`, rejected |
+| An empty answer | `unreadable answer`, rejected |
+| A verdict wrapped in prose: `Probably PASS, but I am not sure.` | `unreadable answer`, rejected |
+| The gate throws, because no answer was recorded | `gate 1: threw: no recorded answer`, rejected and recorded |
+
+### The prompts are load bearing, proved by removing one
+
+Renaming `gate-1-still-true-in-a-month.md` out of the way made the suite fail
+with `ENOENT`, naming the missing file. The file was moved back and the suite
+returned to 52 passing.
+
+That is the point of reading the file on every call rather than caching it: a
+renamed or deleted prompt throws, and a throw rejects. Caching would have let
+the gate keep judging by a stale instruction.
+
+### Gate 4 commits both writes or neither
+
+The story asks for a failure injected between the two writes. The test wraps
+the client so that any statement beginning `UPDATE facts SET valid_to` rejects,
+which is exactly the point after the replacement is written and before the old
+answer is retired.
+
+The result: `admit` throws, and the only row left is the original, still live.
+The replacement rolled back with it. Two answers are never both live, and
+neither is zero.
+
+### Two things this deliberately does not do
+
+**No live model implementation.** `recorded` is the only `Inference`, so the
+suite passes with the network unavailable and continuous integration needs no
+credential, which is what KPA-27 asks for. Nothing outside a test calls a model
+until the slice that ingests. `src/memory/inference.ts` carries a `ponytail:`
+comment naming where it plugs in. A grep of `src/` for `fetch(`, `node:http`,
+a URL or an HTTP client finds nothing.
+
+**Gate 3 matches on the title, case-insensitively.** That rejects a duplicate
+and passes a candidate merely mentioning the same entity, which is the
+behaviour the subtask asks for and both cases are tested. It will not catch a
+duplicate worded differently. Once KPA-12 fills the embeddings, compare vectors
+instead. Marked in the code.
+
+**Gate 4 takes the contradiction as declared.** The candidate names what it
+retires. Detecting a contradiction nobody declared is a judgment call belonging
+to the extraction step that builds candidates, not to a mechanical gate.
+
+### Two defects the schema caught in this story's own tests
+
+Both are the registry doing its job, and both were fixed in the test rather
+than worked around in the schema.
+
+**A committed node with no child row.** The helper that writes a fact straight
+in used two autocommitted statements, so the `nodes` row landed alone and
+`nodes_must_be_claimed` raised `node 1 has kind fact and no fact row to match
+it`. The helper now wraps both in one transaction.
+
+**A rejection pointing at a node that does not exist.** The fixture used
+`subjectId: '0'`, and `rejections_subject_id_fkey` refused it. The fixture now
+creates a real source node, which is what a rejection concerns in practice.
+
+### One deviation from the story
+
+**One file, not a directory.** The story names `src/memory/gates/*.ts`. Four
+gates and a runner come to roughly 200 lines, which reads better in one file
+than in five. `src/memory/prompts/*.md` and `test/gates.test.ts` are as named.

@@ -81,11 +81,18 @@ loopback host through in the clear.
 ```
 migrations/     One .sql file per migration, applied in filename order
 src/db/         The connection module and the migration runner
+src/memory/     The four gates, the inference seam, and the prompts they read
 test/           The suite, and its fixtures under test/fixtures/
 docs/adr/       Decisions that were hard to reverse
 docs/runbooks/  Operating the server, and where the secrets live
 scripts/        Provisioning and checks, all bash
 ```
+
+**A gate's prompt is a file, never a string in code.** `src/memory/prompts/`
+holds them, and the gate reads its file on every call, so a renamed prompt
+throws and rejects the candidate rather than judging it by nothing. The default
+everywhere in `src/memory/` is to reject: a gate that throws rejects, and a
+model answer that is neither a clean `PASS` nor a clean `FAIL` rejects.
 
 A migration file carries both directions, separated by a line reading
 `-- @down`. The runner refuses rather than guesses: a database holding tables

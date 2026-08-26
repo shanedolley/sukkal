@@ -288,8 +288,46 @@
       "id": "9",
       "jiraKey": "KPA-9",
       "title": "Implement the four gates as tested code",
-      "status": "pending",
-      "estimate": 8
+      "status": "complete",
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "architecture",
+          "note": "Every model call passes through src/memory/inference.ts. Only a recorded implementation exists, so the suite passes with no network and CI needs no credential. A live one plugs in there when the ingesting slice needs it.",
+          "files": [
+            "src/memory/inference.ts"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "A gate's prompt is a file under src/memory/prompts/, read on every call. A renamed prompt throws and rejects rather than judging by a stale instruction. Proved by moving one away and watching the suite fail with ENOENT.",
+          "files": [
+            "src/memory/prompts/gate-1-still-true-in-a-month.md",
+            "src/memory/prompts/gate-2-worth-recording.md",
+            "CLAUDE.md"
+          ]
+        },
+        {
+          "category": "security",
+          "note": "The default is to reject, four ways over: a hedge, a refusal, an empty answer and a verdict wrapped in prose all read as errors, and an error rejects. So does a gate that throws.",
+          "files": [
+            "src/memory/gates.ts",
+            "CLAUDE.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "Gate 3 matches on the title, case-insensitively. It catches a duplicate and passes a candidate that merely mentions the same entity. It will not catch a duplicate worded differently: compare embeddings once KPA-12 fills them.",
+          "files": [
+            "src/memory/gates.ts"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T16:36:11Z"
     },
     {
       "id": "10",
@@ -544,6 +582,76 @@
       "verified": true,
       "docImpact": [],
       "completedAt": "2026-08-26T16:18:42Z"
+    },
+    {
+      "id": "27",
+      "jiraKey": "KPA-27",
+      "title": "Build the inference interface with a recorded-response implementation",
+      "status": "complete",
+      "parent": "KPA-9",
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:36:11Z"
+    },
+    {
+      "id": "28",
+      "jiraKey": "KPA-28",
+      "title": "Gate 1 and gate 2, the two that need judgment",
+      "status": "complete",
+      "parent": "KPA-9",
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:36:11Z"
+    },
+    {
+      "id": "29",
+      "jiraKey": "KPA-29",
+      "title": "Gate 3: nothing already records it",
+      "status": "complete",
+      "parent": "KPA-9",
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:36:11Z"
+    },
+    {
+      "id": "30",
+      "jiraKey": "KPA-30",
+      "title": "Gate 4: retire what it contradicts, in one transaction",
+      "status": "complete",
+      "parent": "KPA-9",
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:36:11Z"
+    },
+    {
+      "id": "31",
+      "jiraKey": "KPA-31",
+      "title": "Record every rejection with a reason a later run reads",
+      "status": "complete",
+      "parent": "KPA-9",
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:36:11Z"
     }
   ],
   "artifacts": {
