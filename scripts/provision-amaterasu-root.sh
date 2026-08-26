@@ -93,8 +93,9 @@ log "pg_hba.conf"
 if ! grep -q '^# KPA' "$CONF/pg_hba.conf"; then
   cat >> "$CONF/pg_hba.conf" <<HBAEOF
 
-# KPA. The Mac reaches this box over the wired interface, so the address here is
-# that subnet. Wi-Fi puts the Mac on a different one, where it will be refused.
+# KPA. The subnet below is the /24 of whichever interface carried the ssh that
+# ran this script. The Mac's wired and Wi-Fi addresses share that /24, so either
+# one reaches Postgres. Another subnet, a guest SSID or a VLAN needs its own line.
 hostssl kpa       kpa  $SRCNET  scram-sha-256
 hostssl kpa_dev   kpa  $SRCNET  scram-sha-256
 HBAEOF

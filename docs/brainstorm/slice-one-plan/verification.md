@@ -1,0 +1,105 @@
+# Verification
+
+## Method
+
+The repository holds no test suite and no build step, so there is nothing to
+compile or run. Both runbooks written in this pass tell a reader to run
+commands, so the verification is to run each read-only one against the live
+server and compare the output against what the runbook claims.
+
+Run on 26 August 2026, from the Mac at `192.168.20.107` against amaterasu at
+`192.168.20.110`. No destructive command ran: no second backup drill, no reboot,
+no restore over `kpa`.
+
+## `docs/runbooks/database-backup.md`
+
+| Claim | Command | Result |
+|---|---|---|
+| The Mac's `pg_dump` refuses the newer server | `pg_dump --schema-only "$DATABASE_URL"` | `aborting because of server version mismatch`, `server version: 18.6`, `pg_dump version: 17.11`. Matches the quoted error |
+| The server's dump tools are 18.6 | `pg_dump/pg_dumpall/pg_restore --version` on amaterasu | All three report 18.6 (Ubuntu 18.6-1.pgdg24.04+2) |
+| `pg_dump -Fc` runs against `kpa` | `sudo -u postgres pg_dump -Fc -d kpa \| wc -c` | 1292 bytes. Piped to `wc`, so nothing was written to disk |
+| `pg_dumpall -r` emits the `kpa` role | `sudo -u postgres pg_dumpall -r \| grep "^CREATE ROLE"` | `CREATE ROLE kpa;` and `CREATE ROLE postgres;`. The password hash was not printed |
+| `pg_restore -l` inspects an archive without touching a database | `pg_dump -Fc -d kpa \| pg_restore -l` | `Format: CUSTOM`, `TOC Entries: 6`, `dbname: kpa` |
+| The row-count comparison query runs | `psql -tAX -d $db -c 'SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY relname'` | Zero rows for `kpa` and for `kpa_dev`. Both hold no user tables yet |
+| `~postgres` is `/var/lib/postgresql` | `sudo -u postgres bash -c 'echo $HOME'` | `/var/lib/postgresql`, so the `scp` path in the runbook is right |
+| The freshness check reports no backup today | `sudo -u postgres ls -lt /var/lib/postgresql/backups/` | `No such file or directory`. The runbook says to expect this, and why |
+| `kpa`'s `public` schema is empty | `SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace` | `0`. This is why the drill's comparison was vacuous |
+| The drill ran on the box | `grep kpa_drill /var/log/postgresql/postgresql-18-main.log` | Connections as `postgres@kpa_drill` at 11:55:35, then `DROP DATABASE kpa_drill` at 11:55:36 |
+| The drill's count step failed | Same log | `ERROR: syntax error at or near "\"`, statement `... relnamespace = \x27public\x27::regnamespace` |
+
+## `docs/runbooks/postgres-setup.md`
+
+| Claim | Command | Result |
+|---|---|---|
+| An ssh key reaches amaterasu | `ssh -o BatchMode=yes -o ConnectTimeout=6 amaterasu true` | Succeeded with no prompt |
+| `sudo` needs no password | `ssh amaterasu 'sudo -n true'` | Succeeded |
+| `psql` is on the Mac at the path given | `ls -l /opt/homebrew/opt/postgresql@17/bin/psql` | Present. 17.11 |
+| Host facts | `/etc/os-release`, `/proc/meminfo`, `nproc`, `hostname -I` | Ubuntu 24.04.4 LTS (noble), 7785 MB, 12 threads, `192.168.20.110` |
+| The packages are from PGDG | `dpkg-query -W postgresql-18 postgresql-18-pgvector ssl-cert` | `18.6-1.pgdg24.04+2`, `0.8.6-1.pgdg24.04+1`, `1.1.2ubuntu1` |
+| The service is active and enabled | `systemctl is-active/is-enabled postgresql`, `is-active postgresql@18-main` | `active`, `enabled`, `active` |
+| Every tuning value in the table | `SHOW <name>` for all twelve, from the Mac | All twelve match the runbook exactly. See below |
+| The values live in `conf.d/kpa.conf` | `grep -vE '^\s*(#\|$)' /etc/postgresql/18/main/conf.d/kpa.conf` | Same twelve, plus `log_line_prefix` and `log_min_duration_statement` |
+| The connection is encrypted | `SELECT ssl, version, cipher FROM pg_stat_ssl WHERE pid=pg_backend_pid()` | `true`, `TLSv1.3`, `TLS_AES_256_GCM_SHA384` |
+| `kpa` is not a superuser | `SELECT rolsuper, rolcreaterole, rolcanlogin FROM pg_roles WHERE rolname='kpa'` | `false`, `false`, `true` |
+| No read-only role exists | Same query for `kpa_ro` | No row returned |
+| Both databases exist and are owned by `kpa` | `SELECT datname, pg_get_userbyid(datdba) FROM pg_database WHERE datname LIKE 'kpa%'` | `kpa` and `kpa_dev`, both owned by `kpa` |
+| Both carry pgvector | `SELECT extversion FROM pg_extension WHERE extname='vector'` in each | `0.8.6` in both |
+| The server never listens on `0.0.0.0` | `ss -ltnp \| grep 5432` | `127.0.0.1:5432` and `192.168.20.110:5432` only |
+| `pg_hba` holds two `hostssl` lines | `grep -A3 '^# KPA' /etc/postgresql/18/main/pg_hba.conf` | `hostssl kpa` and `hostssl kpa_dev`, both `192.168.20.0/24 scram-sha-256` |
+| An unencrypted client is refused | `psql "...?sslmode=disable"` | `FATAL: no pg_hba.conf entry for host "192.168.20.107", user "kpa", database "kpa", no encryption` |
+| The Mac is on Wi-Fi inside that `/24` | `ssh amaterasu 'echo $SSH_CLIENT'` | `192.168.20.107`, which the `/24` covers. This is the evidence for the correction |
+| The post-reboot check runs | `systemctl is-active postgresql@18-main`, then the `extversion` query | `active`, then `0.8.6` |
+| The reboot is still outstanding | `uptime -s`, `uptime -p` | Up since 2026-08-17, 1 week 2 days. KPA-2 stays In Progress |
+
+### The twelve settings, read from the Mac with `SHOW`
+
+```
+shared_buffers         512MB
+work_mem               16MB
+maintenance_work_mem   256MB
+effective_cache_size   2GB
+max_connections        25
+random_page_cost       1.1
+checkpoint_timeout     15min
+max_wal_size           2GB
+min_wal_size           256MB
+jit                    off
+listen_addresses       localhost,192.168.20.110
+ssl                    on
+```
+
+## The corrected count query in `scripts/provision-amaterasu.sh`
+
+The 26 August drill lost its `\x27` escapes and answered with a syntax error.
+The replacement uses no single quote and no dollar sign, so nothing in the
+chain of a local double-quoted string, an ssh argument and a remote
+single-quoted `bash -c` can mangle it.
+
+Checked without running a second drill, by sending the same command shape at
+the existing `kpa` database instead of a scratch one:
+
+```
+$ ssh amaterasu "sudo -u postgres bash -c '
+    set -e
+    echo \"restored objects: \$(psql -tAX -d kpa -c \"SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = current_schema()\")\"'"
+restored objects: 0
+```
+
+It prints a number. The old form printed nothing and logged a syntax error.
+`bash -n scripts/provision-amaterasu.sh` parses.
+
+## Result
+
+**Verification passed.** Every read-only command in both runbooks produces the
+output the runbook claims.
+
+## Two things this does not prove
+
+**The backup drill did not verify anything.** Its count step failed, and both
+sides would have been zero regardless, because `kpa` holds no objects yet. The
+dump, create, restore and drop cycle demonstrably runs. Data surviving a round
+trip is untested, and stays untested until KPA-4 and KPA-5 put something in the
+database. Both runbooks say so.
+
+**The reboot has not happened.** KPA-2's "Done when" needs it, the box has been
+up for nine days, and rebooting it interrupts NFS. It stays In Progress.

@@ -32,6 +32,109 @@
       "estimate": 8
     },
     {
+      "id": "19",
+      "jiraKey": "KPA-19",
+      "title": "Install PostgreSQL 18 and pgvector from PGDG",
+      "status": "complete",
+      "parent": "KPA-2",
+      "classifiedAgent": "kothar:developer",
+      "classifierConfidence": "medium",
+      "implementedBy": "scripts/provision-amaterasu.sh, run by Shane on 26 August 2026",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "technical-knowledge",
+          "note": "postgresql-18 18.6 and postgresql-18-pgvector 0.8.6 from PGDG for noble, under systemd and enabled at boot. Verified live on 26 August 2026.",
+          "files": [
+            "docs/runbooks/postgres-setup.md"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T12:06:35Z"
+    },
+    {
+      "id": "20",
+      "jiraKey": "KPA-20",
+      "title": "Create the kpa role and the two databases",
+      "status": "complete",
+      "parent": "KPA-2",
+      "classifiedAgent": "kothar:developer",
+      "classifierConfidence": "medium",
+      "implementedBy": "scripts/provision-amaterasu.sh, run by Shane on 26 August 2026",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "technical-knowledge",
+          "note": "kpa role is LOGIN, NOSUPERUSER, NOCREATEROLE and owns both kpa and kpa_dev. No kpa_ro role, by the PRD's decision: ADR-0003 has KPA reading nabium, not the reverse.",
+          "files": [
+            "docs/runbooks/postgres-setup.md"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T12:06:35Z"
+    },
+    {
+      "id": "21",
+      "jiraKey": "KPA-21",
+      "title": "Tune for the box, bind to the LAN, and enable TLS",
+      "status": "complete",
+      "parent": "KPA-2",
+      "classifiedAgent": "kothar:developer",
+      "classifierConfidence": "medium",
+      "implementedBy": "scripts/provision-amaterasu.sh, run by Shane on 26 August 2026",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "security",
+          "note": "listen_addresses is localhost plus the LAN address, never 0.0.0.0. Two hostssl lines for 192.168.20.0/24 with scram-sha-256, so a client offering no TLS is refused. sslmode=require, not verify-full.",
+          "files": [
+            "docs/runbooks/postgres-setup.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "Twelve settings in conf.d/kpa.conf, scaled from nabium's postgres-tuning.md rather than copied, because that runbook targets a 32 GB host and amaterasu holds 7.6 GB shared with NFS.",
+          "files": [
+            "docs/runbooks/postgres-setup.md"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T12:06:35Z"
+    },
+    {
+      "id": "22",
+      "jiraKey": "KPA-22",
+      "title": "Copy the backup runbook and follow it once with a restore",
+      "status": "complete",
+      "parent": "KPA-2",
+      "classifiedAgent": "kothar:developer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "technical-knowledge",
+          "note": "Dumps run on amaterasu, not the Mac: pg_dump 17.11 refuses the 18.6 server. Two dumps, because pg_dump -Fc emits no CREATE DATABASE and no roles at all.",
+          "files": [
+            "docs/runbooks/database-backup.md"
+          ]
+        },
+        {
+          "category": "user-guide",
+          "note": "The 26 August drill's count step failed on a lost quote escape, and both sides were zero anyway because kpa holds no objects. The script is fixed; the drill is worth repeating after KPA-4 and KPA-5.",
+          "files": [
+            "docs/runbooks/database-backup.md",
+            "scripts/provision-amaterasu.sh"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T12:06:35Z"
+    },
+    {
       "id": "3",
       "jiraKey": "KPA-3",
       "title": "Scaffold the repository and migration tooling",

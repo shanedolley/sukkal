@@ -221,8 +221,10 @@ fi
 SRC_NET=$(echo "$SRC_IP" | awk -F. '{print $1"."$2"."$3".0/24"}' || true)
 say "  ${GREEN}ok${RESET}  $HOST sees this Mac as $SRC_IP, so pg_hba will allow $SRC_NET"
 echo
-say "${YELLOW}That address is the wired interface, not Wi-Fi.${RESET}"
-say "If you unplug and fall back to Wi-Fi, Postgres will refuse the connection."
+say "${YELLOW}That subnet comes from whichever interface carried this ssh.${RESET}"
+say "Wired and Wi-Fi share one flat /24 here, so either interface reaches Postgres."
+say "Moving the Mac to another subnet, a guest SSID or a VLAN needs a second"
+say "hostssl line for it."
 echo
 
 RAM_MB=$(ssh -o BatchMode=yes "$HOST" "awk '/MemTotal/{print int(\$2/1024)}' /proc/meminfo" || true)
@@ -338,6 +340,12 @@ pause "Continue to the backup drill?"
 stage "Back up and restore once"
 say "A runbook nobody has followed is a runbook that does not work."
 echo
+# The SQL below carries no single quote and no dollar sign, on purpose. It
+# passes through a local double-quoted string, an ssh argument and a remote
+# single-quoted `bash -c`, and a single quote would close that region early. The
+# 2026-08-26 run wrote 'public' as \x27public\x27 and lost the escape in that
+# chain, so psql answered with a syntax error and the count printed empty.
+# current_schema() is public for the postgres user, so it says the same thing.
 if confirm "Run a dump and restore into a scratch database now?"; then
   ssh -t "$HOST" "sudo -u postgres bash -c '
     set -e
@@ -345,7 +353,7 @@ if confirm "Run a dump and restore into a scratch database now?"; then
     dropdb --if-exists kpa_drill
     createdb kpa_drill
     psql -q -d kpa_drill -f /tmp/kpa-drill.sql
-    echo \"restored objects: \$(psql -tAX -d kpa_drill -c \"SELECT count(*) FROM pg_class WHERE relnamespace = \x27public\x27::regnamespace\")\"
+    echo \"restored objects: \$(psql -tAX -d kpa_drill -c \"SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = current_schema()\")\"
     dropdb kpa_drill
     rm -f /tmp/kpa-drill.sql'"
   say "  ${GREEN}ok${RESET}  dump and restore completed, scratch database removed"
