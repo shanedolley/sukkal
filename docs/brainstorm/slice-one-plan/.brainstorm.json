@@ -138,8 +138,47 @@
       "id": "3",
       "jiraKey": "KPA-3",
       "title": "Scaffold the repository and migration tooling",
-      "status": "pending",
-      "estimate": 5
+      "status": "complete",
+      "estimate": 5,
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "user-guide",
+          "note": "The README gains a Running it section: the clean-clone steps, the five npm commands, and how to write a migration file. Extended, not replaced.",
+          "files": [
+            "README.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "Node 22.18 strips types on load, so the repository needs no bundler and no build step. npm run build type-checks and emits nothing. Tests run on node --test.",
+          "files": [
+            "README.md",
+            "package.json"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "libpq and node-postgres read sslmode=require two different ways. connect() translates it to the driver's no-verify, so one .env serves psql and Node. amaterasu's certificate is self-signed, so no client can verify the chain.",
+          "files": [
+            "src/db/migrate.ts"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "The runner refuses rather than guesses: a populated database stops it, and so does a second up with nothing to apply. REQ-007 asks for this instead of idempotence.",
+          "files": [
+            "README.md",
+            "src/db/migrate.ts"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T15:52:51Z",
+      "note": "Ran before KPA-15 by the team lead's instruction, against the board's link direction. KPA-15 needs src/db/connect.ts, and that file cannot exist before a TypeScript workspace does."
     },
     {
       "id": "4",

@@ -13,8 +13,8 @@
  */
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import pg from 'pg';
 import type { ClientBase } from 'pg';
+import { connect } from './connect.ts';
 
 /** Separates the two directions inside one migration file. */
 const DOWN_MARKER = /^--[ \t]*@down[ \t]*$/m;
@@ -166,36 +166,13 @@ export async function down(client: ClientBase, dir: string): Promise<string[]> {
 
 const MIGRATIONS_DIR = path.join(import.meta.dirname, '..', '..', 'migrations');
 
-/**
- * Opens a client against `url`.
- *
- * amaterasu presents Ubuntu's self-signed certificate, so no client can
- * verify the chain. libpq reads `sslmode=require` as "encrypt, do not
- * verify", and `psql` therefore connects. This driver reads the same word as
- * "encrypt and verify", and fails. `no-verify` is its spelling for libpq's
- * meaning, so translate one to the other here and leave `.env` readable by
- * both. Every other mode passes through untouched.
- */
-export function connect(url: string): pg.Client {
-  const parsed = new URL(url);
-  if (parsed.searchParams.get('sslmode') === 'require') {
-    parsed.searchParams.set('sslmode', 'no-verify');
-  }
-  return new pg.Client({ connectionString: parsed.toString() });
-}
-
 async function main(): Promise<void> {
   const direction = process.argv[2] ?? 'up';
   if (direction !== 'up' && direction !== 'down') {
     throw new Error(`unknown direction "${direction}": expected "up" or "down"`);
   }
 
-  const url = process.env['DATABASE_URL'];
-  if (!url) {
-    throw new Error('DATABASE_URL is unset. Copy .env.example to .env and fill it in.');
-  }
-
-  const client = connect(url);
+  const client = connect();
   await client.connect();
   try {
     const ran = direction === 'up'

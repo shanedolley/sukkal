@@ -15,7 +15,7 @@ Cloudflare Access.
 | `docs/adr/` | the decisions that were hard to reverse, with the options they beat |
 | `docs/runbooks/` | how to operate the server |
 | `migrations/` | one `.sql` file per migration, applied in filename order |
-| `src/db/` | the migration runner |
+| `src/db/` | the connection module and the migration runner |
 | `test/` | the suite, and its fixtures |
 
 **Read the brief first.** It carries the architecture, the sequence diagrams, the

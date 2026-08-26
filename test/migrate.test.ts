@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
-import { connect, down, readMigrations, up } from '../src/db/migrate.ts';
+import { connect } from '../src/db/connect.ts';
+import { down, readMigrations, up } from '../src/db/migrate.ts';
 
 const FIXTURES = path.join(import.meta.dirname, 'fixtures');
 const OK = path.join(FIXTURES, 'migrations-ok');
@@ -43,7 +44,7 @@ describe('the runner against Postgres', { skip: url ? false : 'DATABASE_URL_TEST
   }
 
   before(async () => {
-    client = connect(url!);
+    client = connect('DATABASE_URL_TEST');
     await client.connect();
 
     // The migration database holds the real facts. Tests never touch it.
@@ -58,6 +59,14 @@ describe('the runner against Postgres', { skip: url ? false : 'DATABASE_URL_TEST
 
   beforeEach(async () => {
     await client.query(`DROP TABLE IF EXISTS ${SCRATCH.join(', ')} CASCADE`);
+  });
+
+  test('the connection is encrypted', async () => {
+    const tls = await client.query<{ ssl: boolean; version: string }>(
+      'SELECT ssl, version FROM pg_stat_ssl WHERE pid = pg_backend_pid()',
+    );
+    assert.equal(tls.rows[0]?.ssl, true);
+    assert.match(tls.rows[0]?.version ?? '', /^TLSv1\./);
   });
 
   test('up applies every migration in order and records each one', async () => {

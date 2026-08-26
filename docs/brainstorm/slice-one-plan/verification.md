@@ -103,3 +103,117 @@ database. Both runbooks say so.
 
 **The reboot has not happened.** KPA-2's "Done when" needs it, the box has been
 up for nine days, and rebooting it interrupts NFS. It stays In Progress.
+
+---
+
+# Verification: the build phase
+
+Appended on 27 August 2026. The section above covers the two runbooks and stays
+as it was written.
+
+## The commands
+
+KPA-3 created the first suite, so `/verification-before-completion` now has
+three commands to run. All three run from the repository root, and `npm test`
+and `npm run migrate` read `.env`.
+
+| Command | What it proves |
+|---|---|
+| `npm run lint` | `oxlint` finds no fault in `src` or `test`. A warning fails the run |
+| `npm run build` | `tsc --noEmit` type-checks under `strict`. It emits nothing |
+| `npm test` | `node --test` runs the suite against `DATABASE_URL_TEST`, which is `kpa_dev` |
+| `npm run migrate` | Applies pending migrations to `DATABASE_URL`, which is `kpa` |
+
+## KPA-3: scaffold the repository and migration tooling
+
+Commit 6862fb8.
+
+| Acceptance criterion | Command | Result |
+|---|---|---|
+| A TypeScript Node workspace with strict mode on | `npm run build` | Passes. `tsconfig.json` sets `strict`, `noUncheckedIndexedAccess`, `noUnusedLocals`, `noUnusedParameters`, `exactOptionalPropertyTypes` and `erasableSyntaxOnly` |
+| A runner with up and down, applying files in order and recording what ran | The suite, and the CLI rehearsal below | 8 tests pass. `schema_migrations` holds one row per applied file |
+| npm scripts for migrate, test and lint | `npm run migrate`, `npm test`, `npm run lint` | All three run. `build` exists as well |
+| A test runner wired and passing | `npm test` | 8 passed, 0 failed, 0 skipped |
+| `.env.example` records every variable, and no secret is committed | `git show 6862fb8:.env.example` | Two variables, both with placeholder values. `.gitignore` already covered `.env` |
+| REQ-007: a second run fails and names what it found | CLI rehearsal | `nothing to apply: 1 migration(s) already recorded: 999-cli-rehearsal.sql`, exit 1 |
+| `npm run migrate down` returns the database to empty | CLI rehearsal | 0 relations in `public` afterwards |
+| REQ-021: the suite passes twice with no manual reset | `npm test` twice | 8 passed both times |
+| A lockfile is committed and `engines` names the Node major | `git show 6862fb8 --stat` | `package-lock.json` committed. `engines.node` is `>=22.18.0` |
+
+### The CLI rehearsal
+
+The suite exercises the exported functions. This exercises the command a person
+types. It ran against `kpa_dev`, never `kpa`, with a scratch migration file that
+was removed afterwards.
+
+```
+$ DATABASE_URL="$DATABASE_URL_TEST" node src/db/migrate.ts up
+up: 999-cli-rehearsal.sql                                    exit 0
+$ DATABASE_URL="$DATABASE_URL_TEST" node src/db/migrate.ts up
+nothing to apply: 1 migration(s) already recorded: ...        exit 1
+$ psql "$DATABASE_URL_TEST" -c '<relations in public>'
+cli_rehearsal, cli_rehearsal_id_seq, schema_migrations
+$ DATABASE_URL="$DATABASE_URL_TEST" node src/db/migrate.ts down
+down: 999-cli-rehearsal.sql                                   exit 0
+$ psql "$DATABASE_URL_TEST" -c '<count of relations in public>'
+0
+```
+
+`npm run migrate` and `npm run migrate down` then ran against `kpa` itself, with
+`migrations/` empty. Both printed `nothing to up` and `nothing to down`, and
+`kpa` still holds zero relations. An empty migrations directory writes no
+ledger, which is why running it left no trace.
+
+### Two things this does not prove
+
+**No migration file is committed.** `migrations/` ships holding only
+`.gitkeep`. KPA-4 writes the first one. The runner is proved against fixtures
+in `test/fixtures/`, which is a real test of the runner and not a test of the
+schema.
+
+**The clean-clone claim was not run from a clean clone.** The story's "done
+when" asks a second machine to reproduce the steps from the README alone. The
+README carries them and every command in it ran here, but nobody has cloned the
+repository fresh and followed it.
+
+## KPA-15: reach amaterasu's Postgres from the Mac over TLS
+
+Three of the five acceptance criteria were proved on 26 August and are recorded
+in the section above: the server holds a certificate and refuses a client
+offering no TLS, the Mac connects with `sslmode=require`, and
+`SELECT ssl FROM pg_stat_ssl` reports true. They were not re-run.
+
+The two remaining criteria are below.
+
+| Acceptance criterion | Command | Result |
+|---|---|---|
+| A connection module reads its configuration from the environment, never from a literal | `test/connect.test.ts` | 6 tests pass. `connect()` names the variable it could not find, refuses `disable`, `prefer`, `allow` and a missing mode, and reads host, user and database from the string it was given |
+| An ADR records that the migration runs on the Mac, and why the reverse was rejected | `docs/adr/0008-the-migration-runs-on-the-mac.md` | Written. It carries the three rejected options and four consequences |
+| The migration's own connection is encrypted | `npm test` | `the connection is encrypted` asserts `ssl` is true and the version starts `TLSv1.` |
+
+### The live connection, opened through the module
+
+```
+$ node --env-file-if-exists=.env -e "<connect('DATABASE_URL_TEST'), then pg_stat_ssl>"
+{ db: 'kpa_dev', ssl: true, version: 'TLSv1.3', cipher: 'TLS_AES_256_GCM_SHA384' }
+```
+
+### One thing found while proving it
+
+**libpq and node-postgres read `sslmode=require` two different ways.** libpq
+encrypts and does not verify, which is why `psql` connected on 26 August. The
+driver verifies, and amaterasu's certificate is self-signed, so the driver
+failed with `DEPTH_ZERO_SELF_SIGNED_CERT`. `connect()` translates `require` to
+the driver's own `no-verify`, which means what libpq means. One `.env` therefore
+serves `psql` and Node, and ADR-0008 records the trade this accepts.
+
+## The order these ran in
+
+The board has KPA-15 blocking KPA-3. They ran the other way round, by the team
+lead's instruction. KPA-15 delivers `src/db/connect.ts`, and no TypeScript file
+can exist before KPA-3 creates the workspace that type-checks and runs it. The
+boundary decision does come first, and it is recorded in ADR-0008; only the code
+could not.
+
+The graph is not wrong about the dependency. It is wrong about which artefact
+carries it.
