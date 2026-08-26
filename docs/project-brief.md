@@ -288,7 +288,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Collibra and Koinon separation | A guideline, not a database constraint | Decided 23 August 2026. Retrieval filters by space and crossing answers get flagged. Nothing structurally prevents a leak. |
 | Remote access | Cloudflare Tunnel with Access in front | Works on any device without installing a client. Traffic transits Cloudflare. |
 | Ingestion depth | Six months | Covers current engagements at a bounded one-off cost. |
-| Embeddings | Voyage AI | Anthropic's own recommendation, and `voyage-3` leads most retrieval benchmarks. Adds a vendor and a key. |
+| Embeddings | Voyage AI, `voyage-4` at 1024 dimensions | Anthropic's own recommendation. This row named `voyage-3` until 27 August 2026, when KPA-26 read Voyage's model list and found it listed as legacy. `voyage-4` over `voyage-4-large` because a corpus of 17 facts and 32 sources cannot show the larger model's quality. Both default to 1024, so moving up later changes a model name and not the schema. Adds a vendor and a key. |
 | Time model | Facts carry `valid_from` and `valid_to` | Retirement becomes a date rather than a delete, so the system answers what was true in March and fact decay stays visible. |
 | Microsoft Graph | Not pursued | Customer-tenant consent is unobtainable. Nabium's desktop capture covers the same material. |
 | Application shape | Next.js for the web tier, a separate worker process for everything long-running | Agent runs and ingestion must never sit in a request handler. The split is load bearing. |
@@ -314,6 +314,11 @@ holds on the arguments underneath it: the queries are neighbourhood queries
 rather than open traversal, one store beats two, and nabium already runs Postgres
 with pgvector so the operational knowledge exists. ADR-001 records this
 correction rather than hiding it.
+
+**The embedding model and its width are a migration, not a setting.** A pgvector
+column declares a fixed width, so changing either value makes every stored vector
+the wrong width and the wrong model's output. `src/embedding.ts` holds both
+values in one place for that reason.
 
 ## The machine
 

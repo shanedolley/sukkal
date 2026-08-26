@@ -264,9 +264,13 @@ who confirmed it, and no machine ever writes the second.
 
 **The embedding width is pinned by the model.** Voyage's current models take a
 configurable output dimension, 1024 by default, and the 4-series has superseded
-the `voyage-3` the brief names. A pgvector column needs a fixed width, so the
-schema story picks the model and the dimension together and records both. It
-cannot be deferred to the embedder story, because the column is declared first.
+`voyage-3`. A pgvector column needs a fixed width, so the schema story picks the
+model and the dimension together and records both. It cannot be deferred to the
+embedder story, because the column is declared first.
+
+KPA-26 settled it on 27 August 2026: `voyage-4` at 1024, held in
+`src/embedding.ts`. The brief named `voyage-3` until that day and now names the
+same pair this paragraph does.
 
 ---
 
@@ -548,7 +552,7 @@ invites it in.
 
 | # | Question | Status | Answer |
 |---|---|---|---|
-| 1 | Which Voyage model, and at which output dimension? | Open, blocking REQ-010 | The 4-series has superseded `voyage-3`, and the dimension is configurable with 1024 the default. The schema story picks both, because the column width depends on it |
+| 1 | Which Voyage model, and at which output dimension? | Closed 27 August 2026 by KPA-26 | `voyage-4` at 1024 dimensions, held in `src/embedding.ts`. `voyage-3` is now listed as legacy. The brief's decision table is corrected to match |
 | 2 | Where does `log.md` land: a table, a set of ADRs, or a kept document? | Open | Decided inside REQ-027's story, and recorded there |
 | 3 | Has the Voyage AI key been issued? | Open | Blocks REQ-026 only |
 | 4 | Is amaterasu's disk encrypted, and are its backups? | Open, recorded not closed | The security lens raised both as critical. Offered alongside TLS in transit and not selected, so the exposure stands unmeasured |
