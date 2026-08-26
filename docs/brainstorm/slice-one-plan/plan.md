@@ -123,37 +123,57 @@ them. Here they are.
 
 ## The link direction rule
 
-**All sixteen links on this board ran backwards before this run.** A previous
-session found the inversion, corrected it with the same wrong mapping, and
-re-created the fault. It read as working, because a wrong selector always
-returns something.
+**This rule has now been got wrong three times, and the version below replaces
+the one this file carried until 27 August 2026.** That version had both halves
+backwards. It read as working every time, because a wrong writing rule and a
+matching wrong reading rule agree with each other.
 
-The rule, stated once so the next reader does not have to derive it.
+`inwardIssue` is the blocker. Both halves follow from that one sentence.
 
-**Writing a link.** To say A blocks B, post A as `outwardIssue` and B as
-`inwardIssue`. The outward end is the blocker.
-
-**Reading a link.** The API omits the end you asked about. So on issue X, an
-entry carrying `outwardIssue: Y` means Y is the outward end, and Y blocks X. An
-entry carrying `inwardIssue: Y` means X blocks Y. This inverts what the type's
-inward description suggests, which is why it keeps getting reversed.
-
-**Verifying a link.** Do not verify with the rule you wrote it with, because
-that proves only that you were consistent. Read the same link from both ends and
-build the sentence from the type's own `inward` and `outward` strings. Both ends
-must produce the same sentence. Run against this board it produces:
+**Writing a link.** To say A blocks B, post A as `inwardIssue` and B as
+`outwardIssue`.
 
 ```
-read from KPA-7:   "KPA-13 is blocked by KPA-7"
-read from KPA-13:  "KPA-7 blocks KPA-13"
+{"type": {"name": "Blocks"},
+ "inwardIssue":  {"key": "A"},
+ "outwardIssue": {"key": "B"}}
 ```
 
-KPA-13 verifies the migration, so it must be blocked by the stories it verifies.
-It is.
+**Reading a link.** The API omits the end you asked about, and tags the other
+end with the role it plays. So on issue X, an entry carrying `inwardIssue: Y`
+means Y blocks X. An entry carrying `outwardIssue: Y` means X blocks Y.
+
+**Verifying a link.** Both checks below are worthless on their own, and the
+first one is the trap. Run the second.
+
+Reading the same link from both ends proves only that the API is self-consistent
+with itself. It is, always. On 26 August a session posted the KPA-5 and KPA-22
+link backwards, read it from both ends with the backwards rule, got agreement,
+and recorded it as verified. The board carried the error until someone corrected
+it the next morning.
+
+**Check the direction against meaning instead.** Pick a link whose direction you
+know from what the stories say, not from the API. KPA-13 diffs two reports to
+verify the migration, so every story it verifies must finish first. Read it:
+
+```
+KPA-13 carries inwardIssue for KPA-7, KPA-9, KPA-11 and KPA-12.
+Therefore those four block KPA-13.
+```
+
+If the reading gives you the opposite, the reading rule is wrong, not the board.
+
+**The whole-graph check is cheap and catches what one link cannot.** Every edge
+should run from a lower depth to a higher one in the table above. Build the edge
+set both ways and count the violations. On 27 August 2026, `inwardIssue` as the
+blocker gave 0 violations across 31 edges, and `outwardIssue` gave 20. That is
+not a judgement call; it is a count.
 
 The second independent check is the selector `build` uses. Run against this
-board, `next_issue.py` returns KPA-2, which has no blockers. Against the old
-graph it would have offered the far end of the chain.
+board, `next_issue.py` returns KPA-2, which has no blockers. Its `--self-check`
+carries the KPA-7 and KPA-13 fixture, taken from link id 10156 read at both
+ends. Do not rewrite that assertion to match a changed `normalise`. Rewrite
+`normalise` to match the assertion.
 
 ## What this run changed on the board
 

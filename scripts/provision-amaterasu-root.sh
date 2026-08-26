@@ -38,6 +38,25 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
   "postgresql-$PGVER" "postgresql-$PGVER-pgvector" ssl-cert
 systemctl enable --now postgresql
 
+# ── wait for an address before starting ──────────────────────────────────
+# listen_addresses below names the LAN address, and a name is not a wildcard.
+# The stock unit orders After=network.target, which means "networking is
+# starting" rather than "an address exists". On 26 August 2026 Postgres won that
+# race after a reboot, logged "could not bind IPv4 address", and served loopback
+# only. systemctl reported the unit active throughout, so nothing looked wrong
+# until a client on the LAN was refused.
+log "Order Postgres after the network is up"
+install -d /etc/systemd/system/postgresql@.service.d
+cat > /etc/systemd/system/postgresql@.service.d/network-online.conf <<UNITEOF
+# Written by scripts/provision-amaterasu-root.sh. Edit there, not here.
+[Unit]
+Wants=network-online.target
+After=network-online.target
+UNITEOF
+systemctl daemon-reload
+systemctl enable systemd-networkd-wait-online.service >/dev/null 2>&1 || \
+  echo "note: systemd-networkd-wait-online is absent, so check what manages the network"
+
 # ── tuning, the address, and TLS ──────────────────────────────────────────
 # amaterasu holds 7.6 GB of RAM and 12 threads, and it already serves NFS, runs
 # NZBGet, and runs a transcode monitor that takes every thread when it fires.
