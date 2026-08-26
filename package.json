@@ -8,8 +8,8 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "migrate": "node --env-file-if-exists=.env src/db/migrate.ts",
-    "test": "node --env-file-if-exists=.env --test \"test/**/*.test.ts\"",
+    "migrate": "node --env-file-if-exists=$HOME/.config/kpa/env src/db/migrate.ts",
+    "test": "node --env-file-if-exists=$HOME/.config/kpa/env --test \"test/**/*.test.ts\"",
     "lint": "oxlint src test --deny-warnings",
     "build": "tsc --noEmit"
   },

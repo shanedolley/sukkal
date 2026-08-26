@@ -3,7 +3,8 @@
  *
  * Configuration comes from the environment. No host, user, password or
  * connection string appears in this repository. `.env.example` names the
- * variables and holds no value.
+ * variables and holds no value; the real ones live in `~/.config/kpa/env`.
+ * See `docs/runbooks/secrets.md`.
  */
 import pg from 'pg';
 
@@ -30,12 +31,15 @@ const ENCRYPTED = new Set(['require', 'verify-ca', 'verify-full', 'no-verify']);
  * self-signed certificate, so no client can verify the chain. libpq reads
  * `require` as "encrypt, do not verify", and `psql` therefore connects. This
  * driver reads the same word as "encrypt and verify", and fails. Translating
- * here leaves one `.env` readable by both.
+ * here leaves one environment file readable by both.
  */
 export function connect(variable = 'DATABASE_URL'): pg.Client {
   const value = process.env[variable];
   if (!value) {
-    throw new Error(`${variable} is unset. Copy .env.example to .env and fill it in.`);
+    throw new Error(
+      `${variable} is unset. See docs/runbooks/secrets.md: real values live in ` +
+        '~/.config/kpa/env.',
+    );
   }
 
   const url = new URL(value);

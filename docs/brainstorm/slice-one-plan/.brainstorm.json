@@ -255,15 +255,86 @@
       "id": "15",
       "jiraKey": "KPA-15",
       "title": "Reach amaterasu's Postgres from the Mac over TLS",
-      "status": "pending",
-      "estimate": 3
+      "status": "complete",
+      "estimate": 3,
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "architecture",
+          "note": "ADR-0008 records that the migration runs on the Mac and writes to amaterasu. Three rejected options and four consequences. Running it on amaterasu loses, because the vault and check.py cannot move and check.py's report is the verification oracle.",
+          "files": [
+            "docs/adr/0008-the-migration-runs-on-the-mac.md"
+          ]
+        },
+        {
+          "category": "security",
+          "note": "connect() refuses any sslmode that does not encrypt. prefer is the one worth naming: it falls back to plain text without saying so.",
+          "files": [
+            "src/db/connect.ts"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "libpq and node-postgres read sslmode=require two different ways. libpq encrypts without verifying, the driver verifies and fails on amaterasu's self-signed certificate. connect() translates require to no-verify so one .env serves psql and Node.",
+          "files": [
+            "src/db/connect.ts",
+            "docs/adr/0008-the-migration-runs-on-the-mac.md"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T15:56:07Z",
+      "note": "Ran after KPA-3, against the board's link direction, by the team lead's instruction. Three of five acceptance criteria were already proved on 26 August and are cited from verification.md rather than re-run."
     },
     {
       "id": "16",
       "jiraKey": "KPA-16",
       "title": "Keep every secret out of the repository and out of the unit file",
-      "status": "pending",
-      "estimate": 3
+      "status": "complete",
+      "estimate": 3,
+      "classifiedAgent": "kothar:developer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "security",
+          "note": "Real values moved from the repository's .env to ~/.config/kpa/env, mode 0600 in a 0700 directory. The repository holds no .env at all now, so anything in another session that reads one finds nothing.",
+          "files": [
+            "docs/runbooks/secrets.md",
+            "README.md",
+            ".env.example",
+            "package.json"
+          ]
+        },
+        {
+          "category": "security",
+          "note": "gitleaks' default rules do not flag a database URL carrying a password. Proved by scanning a commit that held one. scripts/scan-history.sh therefore runs three checks, not one.",
+          "files": [
+            "docs/runbooks/secrets.md",
+            "scripts/scan-history.sh"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "Node's --env-file does not overwrite a variable already exported. CI can set DATABASE_URL_TEST directly and carry no file, and a stale exported variable silently beats an edited file.",
+          "files": [
+            "docs/runbooks/secrets.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "The systemd EnvironmentFile= section of the runbook is written but not run: no unit exists yet. It is marked as a pattern rather than a checked procedure.",
+          "files": [
+            "docs/runbooks/secrets.md"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T16:02:28Z"
     },
     {
       "id": "17",

@@ -217,3 +217,53 @@ could not.
 
 The graph is not wrong about the dependency. It is wrong about which artefact
 carries it.
+
+## KPA-16: keep every secret out of the repository and out of the unit file
+
+| Acceptance criterion | Command | Result |
+|---|---|---|
+| `.env.example` names every variable and carries no value | `cat .env.example` | Two variables, both empty. The format sits in a comment |
+| Real values live outside the repository, readable by the owner only | `stat -f '%Sp %Su' ~/.config/kpa/env` | `-rw------- shanedolley`. The directory is `drwx------` |
+| A runbook records the `EnvironmentFile=` pattern, mode 0600, root owned | `docs/runbooks/secrets.md` | Written. That section is marked untested, because no unit exists yet |
+| A scan of the whole history finds no key | `./scripts/scan-history.sh` | `PASS: three checks, no finding`, exit 0 |
+| `.gitignore` covers `.env` and every variant | `git check-ignore` on four names | `.env`, `.env.local` and `.env.production` ignored. `.env.example` tracked, which is correct |
+| Nothing breaks without the old file | lint, build, test, migrate | All pass with no `.env` in the repository |
+
+### The move
+
+`~/.config/kpa/env` was created from the repository's `.env`, `cmp` proved the
+two byte for byte identical, and the repository copy then went, by absolute
+path. `package.json` passes `--env-file-if-exists=$HOME/.config/kpa/env` to
+Node, and 14 tests pass in a fresh shell with nothing exported, which is what
+proves the new location is the one being read.
+
+### The scan fires, as well as passing
+
+A scan that only ever passes proves nothing, so each check was made to fail.
+
+| Check | Made to fail by | Result |
+|---|---|---|
+| 2, the credentials in use | `KPA_ENV_FILE` pointing at a file whose password is `secret`, which commit `cecd24f` contains | `FAIL: a password ... appears in the history`, exit 1 |
+| 3, connection strings | Running it before the `reviewed` list existed | Named `cecd24f:test/connect.test.ts:25` and exited 1 |
+
+### gitleaks alone is not enough, and that was proved the hard way
+
+**gitleaks does not flag a database URL carrying a password.** A command in this
+session meant to write a decoy connection string into a scratch repository and
+wrote it into this one instead, in a local commit called `oops`. gitleaks
+scanned that commit directly and reported no leaks.
+
+The commit never reached the remote. `git reset` moved `main` back to `cecd24f`,
+and the decoy file went by absolute path. The password in it was invented for
+the test and works on nothing. The unreachable object stays in the reflog until
+git expires it, which is local to this machine and needs no action.
+
+Two things came out of it, and both are kept. `scripts/scan-history.sh` gained
+checks 2 and 3, because check 1 alone would have missed exactly this. And
+`docs/runbooks/secrets.md` records the gap, so nobody reads a clean gitleaks run
+as proof that no connection string was committed.
+
+### One thing this changes for other sessions
+
+**The repository no longer holds a `.env`.** Anything reading one finds nothing.
+The values are at `~/.config/kpa/env`, and `docs/runbooks/secrets.md` says so.

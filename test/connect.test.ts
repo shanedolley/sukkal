@@ -22,12 +22,12 @@ function withEnv<T>(variable: string, value: string | undefined, work: () => T):
 }
 
 const VARIABLE = 'DATABASE_URL_CONNECT_TEST';
-const BASE = 'postgresql://someone:secret@10.0.0.1:5432/nowhere';
+const BASE = 'postgresql://someone:PLACEHOLDER@10.0.0.1:5432/nowhere';
 
 describe('connect', () => {
   test('names the variable it could not find', () => {
     withEnv(VARIABLE, undefined, () => {
-      assert.throws(() => connect(VARIABLE), new RegExp(`${VARIABLE} is unset`));
+      assert.throws(() => connect(VARIABLE), new RegExp(`^Error: ${VARIABLE} is unset`));
     });
   });
 

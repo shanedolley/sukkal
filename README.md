@@ -13,7 +13,7 @@ Cloudflare Access.
 |---|---|
 | `docs/project-brief.md` | what we are building, why, and every decision made so far |
 | `docs/adr/` | the decisions that were hard to reverse, with the options they beat |
-| `docs/runbooks/` | how to operate the server |
+| `docs/runbooks/` | how to operate the server, and where the secrets live |
 | `migrations/` | one `.sql` file per migration, applied in filename order |
 | `src/db/` | the connection module and the migration runner |
 | `test/` | the suite, and its fixtures |
@@ -27,14 +27,18 @@ open.
 You need Node 22.18 or newer, and an account on the PostgreSQL server.
 
 1. `npm install`
-2. `cp .env.example .env`, then fill in both connection strings.
-3. `npm run migrate`
-4. `npm test`
+2. `mkdir -p ~/.config/kpa && cp .env.example ~/.config/kpa/env && chmod 600 ~/.config/kpa/env`
+3. Fill in both connection strings in `~/.config/kpa/env`.
+4. `npm run migrate`
+5. `npm test`
 
 `DATABASE_URL` names the database that holds the facts. `DATABASE_URL_TEST`
 names a separate database the tests own. Never point the two at one database.
 Both need `sslmode=require`, because the server refuses a client that offers no
 TLS.
+
+Real values live outside the repository, so no commit can carry one.
+`docs/runbooks/secrets.md` says why, and `./scripts/scan-history.sh` proves it.
 
 | Command | What it does |
 |---|---|
