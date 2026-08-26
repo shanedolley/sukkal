@@ -258,7 +258,7 @@ describe('the gates', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
       const result = await admit(client, passes, candidate({ contradicts: ['shared/old.md'] }));
       assert.equal(result.pass, true, result.reason);
 
-      const both = await client.query<{ path: string; valid_to: Date | null }>(
+      const both = await client.query<{ path: string; valid_to: string | null }>(
         'SELECT path, valid_to FROM facts ORDER BY path',
       );
       assert.equal(both.rows.length, 2);
@@ -289,7 +289,7 @@ describe('the gates', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
         /injected failure/,
       );
 
-      const survivors = await client.query<{ path: string; valid_to: Date | null }>(
+      const survivors = await client.query<{ path: string; valid_to: string | null }>(
         'SELECT path, valid_to FROM facts',
       );
       assert.deepEqual(

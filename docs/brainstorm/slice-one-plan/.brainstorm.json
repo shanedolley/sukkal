@@ -333,8 +333,45 @@
       "id": "10",
       "jiraKey": "KPA-10",
       "title": "Implement retirement with valid_from and valid_to",
-      "status": "pending",
-      "estimate": 5
+      "status": "complete",
+      "classifiedAgent": "kothar:typescript-pro",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "completedAt": "2026-08-26T16:41:02Z",
+      "docImpact": [
+        {
+          "category": "technical-knowledge",
+          "note": "The pg driver was moving every date a day west. It parses a Postgres date into a JS Date at local midnight, and reading that back as UTC from Sydney gives the previous day. connect.ts now returns date as text. Every date here is load bearing: valid_from, valid_to, stale_after, generated, verified.",
+          "files": [
+            "src/db/connect.ts",
+            "CLAUDE.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "valid_from is inclusive and valid_to exclusive, so a fact and its replacement never overlap and never leave a gap. Four boundary assertions pin it.",
+          "files": [
+            "src/memory/retire.ts"
+          ]
+        },
+        {
+          "category": "architecture",
+          "note": "supersede() in retire.ts is the only retirement implementation; gates.ts calls it rather than repeating the two writes. Gate 4's injected-failure test passing unchanged is what proves the transaction boundary survived the extraction.",
+          "files": [
+            "src/memory/retire.ts",
+            "src/memory/gates.ts"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "Deliberately absent: recorded_at. These columns answer what was true in March, not what the system believed in March. The story says not to add it now, and retire.ts records why.",
+          "files": [
+            "src/memory/retire.ts"
+          ]
+        }
+      ]
     },
     {
       "id": "11",

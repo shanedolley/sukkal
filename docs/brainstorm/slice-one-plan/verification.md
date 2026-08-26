@@ -621,3 +621,74 @@ creates a real source node, which is what a rejection concerns in practice.
 **One file, not a directory.** The story names `src/memory/gates/*.ts`. Four
 gates and a runner come to roughly 200 lines, which reads better in one file
 than in five. `src/memory/prompts/*.md` and `test/gates.test.ts` are as named.
+
+## KPA-10: retirement with valid_from and valid_to
+
+| Acceptance criterion | Evidence |
+|---|---|
+| A contradicting source sets `valid_to` to the date the change took effect, not the date KPA learned of it | An email read on 27 August saying Nigel left in June retires the fact as at 1 June |
+| Where the source gives no date, `valid_to` takes the source's date and the fact records that it was inferred | The same email without a date sets `valid_to` to 27 August and `valid_to_inferred` to true |
+| A superseding fact sets the old fact's `valid_to` to the replacement's `valid_from`, with a `supersedes` edge | One answer on 31 May, the other on 1 June, one edge between them |
+| A human sets `valid_to` to whatever date is given | `retireByHuman` writes the date and leaves `valid_to_inferred` false |
+| The staleness sweep never sets `valid_to` | It flags two overdue facts and both keep a null `valid_to` and stay live |
+| Querying as at a past date returns what was true then | Four boundary assertions, below |
+
+### The as-at query at every boundary
+
+A fact live from 1 January, retired on 1 June. `valid_from` is inclusive and
+`valid_to` is exclusive, so there is no day on which both a fact and its
+replacement answer, and no day on which neither does.
+
+| Date | Returns | Why |
+|---|---|---|
+| 2025-12-31 | nothing | before it began |
+| 2026-01-01 | the fact | the first day |
+| 2026-05-31 | the fact | the last day |
+| 2026-06-01 | nothing | the day it was retired |
+
+### Retiring what is not live throws
+
+Retiring an already-retired fact, or a path that never existed, throws and
+names the path. Silence would let a retirement that did nothing read as a
+retirement that worked, which is the quietly wrong answer this story is about.
+
+### A real timezone defect, found by the boundary tests
+
+**The driver was moving every date a day west.** `pg` parses a Postgres `date`
+into a JavaScript `Date` at local midnight. Reading that back through
+`toISOString()` from Sydney, at UTC+10, gives the previous day. A fact retired
+on 1 June read as 31 May.
+
+The first boundary test failed on exactly that, and the fix is in
+`src/db/connect.ts` rather than in the test:
+
+```ts
+pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value);
+```
+
+A calendar date carries no time zone, so it comes back as the string Postgres
+sent. Shaping the test around the wrong value would have shipped the defect and
+hidden it, and every date in this system is load bearing: `valid_from`,
+`valid_to`, `stale_after`, `generated`, `verified`, and every task signifier.
+`CLAUDE.md` records the rule.
+
+### One implementation, two callers
+
+Gate 4's write step previously did its own retirement inline. `supersede` in
+`src/memory/retire.ts` is now the only implementation, and `src/memory/gates.ts`
+calls it. Gate 4's injected-failure test still passes unchanged, which is what
+proves the extraction kept the transaction boundary intact.
+
+### The limitation this story records rather than fixes
+
+`valid_from` and `valid_to` answer what was **true** in March, not what the
+system **believed** in March. A backdated retirement rewrites the first answer
+with no record that it used to differ. A `recorded_at` column upgrades this
+later without a rewrite, and the story says not to add it now. It is absent, and
+`src/memory/retire.ts` says why.
+
+### One deviation from the story
+
+The story names `test/retire/`. One file, `test/retire.test.ts`, holds all
+thirteen tests. The same reasoning as KPA-9: a directory per story would spread
+sixty-three tests across a dozen files with nothing gained.

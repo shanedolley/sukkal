@@ -9,6 +9,16 @@
 import pg from 'pg';
 
 /**
+ * Hand a `date` column back as the string Postgres sent.
+ *
+ * The driver's default parses it into a JavaScript `Date` at local midnight,
+ * and reading that back as UTC moves it a day west of Greenwich. A fact
+ * retired on 1 June then reads as 31 May from Sydney, which is a wrong answer
+ * that looks right. A calendar date has no time zone, so keep it as text.
+ */
+pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value);
+
+/**
  * The modes that encrypt.
  *
  * `prefer` is absent on purpose. It falls back to plain text without saying

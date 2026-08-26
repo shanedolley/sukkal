@@ -12,6 +12,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ClientBase } from 'pg';
 import type { Inference } from './inference.ts';
+import { supersede } from './retire.ts';
 
 export interface Candidate {
   /** The node this came from: the source it was extracted out of. */
@@ -210,18 +211,7 @@ async function write(client: ClientBase, candidate: Candidate): Promise<void> {
     );
 
     for (const contradicted of candidate.contradicts ?? []) {
-      const retired = await client.query<{ id: string }>(
-        'UPDATE facts SET valid_to = $2 WHERE path = $1 AND valid_to IS NULL RETURNING id',
-        [contradicted, validFrom],
-      );
-      const target = retired.rows[0];
-      if (!target) {
-        throw new Error(`nothing live to retire at ${contradicted}`);
-      }
-      await client.query(
-        "INSERT INTO edges (from_id, to_id, kind) VALUES ($1, $2, 'supersedes')",
-        [id, target.id],
-      );
+      await supersede(client, id, contradicted, validFrom);
     }
 
     await client.query('COMMIT');

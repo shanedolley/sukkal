@@ -88,6 +88,11 @@ docs/runbooks/  Operating the server, and where the secrets live
 scripts/        Provisioning and checks, all bash
 ```
 
+**A `date` comes back as a string, not a `Date`.** `src/db/connect.ts` says so
+to the driver. Parsing a calendar date into a `Date` puts it at local midnight,
+and reading that back as UTC moves it a day west: a fact retired on 1 June
+reads as 31 May from Sydney. Compare dates as `YYYY-MM-DD` text.
+
 **A gate's prompt is a file, never a string in code.** `src/memory/prompts/`
 holds them, and the gate reads its file on every call, so a renamed prompt
 throws and rejects the candidate rather than judging it by nothing. The default
