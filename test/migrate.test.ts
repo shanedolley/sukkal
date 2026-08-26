@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
-import { connect } from '../src/db/connect.ts';
+import { LOOPBACK, connect } from '../src/db/connect.ts';
 import { down, readMigrations, up } from '../src/db/migrate.ts';
 
 const FIXTURES = path.join(import.meta.dirname, 'fixtures');
@@ -61,7 +61,14 @@ describe('the runner against Postgres', { skip: url ? false : 'DATABASE_URL_TEST
     await client.query(`DROP TABLE IF EXISTS ${SCRATCH.join(', ')} CASCADE`);
   });
 
-  test('the connection is encrypted', async () => {
+  // A loopback connection reaches no network, so it is not encrypted and does
+  // not need to be. src/db/connect.ts allows exactly that, and continuous
+  // integration uses it. Against amaterasu, TLS is required.
+  const remote = !LOOPBACK.has(new URL(url!).hostname);
+
+  test('a connection to a remote host is encrypted', {
+    skip: remote ? false : 'DATABASE_URL_TEST points at loopback, which needs no TLS',
+  }, async () => {
     const tls = await client.query<{ ssl: boolean; version: string }>(
       'SELECT ssl, version FROM pg_stat_ssl WHERE pid = pg_backend_pid()',
     );

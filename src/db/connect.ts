@@ -24,7 +24,7 @@ const ENCRYPTED = new Set(['require', 'verify-ca', 'verify-full', 'no-verify']);
  * does not need. Continuous integration uses the same path against a service
  * container. Every other host must encrypt.
  */
-const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+export const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 
 /**
  * Opens a client against the connection string in `variable`.
