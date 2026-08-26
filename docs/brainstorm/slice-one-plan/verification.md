@@ -448,3 +448,46 @@ connect in the clear.
 `docs/runbooks/secrets.md` quoted the decoy connection string while explaining
 the gitleaks gap. The runbook now describes it instead of spelling it out, and
 the historical commits carry a `reviewed` entry naming why.
+
+## KPA-18: give the vault's log.md a destination
+
+| Acceptance criterion | Command | Result |
+|---|---|---|
+| The destination is chosen between three options, and recorded with the options it beat | Read `docs/vault-log.md` | A header section names all three and says why two lose |
+| Every entry exists at the destination | `npm test` | 14 headings in the vault, 14 in the copy, compared heading by heading |
+| Nothing is summarised away | `npm test` | The copy ends with the original, byte for byte |
+
+### The choice
+
+`docs/vault-log.md`, holding the file whole under a header that records the
+decision.
+
+**A table in Postgres** loses because the log is not memory. It records what the
+vault did, answers no question the assistant will be asked, and would need a
+table no story designed and that KPA-13's count reconciliation would then have
+to account for.
+
+**A set of ADRs** loses on the numbers. Eight of the fourteen entries are
+`ingest`, which is a day's work rather than a decision. The five `change`
+entries are small conventions, and none passes the three tests in the
+`architecture-decisions` skill. Fourteen ADRs would bury the seven real ones.
+
+**A document in `docs/`** wins. The log is prose a person reads occasionally,
+git already gives it permanence and a diff, and moving it costs one copy.
+
+The choice is recorded in the file's own header rather than in an ADR, because
+it fails the first ADR test. Moving a markdown file later is trivial.
+
+### The test fires
+
+Changing one `## [` heading to `XX [` in the copy failed all three assertions at
+once: the count, the heading list, and the byte-for-byte comparison. The file
+was restored from a backup and `cmp` confirmed it identical.
+
+### One thing this leaves open
+
+**The vault's `log.md` is still the original.** KPA-14 freezes the vault and
+Shane deferred it until KPA-5, so nothing has been switched off and this is a
+copy rather than a move. `test/vault-log.test.ts` compares the two on every run,
+so the copy cannot fall behind unnoticed. The header in `docs/vault-log.md` says
+the same.

@@ -432,8 +432,32 @@
       "id": "18",
       "jiraKey": "KPA-18",
       "title": "Give the vault's log.md a destination",
-      "status": "pending",
-      "estimate": 3
+      "status": "complete",
+      "estimate": 3,
+      "classifiedAgent": "kothar:developer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "user-guide",
+          "note": "The vault's log.md now lives whole at docs/vault-log.md, under a header recording why it beat a Postgres table and a set of ADRs. Eight of its fourteen entries are ingest runs, which is what rules ADRs out.",
+          "files": [
+            "docs/vault-log.md",
+            "README.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "It is a copy, not a move: the vault's log.md still exists because KPA-14 is deferred. test/vault-log.test.ts compares the two on every run so the copy cannot fall behind.",
+          "files": [
+            "docs/vault-log.md",
+            "test/vault-log.test.ts"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T16:23:10Z"
     },
     {
       "id": "23",
