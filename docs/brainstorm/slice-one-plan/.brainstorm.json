@@ -108,13 +108,13 @@
       "id": "22",
       "jiraKey": "KPA-22",
       "title": "Copy the backup runbook and follow it once with a restore",
-      "status": "complete",
+      "status": "pending",
       "parent": "KPA-2",
       "classifiedAgent": "kothar:developer",
       "classifierConfidence": "high",
       "implementedBy": "kothar:brainstorm-execute",
       "reviewIterations": 1,
-      "verified": true,
+      "verified": false,
       "docImpact": [
         {
           "category": "technical-knowledge",
@@ -132,7 +132,7 @@
           ]
         }
       ],
-      "completedAt": "2026-08-26T12:06:35Z"
+      "note": "Reopened on 26 August 2026, and KPA-5 now blocks it. The drill dumped, restored and dropped a scratch database, so the mechanics work. Its count step failed on a lost quote escape, and both sides of the comparison were zero, because kpa holds no objects yet. Repeat it once the vault's markdown lands, and compare row counts table by table."
     },
     {
       "id": "3",

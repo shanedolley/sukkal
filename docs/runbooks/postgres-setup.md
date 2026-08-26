@@ -97,11 +97,11 @@ during the run that provisioned the box.
 Moving the Mac to a different subnet, a guest SSID or a VLAN needs a second
 `hostssl` line for that network. Nothing about the interface type matters.
 
-**The `# KPA` comment written into the server's `pg_hba.conf` on 26 August 2026
-says the wrong thing.** It claims the address is the wired interface and that
-Wi-Fi will be refused. The scripts are corrected; the comment already on the box
-is not, because the root half skips the block when it finds one. Edit that
-comment by hand, or delete the block and re-run, if it ever misleads someone.
+**The comment on the box was corrected by hand on 26 August 2026.** Both scripts
+and the live `pg_hba.conf` now carry the same three lines. A re-run will not
+maintain that agreement: the root half skips the block when it finds one, so any
+future change to the comment needs the same hand edit, or a deleted block and a
+re-run. The previous file is kept at `pg_hba.conf.bak-2026-08-26`.
 
 Because only `hostssl` lines exist for the LAN, a client offering no TLS matches
 no line and is refused. That refusal is an acceptance criterion, not a default.
