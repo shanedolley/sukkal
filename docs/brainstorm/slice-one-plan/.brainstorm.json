@@ -340,8 +340,39 @@
       "id": "17",
       "jiraKey": "KPA-17",
       "title": "Run the checks on every push, and record the repository's conventions",
-      "status": "pending",
-      "estimate": 3
+      "status": "blocked",
+      "estimate": 3,
+      "classifiedAgent": "kothar:developer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": false,
+      "docImpact": [
+        {
+          "category": "user-guide",
+          "note": "CLAUDE.md's placeholder section is filled in: the commands, the two databases, the layout, and the commit rules. Lines 1 to 38 are untouched, so the push-straight-to-main decision survives byte for byte.",
+          "files": [
+            "CLAUDE.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "CI pins pgvector/pgvector:0.8.6-pg18, the same two versions amaterasu runs, so a green run cannot come from a server the box does not have.",
+          "files": [
+            ".github/workflows/ci.yml"
+          ]
+        },
+        {
+          "category": "security",
+          "note": "connect() now lets a loopback host connect in the clear. Not a concession to CI: the worker will run on amaterasu where Postgres also listens on 127.0.0.1, and TLS over loopback buys nothing. Every remote host must still encrypt.",
+          "files": [
+            "src/db/connect.ts",
+            "CLAUDE.md"
+          ]
+        }
+      ],
+      "completedAt": null,
+      "blockedBy": "GitHub Actions was in a major outage from 2026-08-26T15:11Z. Three pushes created zero runs. The workflow is registered and active, Actions is enabled on the repository, and the same account ran Actions successfully at 11:16Z, so the fault is GitHub's. The branch ci-proof-failing-test is pushed and ready: when Actions recovers, push an empty commit to it and to main, and confirm one run is red and the other green."
     },
     {
       "id": "18",

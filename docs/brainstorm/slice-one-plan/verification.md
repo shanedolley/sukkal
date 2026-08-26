@@ -267,3 +267,87 @@ as proof that no connection string was committed.
 
 **The repository no longer holds a `.env`.** Anything reading one finds nothing.
 The values are at `~/.config/kpa/env`, and `docs/runbooks/secrets.md` says so.
+
+## KPA-17: run the checks on every push, and record the conventions
+
+**Partially delivered. The story stays open.** Everything but the green and red
+proof is done, and that one criterion is blocked by a GitHub outage rather than
+by anything in this repository.
+
+| Acceptance criterion | Command | Result |
+|---|---|---|
+| A workflow runs the lint, the build and the tests on every push | `.github/workflows/ci.yml` | Written. GitHub parsed it and registered workflow 343062771, name `CI`, state `active` |
+| The workflow needs no model credential and no database outside the runner | Read the file | One `env` block, holding a loopback connection string and no secret. Postgres is a service container, `pgvector/pgvector:0.8.6-pg18`, the same two versions amaterasu runs |
+| `CLAUDE.md` names the commands, the layout and the rules | `git diff CLAUDE.md` | The only lines taken out are the five of the placeholder section. Every claim was checked against the repository |
+| The "Committing: push straight to main" section survives unchanged | `git diff CLAUDE.md` | Untouched. Lines 1 to 38 are byte for byte what they were |
+| A failing test reports failure before review | Blocked | See below |
+
+### The claims in CLAUDE.md, checked against the repository
+
+Checked rather than copied from the story, as the story asks.
+
+| Claim | Checked by | Result |
+|---|---|---|
+| Five commands exist and do what the table says | Reading `package.json` and `ls scripts/` | All five present, and each matches its description |
+| CI runs those checks on pgvector 0.8.6 and PostgreSQL 18 | Reading `ci.yml` | Correct after one fix. The first draft said CI runs four commands; it runs three, and never migrates |
+| The suite asserts it is not connected to `kpa` | `grep` | `test/migrate.test.ts:52` |
+| `connect.ts` allows loopback and refuses remote plain text | `grep` | `src/db/connect.ts:27` and `:58` |
+| Every directory in the layout exists | `test -d` on all seven | All present |
+| The scripts are all bash | `head -1 scripts/*.sh` | Five files, five bash shebangs |
+
+### What is blocked, and why
+
+**GitHub Actions was in a major outage while this ran.**
+
+```
+$ curl -s https://www.githubstatus.com/api/v2/components.json
+  Actions: major_outage
+  API Requests: operational
+  Git Operations: operational
+
+$ curl -s https://www.githubstatus.com/api/v2/incidents/unresolved.json
+Incident with Actions  [investigating]  since 2026-08-26T15:11
+  primary failover briefly improved performance but did not fully mitigate,
+  we've throttled inbound traffic and are investigating upstream Vitess issues
+```
+
+Three pushes landed inside that window, at roughly 15:56, 16:05 and 16:12 UTC,
+and GitHub created no run for any of them. `total_count` stayed at 0.
+
+This is GitHub, not the workflow, and four separate checks say so.
+
+1. `gh workflow list` reports `CI  active  343062771`. GitHub only registers a
+   workflow it has parsed, so the file is valid.
+2. Actions is enabled on the repository: `{"enabled":true,
+   "allowed_actions":"all"}`.
+3. The same account ran Actions successfully earlier the same day, on
+   `gwt-manager` at 11:16 UTC. So this is not a quota and not a plan limit.
+4. `kothar` did produce a run at 15:40 UTC, inside the incident, and it failed
+   with `startup_failure`. Its annotation reads `The job was not acquired by
+   Runner of type hosted even after multiple attempts`.
+
+### The proof that is waiting to run
+
+The branch `ci-proof-failing-test` is pushed and holds
+`test/deliberately-failing.test.ts`, one assertion of `1 === 2`. It runs red
+locally:
+
+```
+$ npm test
+# tests 16
+# pass 15
+# fail 1
+```
+
+The branch is never merged. When Actions recovers, push an empty commit to it
+and to `main`, then confirm one run is red and the other green. That closes the
+last criterion, and KPA-17 with it.
+
+### On the pull request the story asks for
+
+The story's test says to open a pull request. This project commits direct to
+`main` and opens no pull request, by Shane's decision of 24 August 2026, which
+`CLAUDE.md` records. A branch push exercises the same `on: push` trigger and
+produces the same red check, so the branch above is the substitute. Confirm
+whether that satisfies him, or whether this one story should get a pull request
+of its own.
