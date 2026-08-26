@@ -491,3 +491,50 @@ Shane deferred it until KPA-5, so nothing has been switched off and this is a
 copy rather than a move. `test/vault-log.test.ts` compares the two on every run,
 so the copy cannot fall behind unnoticed. The header in `docs/vault-log.md` says
 the same.
+
+## KPA-17, revisited: two runs got through the outage
+
+GitHub processed a backlog of two queued runs at 16:23 and 16:24 UTC, then went
+quiet again. Actions still reports `major_outage`, and four later pushes have
+produced no run at all. So KPA-17 stays open, but it is closer than it was and
+the mechanism is proved.
+
+| Run | Commit | Result | What it proves |
+|---|---|---|---|
+| `main` | `29b7182` | failure | The workflow runs. Checkout, setup-node, `npm ci`, lint and build all passed; `npm test` failed |
+| `ci-proof-failing-test` | `552de47` | failure | A failing test turns the check red. `not ok 2 - this test fails on purpose` |
+
+So four of the five acceptance criteria now have evidence, and the workflow
+itself is sound: the service container started, `npm ci` installed from the
+lockfile, and the lint and the build both passed on a runner.
+
+### CI found a real defect on its first run
+
+`the connection is encrypted` asserted `pg_stat_ssl.ssl` unconditionally.
+Against amaterasu that is correct. Against a service container in a runner it is
+wrong, and it contradicted the loopback exception that the very same commit
+added to `src/db/connect.ts`: a connection reaching no network is not encrypted
+and does not need to be.
+
+Commit `11c4d79` fixes it. The test now reads the host and skips itself on
+loopback, naming why, and the loopback set is exported from `connect.ts` so the
+rule lives in one place rather than two.
+
+This is the argument for CI making itself, one run in. Every local run had used
+a remote host, so no amount of running the suite here would have found it.
+
+### What is still missing
+
+**A green run.** The only two runs that got through both predate the fix, and
+the branch run failed for two reasons rather than one. Neither is the clean
+green-and-red pair the story asks for.
+
+When Actions recovers:
+
+1. Push an empty commit to `main`. Expect green, 31 tests.
+2. Merge `main` into `ci-proof-failing-test` and push. Expect red, with
+   `this test fails on purpose` as the only failure.
+3. Close KPA-17.
+
+The branch is pushed and holds `test/deliberately-failing.test.ts` ready for
+step 2.

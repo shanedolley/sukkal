@@ -423,10 +423,18 @@
             "src/db/connect.ts",
             "CLAUDE.md"
           ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "CI found a real defect on its first run: the TLS test asserted pg_stat_ssl.ssl unconditionally, which contradicted the loopback exception the same commit added. Fixed in 11c4d79. No local run could have found it, because every local run uses a remote host.",
+          "files": [
+            "test/migrate.test.ts",
+            "src/db/connect.ts"
+          ]
         }
       ],
       "completedAt": null,
-      "blockedBy": "GitHub Actions was in a major outage from 2026-08-26T15:11Z. Three pushes created zero runs. The workflow is registered and active, Actions is enabled on the repository, and the same account ran Actions successfully at 11:16Z, so the fault is GitHub's. The branch ci-proof-failing-test is pushed and ready: when Actions recovers, push an empty commit to it and to main, and confirm one run is red and the other green."
+      "blockedBy": "GitHub Actions outage from 2026-08-26T15:11Z. Two queued runs got through at 16:23 and 16:24 UTC and then it went quiet again; four later pushes produced no run. Those two proved the workflow is sound and that a failing test turns the check red (not ok 2 - this test fails on purpose). Still missing: a green run, because both runs predate commit 11c4d79. When Actions recovers, push an empty commit to main for green, then merge main into ci-proof-failing-test and push for a clean red."
     },
     {
       "id": "18",
