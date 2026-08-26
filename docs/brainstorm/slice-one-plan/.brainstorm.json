@@ -28,9 +28,8 @@
       "id": "2",
       "jiraKey": "KPA-2",
       "title": "Provision PostgreSQL with pgvector on amaterasu",
-      "status": "blocked",
-      "estimate": 8,
-      "blockedBy": "needs a human: amaterasu has no passwordless sudo for systemctl or root config writes. scripts/provision-amaterasu.sh is written and waits to be run."
+      "status": "pending",
+      "estimate": 8
     },
     {
       "id": "3",
