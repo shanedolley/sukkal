@@ -351,3 +351,100 @@ The story's test says to open a pull request. This project commits direct to
 produces the same red check, so the branch above is the substitute. Confirm
 whether that satisfies him, or whether this one story should get a pull request
 of its own.
+
+## KPA-4: create the core schema, with subtasks KPA-23 to KPA-26
+
+| Acceptance criterion | Command | Result |
+|---|---|---|
+| Ten tables exist | `npm test` | `creates every table the story names` asserts the exact list |
+| Every frontmatter field maps to a column or an edge | `npm test` against the real vault | Passes over 19 notes in three spaces. `personal/` holds none |
+| `facts` carries `valid_from` and `valid_to`, and nothing is deleted | `npm test` | `retires a fact by date` sets `valid_to` and still finds the fact as at March |
+| `generated_by` and `verified_by` stay separate | Read `migrations/001_core_schema.sql` | Two columns, and a check constraint refuses `agent:` in the second |
+| `owner_id` on `sources`, `facts` and `tasks`, defaulted to one row | `npm test` | `seeds exactly one user` asserts those three tables and no others, each defaulting to `1` |
+| `edges` are typed and directional | Read the migration | `from_id`, `to_id`, `kind`, unique together, and no self-edge |
+| pgvector columns with an HNSW index on each | `npm test` | Both declare `vector(1024)`, and both carry an HNSW index |
+| The migration applies to an empty database and rolls back cleanly | The CLI, against `kpa_dev` | Applied, then reversed. Zero relations, zero enum types, zero functions afterwards |
+| `docs/schema.md` explains every table in a sentence | Read it | Ten rows, one sentence each, plus the enums and three decisions |
+
+### The registry, proved rather than asserted
+
+KPA-23's test names two constraints. Both fire, and so do two more.
+
+| Guard | Attempt | Result |
+|---|---|---|
+| A node's kind must match the table claiming it | Claim a node of kind `url` from `facts` | `violates foreign key constraint "facts_id_node_kind_fkey"` |
+| One id cannot be claimed by two child tables | Insert the same id into `facts` and `sources` | `violates foreign key constraint "sources_id_node_kind_fkey"` |
+| A node of kind `fact` must have a `facts` row | Insert the node alone, then commit | `node 3 has kind fact and no fact row to match it`, raised at commit by the deferred trigger |
+| A machine never marks its own work verified | Set `verified_by` to `agent:claude-opus-5` | `violates check constraint "facts_machine_never_verifies"` |
+| The happy path | A fact, a source, and a `derived_from` edge | Committed. The traversal returns `derived_from` to a node of kind `source` |
+
+The third guard is the one the foreign keys cannot see, and the reason the
+deferred trigger exists. ADR-0007 records all of it.
+
+### The vault tests fire, as well as passing
+
+Proved against a scratch vault under `VAULT_PATH`, so the real vault was never
+edited.
+
+| Test | Scratch note | Message |
+|---|---|---|
+| Every key maps | `priority: high` | `unmapped frontmatter keys. Add each to src/vault-mapping.ts and give it a column` |
+| Every enum value is accepted | `type: gizmo` | `shared/bad-enum.md: type is "gizmo", which fact_type does not list` |
+
+### Two decisions worth reading
+
+**`facts.path` is not in the PRD's column list, and the schema adds it.** A
+wikilink resolves against a note's file name, and `title` is prose: the first
+note read carries `title: BHP data lifecycle management, Meridian` and lives at
+`collibra/bhp-dlm-meridian.md`. Without `path`, nothing can turn `[[a-note]]`
+back into a row, so KPA-6 would have had no way to build an edge. This is a
+schema gap found before ingestion, which is what step 1 of the migration exists
+for. `docs/schema.md` records it rather than adding it quietly.
+
+**One migration file, not four.** KPA-23 names `migrations/001_nodes.sql` and
+the parent story names `migrations/001_core_schema.sql`. Both cannot be `001`,
+and the parent wins. The deciding reason is atomicity: the runner gives one
+transaction per file, so four files could leave a half-built schema, and a
+schema either exists or does not.
+
+### Something the vault said that the design did not
+
+`sources/` notes carry a completely different frontmatter set: `attendee`,
+`attendees`, `client`, `date`, `duration`, `icon`, `meeting-type`, `period`,
+`project`, `purpose`, `tags`, `template-type`, `type`, and some carry none at
+all. Thirteen keys, against the thirteen the spaces use, with almost no overlap.
+
+This is not a gap. The vault's `CLAUDE.md` says imported material keeps whatever
+frontmatter it arrived with, and `sources.body` stores the file verbatim, so
+those keys need no columns. The mapping test therefore reads the four space
+directories and never `sources/`, and `src/vault-mapping.ts` says why.
+
+### The embedding model
+
+`voyage-4` at 1024 dimensions, checked against Voyage's own model list on
+27 August 2026 rather than taken from the brief. The brief names `voyage-3`,
+which is now a legacy model. `voyage-4-large` is Voyage's best general-purpose
+model and was not chosen: the corpus is 17 facts and 32 sources, which cannot
+show the difference. Both default to 1024, so moving up later changes a model
+name and not the schema.
+
+### What was deliberately not done
+
+**The migration has not been applied to `kpa`.** It ran against `kpa_dev` only,
+per the instruction covering this session, and `kpa` still holds zero relations.
+The story asks for the migration to apply and roll back, and it does. Whoever
+runs KPA-5 applies it to `kpa` for the first time.
+
+### The history scan caught this story's own work
+
+Two literals introduced after the scan was written, and both are fixed rather
+than waived by hand.
+
+The CI service container's `postgres:postgres@localhost` is now excluded by
+rule, because a loopback host reaches no network and its password protects
+nothing. That is the same rule `src/db/connect.ts` applies when it lets loopback
+connect in the clear.
+
+`docs/runbooks/secrets.md` quoted the decoy connection string while explaining
+the gitleaks gap. The runbook now describes it instead of spelling it out, and
+the historical commits carry a `reviewed` entry naming why.

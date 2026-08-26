@@ -112,10 +112,9 @@ Three checks, and no one of them is enough alone.
 **1. gitleaks.** Broad rules, run over every commit.
 
 **gitleaks does not flag a database URL carrying a password.** Proved on
-27 August 2026, by accident. A session meant to write
-`DATABASE_URL=postgresql://kpa:hunter2SuperSecret@192.168.20.110:5432/kpa` into
-a scratch repository and wrote it into this one instead, in a commit called
-`oops`. gitleaks scanned that commit directly and reported no leaks. The commit
+27 August 2026, by accident. A session meant to write a `DATABASE_URL` holding
+a full connection string, password and all, into a scratch repository, and
+wrote it into this one instead, in a commit called `oops`. gitleaks scanned that commit directly and reported no leaks. The commit
 was removed before it reached the remote, and the password in it was invented
 for the test and works on nothing.
 

@@ -184,8 +184,62 @@
       "id": "4",
       "jiraKey": "KPA-4",
       "title": "Create the core schema",
-      "status": "pending",
-      "estimate": 8
+      "status": "complete",
+      "estimate": 8,
+      "classifiedAgent": "kothar:database-optimizer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "architecture",
+          "note": "ADR-0007 records the nodes registry: why edges need real foreign keys, the two alternatives rejected, and that the three constraints cover different directions. The deferred trigger exists because the foreign keys cannot see a node with no child row.",
+          "files": [
+            "docs/adr/0007-a-node-registry-for-edges.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "docs/schema.md explains all ten tables, the five enums, and three decisions a reader would question.",
+          "files": [
+            "docs/schema.md",
+            "README.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "facts.path is a schema gap the PRD's column list missed. A wikilink resolves against a note's file name and title is prose, so without path nothing can turn [[a-note]] back into a row.",
+          "files": [
+            "docs/schema.md",
+            "migrations/001_core_schema.sql"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "sources/ notes carry a different frontmatter set entirely: thirteen keys with almost no overlap with the spaces. Not a gap: sources.body stores the file verbatim, so the mapping test reads the four space directories only.",
+          "files": [
+            "src/vault-mapping.ts"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "The embedding model is voyage-4 at 1024 dimensions, checked against Voyage's model list on 27 August 2026. The brief names voyage-3, which is now legacy. Changing either value is a migration.",
+          "files": [
+            "src/embedding.ts",
+            "docs/schema.md"
+          ]
+        },
+        {
+          "category": "security",
+          "note": "A machine never marking its own work verified is now a check constraint rather than a prompt instruction. The policy's hardest rule, enforced by the database.",
+          "files": [
+            "migrations/001_core_schema.sql",
+            "docs/schema.md"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T16:18:42Z"
     },
     {
       "id": "5",
@@ -380,6 +434,62 @@
       "title": "Give the vault's log.md a destination",
       "status": "pending",
       "estimate": 3
+    },
+    {
+      "id": "23",
+      "jiraKey": "KPA-23",
+      "title": "Create the nodes registry and write ADR-0007",
+      "status": "complete",
+      "parent": "KPA-4",
+      "classifiedAgent": "kothar:database-optimizer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:18:42Z"
+    },
+    {
+      "id": "24",
+      "jiraKey": "KPA-24",
+      "title": "Create users, sources, source_chunks and facts",
+      "status": "complete",
+      "parent": "KPA-4",
+      "classifiedAgent": "kothar:database-optimizer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:18:42Z"
+    },
+    {
+      "id": "25",
+      "jiraKey": "KPA-25",
+      "title": "Create edges, entities, tasks, questions and rejections",
+      "status": "complete",
+      "parent": "KPA-4",
+      "classifiedAgent": "kothar:database-optimizer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:18:42Z"
+    },
+    {
+      "id": "26",
+      "jiraKey": "KPA-26",
+      "title": "Pin the embedding model, add the indexes, and write the mapping test",
+      "status": "complete",
+      "parent": "KPA-4",
+      "classifiedAgent": "kothar:database-optimizer",
+      "classifierConfidence": "high",
+      "implementedBy": "kothar:brainstorm-execute",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [],
+      "completedAt": "2026-08-26T16:18:42Z"
     }
   ],
   "artifacts": {

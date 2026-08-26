@@ -9,7 +9,7 @@
   },
   "scripts": {
     "migrate": "node --env-file-if-exists=$HOME/.config/kpa/env src/db/migrate.ts",
-    "test": "node --env-file-if-exists=$HOME/.config/kpa/env --test \"test/**/*.test.ts\"",
+    "test": "node --env-file-if-exists=$HOME/.config/kpa/env --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "lint": "oxlint src test --deny-warnings",
     "build": "tsc --noEmit"
   },

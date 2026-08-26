@@ -13,6 +13,7 @@ Cloudflare Access.
 |---|---|
 | `docs/project-brief.md` | what we are building, why, and every decision made so far |
 | `docs/adr/` | the decisions that were hard to reverse, with the options they beat |
+| `docs/schema.md` | what each table holds, and three decisions a reader would question |
 | `docs/runbooks/` | how to operate the server, and where the secrets live |
 | `migrations/` | one `.sql` file per migration, applied in filename order |
 | `src/db/` | the connection module and the migration runner |

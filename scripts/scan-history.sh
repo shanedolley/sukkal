@@ -52,11 +52,22 @@ reviewed=(
   # host is 10.0.0.1 and the test never connects. The working tree now reads
   # PLACEHOLDER, so this match ends with that commit.
   "postgresql://someone:secret@10.0.0.1:5432/nowhere"
+
+  # docs/runbooks/secrets.md quoted this decoy while explaining that gitleaks
+  # does not catch a connection string. The password was invented for that
+  # test and works on nothing. The runbook no longer spells it out, so this
+  # match ends with commit 6c93cda.
+  "postgresql://kpa:hunter2SuperSecret@192.168.20.110:5432/kpa"
 )
 
 hits=$(git grep -nE '(postgres(ql)?|mysql|mongodb(\+srv)?|redis|amqp)://[^/@[:space:]]+:[^/@[:space:]]+@' \
          $(git rev-list --all) 2>/dev/null || true)
-literals=$(echo "$hits" | grep -vE ':[$][A-Za-z_{][^@]*@|:[A-Z_]+@' || true)
+# A loopback host reaches no network, so its password protects nothing. This
+# is the same rule src/db/connect.ts applies when it lets loopback through in
+# the clear, and it is what keeps the CI service container out of the report.
+literals=$(echo "$hits" \
+  | grep -vE ':[$][A-Za-z_{][^@]*@|:[A-Z_]+@' \
+  | grep -vE '@(localhost|127\.0\.0\.1|\[?::1\]?)[:/]' || true)
 for cleared in "${reviewed[@]}"; do
   literals=$(echo "$literals" | grep -vF "$cleared" || true)
 done
