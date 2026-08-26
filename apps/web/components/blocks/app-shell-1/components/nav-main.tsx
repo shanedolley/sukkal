@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation"
 import { Badge } from "@/components/reui/badge"
 
 import { cn } from "@/lib/utils"
+import { useReview } from "@/lib/review-context"
 import { useSpace } from "@/lib/space-context"
 import {
   DropdownMenu,
@@ -178,7 +179,8 @@ function LeafNavItem({ item }: { item: NavItem }) {
 export function NavMain() {
   const pathname = usePathname()
   const { space } = useSpace()
-  const items = navMain(space)
+  const { facts } = useReview()
+  const items = navMain(space, facts)
 
   return (
     <SidebarGroup>

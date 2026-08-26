@@ -6,7 +6,6 @@
 // two review regions sit in the right column so the queue reads as one column
 // of work, and the two read-only regions sit on the left.
 
-import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRightIcon, MessagesSquareIcon } from "lucide-react";
@@ -17,9 +16,10 @@ import { Region, type RegionStatus } from "@/components/dashboard/region";
 import { StaleFacts } from "@/components/dashboard/stale-facts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FACTS, MEETINGS, NEEDS_YOU, TODAY } from "@/lib/fixtures";
+import { MEETINGS, NEEDS_YOU, TODAY } from "@/lib/fixtures";
 import { NeedsYou } from "@/components/dashboard/needs-you";
-import { applyMove, isProposed, isStale } from "@/lib/review-state";
+import { useReview } from "@/lib/review-context";
+import { isProposed, isStale } from "@/lib/review-state";
 import { inSpace, useSpace } from "@/lib/space-context";
 
 const STATUSES: RegionStatus[] = ["ready", "loading", "error", "empty"];
@@ -42,7 +42,7 @@ export function Briefing() {
   const status: RegionStatus =
     forced && STATUSES.includes(forced) ? forced : "ready";
 
-  const [facts, setFacts] = useState(FACTS);
+  const { facts, accept, reject, reconfirm } = useReview();
 
   const needsYou = inSpace(NEEDS_YOU, space);
   const meetings = inSpace(MEETINGS, space);
@@ -56,9 +56,13 @@ export function Briefing() {
           <h1 className="text-xl font-semibold tracking-tight">
             {longDate(TODAY)}
           </h1>
+          {/* The summary counts rows. While a region is busy or broken there
+              is nothing to count, and a confident number beside a spinner is
+              worse than no number. */}
           <p className="text-muted-foreground text-sm">
-            {needsYou.length} waiting on you, {proposed.length} to review,{" "}
-            {stale.length} going stale.
+            {status === "ready"
+              ? `${needsYou.length} waiting on you, ${proposed.length} to review, ${stale.length} going stale.`
+              : "Reading your briefing."}
           </p>
         </div>
         <Button render={<Link href="/chat" />} nativeButton={false} variant="outline">
@@ -119,10 +123,8 @@ export function Briefing() {
           >
             <ProposedFacts
               facts={proposed}
-              onAccept={(id) => setFacts((current) => applyMove(current, id, "accept"))}
-              onReject={(id, reason) =>
-                setFacts((current) => applyMove(current, id, "reject", reason))
-              }
+              onAccept={accept}
+              onReject={reject}
             />
           </Region>
 
@@ -137,9 +139,7 @@ export function Briefing() {
             <StaleFacts
               facts={stale}
               today={TODAY}
-              onReconfirm={(id) =>
-                setFacts((current) => applyMove(current, id, "reconfirm"))
-              }
+              onReconfirm={reconfirm}
             />
           </Region>
         </div>

@@ -16,6 +16,7 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert";
 import { useSourceDrawer } from "@/components/source-drawer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,16 +30,14 @@ const SUGGESTIONS = CHAT_ANSWERS.map((a) => a.question);
 function CrossingFlag({ answer }: { answer: ChatAnswer }) {
   const names = answer.spaces.map((s) => SPACE_LABELS[s]).join(" and ");
   return (
-    <div
-      role="note"
-      className="border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200 flex items-start gap-2 rounded-md border p-3 text-xs"
-    >
-      <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-      <p className="leading-relaxed">
-        This answer draws on {names}. Retrieval filters by space by default, and
-        a crossing answer is flagged rather than blocked.
-      </p>
-    </div>
+    <Alert variant="warning">
+      <TriangleAlertIcon aria-hidden="true" />
+      <AlertTitle>This answer draws on {names}.</AlertTitle>
+      <AlertDescription>
+        Retrieval filters by space by default. A crossing answer is flagged,
+        never blocked.
+      </AlertDescription>
+    </Alert>
   );
 }
 

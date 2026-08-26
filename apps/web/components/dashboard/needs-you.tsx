@@ -18,14 +18,20 @@ import {
 import { Badge } from "@/components/reui/badge";
 import { SPACE_LABELS, type NeedsYouItem, type NeedsYouKind } from "@/lib/types";
 
+// Semantic tokens, not palette steps: the ReUI theme defines these and they
+// carry a meaning that survives a change of preset.
 const KIND: Record<
   NeedsYouKind,
   { icon: typeof MailIcon; label: string; tone: string }
 > = {
-  draft: { icon: MailIcon, label: "Draft ready", tone: "text-sky-600 dark:text-sky-400" },
-  question: { icon: CircleHelpIcon, label: "Question", tone: "text-violet-600 dark:text-violet-400" },
-  deadline: { icon: CalendarClockIcon, label: "Waiting", tone: "text-amber-600 dark:text-amber-400" },
-  "denied-action": { icon: ShieldAlertIcon, label: "Refused by policy", tone: "text-rose-600 dark:text-rose-400" },
+  draft: { icon: MailIcon, label: "Draft ready", tone: "text-info" },
+  question: { icon: CircleHelpIcon, label: "Question", tone: "text-primary" },
+  deadline: { icon: CalendarClockIcon, label: "Waiting", tone: "text-warning" },
+  "denied-action": {
+    icon: ShieldAlertIcon,
+    label: "Refused by policy",
+    tone: "text-destructive",
+  },
 };
 
 export function NeedsYou({ items }: { items: NeedsYouItem[] }) {
@@ -63,7 +69,7 @@ export function NeedsYou({ items }: { items: NeedsYouItem[] }) {
               <a
                 href={item.gmailUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-primary focus-visible:ring-ring inline-flex w-fit items-center gap-1 rounded-sm text-xs font-medium underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
               >
                 Open in Gmail

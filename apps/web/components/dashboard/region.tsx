@@ -79,8 +79,8 @@ export function Region({
             <div className="flex flex-col gap-1">
               <span className="font-medium">This region did not load.</span>
               <span className="text-destructive/80 text-xs">
-                The worker did not answer. The rows below may be out of date.
-                Nothing was changed.
+                The worker did not answer, so this region has nothing to show.
+                Nothing was changed. It retries on the next poll.
               </span>
             </div>
           </div>

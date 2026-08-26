@@ -15,8 +15,9 @@ import {
   Trash2Icon,
 } from "lucide-react"
 
-import { AUDIT, FACTS, MEETINGS, NEEDS_YOU } from "@/lib/fixtures"
+import { AUDIT, MEETINGS, NEEDS_YOU } from "@/lib/fixtures"
 import { inSpace, type SpaceFilter } from "@/lib/space-context"
+import type { Fact } from "@/lib/types"
 
 // ── Types ──
 
@@ -100,12 +101,12 @@ export const WORKSPACES: Workspace[] = [
 // Counts follow the space filter, so the sidebar never disagrees with the
 // screen beside it.
 
-export function navMain(space: SpaceFilter): NavItem[] {
+export function navMain(space: SpaceFilter, facts: Fact[]): NavItem[] {
   const needsYou = inSpace(NEEDS_YOU, space).length
-  const proposed = inSpace(FACTS, space).filter(
+  const proposed = inSpace(facts, space).filter(
     (f) => f.state === "proposed"
   ).length
-  const stale = inSpace(FACTS, space).filter((f) => f.state === "stale").length
+  const stale = inSpace(facts, space).filter((f) => f.state === "stale").length
   const meetings = inSpace(MEETINGS, space).length
   const denied = inSpace(AUDIT, space).filter(
     (e) => e.outcome === "denied"
