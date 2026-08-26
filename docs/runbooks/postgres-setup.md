@@ -136,21 +136,113 @@ run never writes into the database that holds the migration's data.
 Re-running the whole wizard is the normal repair. It generates a new password
 and rewrites `.env`, so any client holding the old one needs the new value.
 
-## What is still open
+## Surviving a reboot, and why it needed two fixes
 
-**KPA-2 stays In Progress until amaterasu reboots.** Its "Done when" requires the
-service to survive a reboot, and the box has been up for nine days. Stage 5
-restarts the service, which is a weaker test: it proves the unit starts, not
-that the boot sequence does. A reboot interrupts NFS and any transcode, so Shane
-runs it when the box is quiet:
+**A reboot is the only real test, and it failed the first time it was run.**
+
+`listen_addresses` names the LAN address rather than a wildcard, so Postgres has
+to bind an address that must already exist. The stock unit orders
+`After=network.target`, which means networking is starting, not that an address
+has been assigned. On 26 August 2026 Postgres won that race and logged:
+
+```
+could not bind IPv4 address "192.168.20.110": Cannot assign requested address
+WARNING:  could not create listen socket for "192.168.20.110"
+```
+
+It then served loopback only. `systemctl is-active postgresql` reported
+`active` throughout, so nothing looked wrong until a client on the LAN was
+refused. Treat "the unit is active" as no evidence at all here. Check the
+socket.
+
+### Fix one: order Postgres after the network is up
+
+`scripts/provision-amaterasu-root.sh` writes this drop-in, so a rebuild inherits
+it:
+
+```
+/etc/systemd/system/postgresql@.service.d/network-online.conf
+
+[Unit]
+Wants=network-online.target
+After=network-online.target
+```
+
+### Fix two: make the box wait for the right interface
+
+Fix one alone worked, and it worked for the wrong reason. `network-online.target`
+was reached only because `systemd-networkd-wait-online` gave up after 120
+seconds and failed. Postgres started 124 seconds into a boot, behind a timeout.
+
+The cause was inverted netplan flags. amaterasu carries two interfaces:
+
+| Interface | What it is | State |
+|---|---|---|
+| `enp4s0` | the built-in NIC | no cable, `no-carrier` |
+| `enxc8a362ed7e5e` | a USB adapter, holds 192.168.20.110 | `routable` |
+
+`50-cloud-init.yaml` left `enp4s0` mandatory, and `99-usb-ethernet.yaml` marked
+the USB adapter `optional: true`. So the box waited for the dead NIC and ignored
+the live one. Both flags were swapped on 27 August 2026, and the previous files
+are kept beside them as `*.bak-2026-08-27`.
+
+`sudo netplan generate` rewrites the wait-online drop-in in `/run` without
+touching the running network, so the result can be read before a reboot proves
+it:
+
+```bash
+ssh amaterasu 'sudo cat /run/systemd/system/systemd-networkd-wait-online.service.d/10-netplan.conf'
+```
+
+It must name `enxc8a362ed7e5e`. If it names `enp4s0`, the flags are back to
+front.
+
+### What the two fixes bought
+
+| | Before | After |
+|---|---|---|
+| `systemd-networkd-wait-online` | failed, every boot | success |
+| `network-online.target` reached | 124s | 11.7s |
+| Postgres started | 126.7s | 14.4s |
+| Total boot | roughly 127s | 14.4s |
+| Sockets bound | loopback only | loopback and the LAN address |
+
+### Verifying it yourself
+
+A restart is a weaker test than a reboot: it proves the unit starts, not that
+the boot sequence does. A reboot interrupts NFS and any transcode, so run it
+when the box is quiet.
 
 ```bash
 ssh amaterasu sudo reboot
 ```
 
-Then confirm the service came back:
+Then check all four things, because the first two pass even when it is broken:
 
 ```bash
 ssh amaterasu 'systemctl is-active postgresql@18-main'
+ssh amaterasu 'systemctl show systemd-networkd-wait-online -p Result --value'
+ssh amaterasu 'sudo ss -lntp | grep 5432'
+ssh amaterasu 'sudo journalctl -u postgresql@18-main -b --no-pager | grep -c "could not bind"'
 psql "$DATABASE_URL" -tAXc "SELECT extversion FROM pg_extension WHERE extname='vector'"
 ```
+
+Two sockets must appear, `127.0.0.1:5432` and `192.168.20.110:5432`, and the
+bind-error count must be zero.
+
+## What is still open
+
+**Nothing on this runbook's own subject.** KPA-2 closed on 27 August 2026, after
+the reboot above ran three times: once to find the bind failure, once to prove
+the drop-in, and once to prove the netplan flags.
+
+Two things nearby are open, and neither belongs to provisioning.
+
+**The backup drill proved nothing yet.** It dumped, restored and dropped a
+scratch database, so the mechanics work, but both sides of the row-count
+comparison were zero because `kpa` holds no objects. KPA-22 is reopened and
+blocked by KPA-5. `docs/runbooks/database-backup.md` carries the detail.
+
+**Nothing watches the box's own recovery.** These fixes make Postgres come back
+correctly after a reboot; nothing tells anyone when it does not. That gap is
+real and no story covers it yet.
