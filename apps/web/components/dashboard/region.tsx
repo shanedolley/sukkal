@@ -19,7 +19,9 @@ import {
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export type RegionStatus = "ready" | "loading" | "error" | "empty";
+import type { PageStatus } from "@/lib/forced-state";
+
+export type RegionStatus = PageStatus;
 
 export function Region({
   id,

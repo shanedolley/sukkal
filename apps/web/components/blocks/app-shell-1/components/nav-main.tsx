@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation"
 import { Badge } from "@/components/reui/badge"
 
 import { cn } from "@/lib/utils"
+import { useForcedStatus } from "@/lib/forced-state"
 import { useReview } from "@/lib/review-context"
 import { useSpace } from "@/lib/space-context"
 import {
@@ -180,7 +181,10 @@ export function NavMain() {
   const pathname = usePathname()
   const { space } = useSpace()
   const { facts } = useReview()
-  const items = navMain(space, facts)
+  // A count in the rail is the same claim as a count in the region. When the
+  // regions cannot answer, neither can the rail.
+  const known = useForcedStatus() === "ready"
+  const items = navMain(space, facts, known)
 
   return (
     <SidebarGroup>

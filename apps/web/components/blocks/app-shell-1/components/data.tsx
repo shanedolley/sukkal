@@ -100,7 +100,11 @@ export const WORKSPACES: Workspace[] = [
 // Counts follow the space filter, so the sidebar never disagrees with the
 // screen beside it.
 
-export function navMain(space: SpaceFilter, facts: Fact[]): NavItem[] {
+export function navMain(
+  space: SpaceFilter,
+  facts: Fact[],
+  known = true
+): NavItem[] {
   const needsYou = inSpace(NEEDS_YOU, space).length
   const proposed = inSpace(facts, space).filter(
     (f) => f.state === "proposed"
@@ -117,7 +121,7 @@ export function navMain(space: SpaceFilter, facts: Fact[]): NavItem[] {
       label: "Briefing",
       href: "/dashboard",
       icon: <LayoutDashboardIcon aria-hidden="true" />,
-      badge: needsYou > 0 ? needsYou : undefined,
+      badge: known && needsYou > 0 ? needsYou : undefined,
     },
     {
       id: "review",
@@ -126,17 +130,17 @@ export function navMain(space: SpaceFilter, facts: Fact[]): NavItem[] {
       children: [
         {
           id: "proposed",
-          label: `Proposed facts (${proposed})`,
+          label: known ? `Proposed facts (${proposed})` : "Proposed facts",
           href: "/dashboard#proposed-facts",
         },
         {
           id: "stale",
-          label: `Stale facts (${stale})`,
+          label: known ? `Stale facts (${stale})` : "Stale facts",
           href: "/dashboard#stale-facts",
         },
         {
           id: "meetings",
-          label: `Meetings today (${meetings})`,
+          label: known ? `Meetings today (${meetings})` : "Meetings today",
           href: "/dashboard#meetings-today",
         },
       ],
@@ -152,7 +156,7 @@ export function navMain(space: SpaceFilter, facts: Fact[]): NavItem[] {
       label: "Audit log",
       href: "/audit",
       icon: <ShieldCheckIcon aria-hidden="true" />,
-      badge: denied > 0 ? denied : undefined,
+      badge: known && denied > 0 ? denied : undefined,
     },
   ]
 }

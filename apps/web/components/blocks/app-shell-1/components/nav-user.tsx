@@ -77,8 +77,12 @@ function ThemeSegmentedToggle() {
   const currentTheme = mounted ? (theme ?? "system") : "system"
 
   return (
+    // A group of pressed buttons, not a radiogroup. The block declared
+    // role="radiogroup" with three separate tab stops and no arrow-key
+    // handling, so a screen reader announced a model the keyboard did not
+    // honour. aria-pressed says the same thing and is true of the markup.
     <div
-      role="radiogroup"
+      role="group"
       aria-label="Theme"
       className="bg-muted/60 inline-flex items-center gap-0.5 rounded-full p-0.5"
     >
@@ -88,8 +92,7 @@ function ThemeSegmentedToggle() {
           <Button
             key={value}
             type="button"
-            role="radio"
-            aria-checked={isActive}
+            aria-pressed={isActive}
             aria-label={label}
             variant="ghost"
             size="icon-xs"
