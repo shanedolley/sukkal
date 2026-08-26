@@ -1,9 +1,16 @@
 "use client"
 
+// Adapted from the ReUI app-shell-1 block. Two changes from the original:
+// the links are real routes through next/link, and the active item comes from
+// the current path rather than a flag in the data.
+
 import { useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Badge } from "@/components/reui/badge"
 
 import { cn } from "@/lib/utils"
+import { useSpace } from "@/lib/space-context"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,32 +32,28 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { NAV_MAIN, type NavChild, type NavItem } from "./data"
+import { navMain, type NavChild, type NavItem } from "./data"
 import { ChevronRightIcon } from "lucide-react"
 
 function NavSubItem({ child }: { child: NavChild }) {
   return (
     <SidebarMenuSubItem>
-      {/* Sidebar */}
-      <SidebarMenuSubButton render={<a href="#" />} isActive={child.isActive}>
+      <SidebarMenuSubButton render={<Link href={child.href} />}>
         <span>{child.label}</span>
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
   )
 }
 
-function NavSubMenu({ id, children }: { id: string; children: NavChild[] }) {
+function NavSubMenu({ id, items }: { id: string; items: NavChild[] }) {
   return (
     <SidebarMenuSub id={`subnav-${id}`}>
-      {children.map((child) => (
+      {items.map((child) => (
         <NavSubItem key={child.id} child={child} />
       ))}
     </SidebarMenuSub>
   )
 }
-
-// ── CollapsibleNavItem ──
-// Isolated component so only this item re-renders on open/close toggle.
 
 // Collapsed (icon) rail: the inline submenu would push the next item down, so
 // the children open in a side dropdown anchored to the icon button instead.
@@ -61,7 +64,6 @@ function CollapsedNavItem({
 }) {
   return (
     <SidebarMenuItem>
-      {/* Sidebar */}
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -84,7 +86,7 @@ function CollapsedNavItem({
           <DropdownMenuGroup>
             <DropdownMenuLabel>{item.label}</DropdownMenuLabel>
             {item.children.map((child) => (
-              <DropdownMenuItem key={child.id} render={<a href="#" />}>
+              <DropdownMenuItem key={child.id} render={<Link href={child.href} />}>
                 {child.label}
               </DropdownMenuItem>
             ))}
@@ -107,7 +109,6 @@ function ExpandedNavItem({
 }) {
   return (
     <SidebarMenuItem>
-      {/* Sidebar */}
       <SidebarMenuButton
         tooltip={item.label}
         isActive={item.isActive}
@@ -117,13 +118,16 @@ function ExpandedNavItem({
       >
         {item.icon}
         <span>{item.label}</span>
-        <ChevronRightIcon className={cn(
-                          "ml-auto size-4 shrink-0 opacity-60 transition-transform duration-200",
-                          open && "rotate-90"
-                        )} aria-hidden="true" />
+        <ChevronRightIcon
+          className={cn(
+            "ml-auto size-4 shrink-0 opacity-60 transition-transform duration-200",
+            open && "rotate-90"
+          )}
+          aria-hidden="true"
+        />
       </SidebarMenuButton>
 
-      {open && <NavSubMenu id={item.id} children={item.children} />}
+      {open && <NavSubMenu id={item.id} items={item.children} />}
     </SidebarMenuItem>
   )
 }
@@ -136,7 +140,7 @@ function CollapsibleNavItem({
   const { state } = useSidebar()
   // Kept on the always-mounted parent so the expanded open state survives a
   // collapse/expand cycle instead of resetting when the branch swaps.
-  const [open, setOpen] = useState(() => item.children.some((c) => c.isActive))
+  const [open, setOpen] = useState(true)
 
   return state === "collapsed" ? (
     <CollapsedNavItem item={item} />
@@ -152,17 +156,16 @@ function CollapsibleNavItem({
 function LeafNavItem({ item }: { item: NavItem }) {
   return (
     <SidebarMenuItem>
-      {/* Sidebar */}
       <SidebarMenuButton
         tooltip={item.label}
         isActive={item.isActive}
-        render={<a href="#" />}
+        render={<Link href={item.href ?? "#"} />}
       >
         {item.icon}
         <span>{item.label}</span>
         {item.badge !== undefined && (
           <SidebarMenuBadge>
-            <Badge variant="success-light" size="sm">
+            <Badge variant="primary-light" size="sm">
               {item.badge}
             </Badge>
           </SidebarMenuBadge>
@@ -173,22 +176,27 @@ function LeafNavItem({ item }: { item: NavItem }) {
 }
 
 export function NavMain() {
+  const pathname = usePathname()
+  const { space } = useSpace()
+  const items = navMain(space)
+
   return (
     <SidebarGroup>
-      {/* Sidebar */}
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>Assistant</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu className="gap-1!">
-          {NAV_MAIN.map((item) =>
-            item.children ? (
+          {items.map((item) => {
+            const isActive = item.href ? pathname === item.href : false
+            const withActive = { ...item, isActive }
+            return item.children ? (
               <CollapsibleNavItem
                 key={item.id}
-                item={item as NavItem & { children: NavChild[] }}
+                item={withActive as NavItem & { children: NavChild[] }}
               />
             ) : (
-              <LeafNavItem key={item.id} item={item} />
+              <LeafNavItem key={item.id} item={withActive} />
             )
-          )}
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

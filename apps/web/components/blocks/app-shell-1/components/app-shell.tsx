@@ -1,8 +1,12 @@
+import { Fragment } from "react"
+
+// Adapted from the ReUI app-shell-1 block. The original renders a fixed demo
+// page. This one wraps whatever route is active and takes its own crumb.
+
 import { cn } from "@/lib/utils"
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -15,7 +19,14 @@ import {
 
 import { AppSidebar } from "./app-sidebar"
 
-export function AppShell() {
+export function AppShell({
+  children,
+  crumb,
+}: {
+  children: React.ReactNode
+  /** The trail after "Assistant", innermost last. */
+  crumb: string[]
+}) {
   return (
     <SidebarProvider
       className={cn(
@@ -26,7 +37,6 @@ export function AppShell() {
         "[--sidebar-accent-foreground:var(--color-primary)]"
       )}
     >
-      {/* Sidebar */}
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -34,24 +44,33 @@ export function AppShell() {
             <SidebarTrigger className="-ml-1 md:hidden" />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">Dashboard</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Overview</BreadcrumbPage>
-                </BreadcrumbItem>
+                {/* The separator is a sibling <li>, never a child of one.
+                    Nesting them is invalid HTML and fails hydration. */}
+                {crumb.map((part, index) => {
+                  const last = index === crumb.length - 1
+                  return (
+                    <Fragment key={part}>
+                      <BreadcrumbItem
+                        className={last ? undefined : "hidden md:block"}
+                      >
+                        {last ? (
+                          <BreadcrumbPage>{part}</BreadcrumbPage>
+                        ) : (
+                          <span className="text-muted-foreground">{part}</span>
+                        )}
+                      </BreadcrumbItem>
+                      {!last && (
+                        <BreadcrumbSeparator className="hidden md:block" />
+                      )}
+                    </Fragment>
+                  )
+                })}
               </BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="border-border/70 bg-muted/20 aspect-video rounded-lg border border-dashed" />
-            <div className="border-border/70 bg-muted/20 aspect-video rounded-lg border border-dashed" />
-            <div className="border-border/70 bg-muted/20 aspect-video rounded-lg border border-dashed" />
-          </div>
-          <div className="border-border/70 bg-muted/20 min-h-screen flex-1 rounded-lg border border-dashed md:min-h-min" />
+        <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 pt-0 md:p-6 md:pt-0">
+          {children}
         </div>
       </SidebarInset>
     </SidebarProvider>

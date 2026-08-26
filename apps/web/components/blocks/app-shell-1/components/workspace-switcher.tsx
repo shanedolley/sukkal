@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useSpace, type SpaceFilter } from "@/lib/space-context"
 
 import { cn } from "@/lib/utils"
 import {
@@ -24,7 +24,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { WORKSPACES, type Workspace } from "./data"
-import { CheckIcon, MoreHorizontalIcon, PlusIcon } from "lucide-react"
+import { CheckIcon, MoreHorizontalIcon } from "lucide-react"
 
 function getWorkspaceInitials(name: string): string {
   return name.charAt(0).toUpperCase()
@@ -118,8 +118,13 @@ function WorkspaceItem({
   return (
     <DropdownMenuItem onClick={() => onSelect(workspace)}>
       <WorkspaceAvatar workspace={workspace} />
-      <div className="flex items-center gap-1">
+      <div className="flex min-w-0 flex-col">
         <span className="truncate text-sm">{workspace.name}</span>
+        {workspace.tier && (
+          <span className="text-muted-foreground truncate text-xs">
+            {workspace.tier}
+          </span>
+        )}
       </div>
       {isActive && (
         <CheckIcon aria-hidden="true" className="ml-auto size-3.5" />
@@ -129,49 +134,45 @@ function WorkspaceItem({
 }
 
 export function WorkspaceSwitcher() {
-  const [active, setActive] = useState<Workspace>(WORKSPACES[0])
+  const { space, setSpace } = useSpace()
+  const active =
+    WORKSPACES.find((ws) => ws.id === space) ?? WORKSPACES[0]
 
   return (
     <SidebarMenu>
-      {/* Sidebar */}
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <SidebarMenuButton
-                className="h-9"
-                aria-label="Switch workspace"
-              />
+              <SidebarMenuButton className="h-9" aria-label="Switch space" />
             }
           >
             <SidebarLogo className="transition-[margin] duration-300 ease-in-out in-data-[state=collapsed]:-ml-1" />
             <div className="truncate font-semibold">{active.name}</div>
-            <MoreHorizontalIcon aria-hidden="true" className="ml-auto size-3.5 opacity-60" />
+            <MoreHorizontalIcon
+              aria-hidden="true"
+              className="ml-auto size-3.5 opacity-60"
+            />
           </DropdownMenuTrigger>
 
           <DropdownMenuContent side="bottom" align="start" sideOffset={4}>
             <DropdownMenuGroup>
-              <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+              <DropdownMenuLabel>Space</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {WORKSPACES.map((ws) => (
                   <WorkspaceItem
                     key={ws.id}
                     workspace={ws}
                     isActive={active.id === ws.id}
-                    onSelect={setActive}
+                    onSelect={(next) => setSpace(next.id as SpaceFilter)}
                   />
                 ))}
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <PlusIcon aria-hidden="true" className="mx-1 size-4" />
-                <div className="flex flex-col items-start">
-                  <span className="text-sm">New Workspace</span>
-                  <span className="text-muted-foreground ml-auto text-xs">
-                    Collaborate with others.
-                  </span>
-                </div>
-              </DropdownMenuItem>
+              <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+                Retrieval filters by space. An answer that crosses two is
+                flagged, never blocked.
+              </DropdownMenuLabel>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>

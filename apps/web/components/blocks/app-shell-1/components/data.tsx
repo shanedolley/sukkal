@@ -1,17 +1,36 @@
+// Adapted from the ReUI app-shell-1 block. The shapes are the block's; the
+// content is KPA's. See docs/project-brief.md.
+
 import { type ReactNode } from "react"
-import { HouseIcon, ZapIcon, LayersIcon, ActivityIcon, ShieldCheckIcon, SettingsIcon, UsersIcon, BookOpenIcon, ExternalLinkIcon, CopyIcon, StarIcon, Trash2Icon } from "lucide-react"
+import {
+  LayoutDashboardIcon,
+  MessagesSquareIcon,
+  ScrollTextIcon,
+  ShieldCheckIcon,
+  BookOpenIcon,
+  SettingsIcon,
+  ExternalLinkIcon,
+  CopyIcon,
+  StarIcon,
+  Trash2Icon,
+} from "lucide-react"
+
+import { AUDIT, FACTS, MEETINGS, NEEDS_YOU } from "@/lib/fixtures"
+import { inSpace, type SpaceFilter } from "@/lib/space-context"
 
 // ── Types ──
 
 export type NavChild = {
   id: string
   label: string
+  href: string
   isActive?: boolean
 }
 
 export type NavItem = {
   id: string
   label: string
+  href?: string
   icon: ReactNode
   badge?: string | number
   isActive?: boolean
@@ -29,6 +48,7 @@ export type SecondaryItem = {
   id: string
   label: string
   icon: ReactNode
+  href?: string
 }
 
 export type Workspace = {
@@ -47,112 +67,117 @@ export type ItemAction = {
   destructive: boolean
 }
 
-// ── Workspaces ──
+// ── Spaces ──
+// The block calls these workspaces. KPA calls them spaces, and the brief
+// keeps Collibra and Koinon apart as a guideline rather than a wall.
 
 export const WORKSPACES: Workspace[] = [
   {
-    id: "reui",
-    name: "ReUI",
-    tier: "Pro",
+    id: "all",
+    name: "All spaces",
     avatarClassName: "bg-primary text-primary-foreground",
   },
   {
-    id: "keenthemes",
-    name: "Keenthemes",
-    avatarClassName: "bg-blue-500 text-white",
+    id: "collibra",
+    name: "Collibra",
+    tier: "Employer",
+    avatarClassName: "bg-violet-500 text-white",
   },
   {
-    id: "metronic",
-    name: "Metronic",
-    avatarClassName: "bg-red-500 text-white",
+    id: "koinon",
+    name: "Koinon",
+    tier: "Own company",
+    avatarClassName: "bg-emerald-500 text-white",
+  },
+  {
+    id: "personal",
+    name: "Personal",
+    avatarClassName: "bg-amber-500 text-white",
   },
 ]
 
 // ── Nav Main ──
+// Counts follow the space filter, so the sidebar never disagrees with the
+// screen beside it.
 
-export const NAV_MAIN: NavItem[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    icon: (
-      <HouseIcon aria-hidden="true" />
-    ),
-    isActive: true,
-  },
-  {
-    id: "pipelines",
-    label: "Pipelines",
-    icon: (
-      <ZapIcon aria-hidden="true" />
-    ),
-    children: [
-      { id: "builds", label: "Build Runs" },
-      { id: "deployments", label: "Deployments", isActive: true },
-      { id: "releases", label: "Release Gates" },
-    ],
-  },
-  {
-    id: "infrastructure",
-    label: "Infrastructure",
-    icon: (
-      <LayersIcon aria-hidden="true" />
-    ),
-    children: [
-      { id: "clusters", label: "Clusters" },
-      { id: "namespaces", label: "Namespaces" },
-      { id: "storage", label: "Storage Volumes" },
-    ],
-  },
-  {
-    id: "observability",
-    label: "Observability",
-    icon: (
-      <ActivityIcon aria-hidden="true" />
-    ),
-    badge: "14",
-  },
-  {
-    id: "security",
-    label: "Security",
-    icon: (
-      <ShieldCheckIcon aria-hidden="true" />
-    ),
-  },
-]
+export function navMain(space: SpaceFilter): NavItem[] {
+  const needsYou = inSpace(NEEDS_YOU, space).length
+  const proposed = inSpace(FACTS, space).filter(
+    (f) => f.state === "proposed"
+  ).length
+  const stale = inSpace(FACTS, space).filter((f) => f.state === "stale").length
+  const meetings = inSpace(MEETINGS, space).length
+  const denied = inSpace(AUDIT, space).filter(
+    (e) => e.outcome === "denied"
+  ).length
 
-// ── Pinned Resources ──
+  return [
+    {
+      id: "dashboard",
+      label: "Briefing",
+      href: "/dashboard",
+      icon: <LayoutDashboardIcon aria-hidden="true" />,
+      badge: needsYou > 0 ? needsYou : undefined,
+    },
+    {
+      id: "review",
+      label: "Review queue",
+      icon: <ScrollTextIcon aria-hidden="true" />,
+      children: [
+        {
+          id: "proposed",
+          label: `Proposed facts (${proposed})`,
+          href: "/dashboard#proposed-facts",
+        },
+        {
+          id: "stale",
+          label: `Stale facts (${stale})`,
+          href: "/dashboard#stale-facts",
+        },
+        {
+          id: "meetings",
+          label: `Meetings today (${meetings})`,
+          href: "/dashboard#meetings-today",
+        },
+      ],
+    },
+    {
+      id: "chat",
+      label: "Chat",
+      href: "/chat",
+      icon: <MessagesSquareIcon aria-hidden="true" />,
+    },
+    {
+      id: "audit",
+      label: "Audit log",
+      href: "/audit",
+      icon: <ShieldCheckIcon aria-hidden="true" />,
+      badge: denied > 0 ? denied : undefined,
+    },
+  ]
+}
+
+// ── Pinned engagements ──
 
 export const PINNED_RESOURCES: PinnedResource[] = [
-  { id: "api", name: "API Gateway", color: "bg-emerald-500", env: "Prod" },
-  { id: "ml", name: "ML Pipeline", color: "bg-violet-500" },
-  { id: "db", name: "Database", color: "bg-blue-500", env: "US-East" },
-  { id: "cdn", name: "CDN", color: "bg-amber-500" },
-  { id: "auth", name: "Authentication", color: "bg-rose-500" },
+  { id: "meridian", name: "BHP Meridian", color: "bg-violet-500", env: "Collibra" },
+  { id: "maybank", name: "Maybank", color: "bg-emerald-500", env: "Koinon" },
+  { id: "sydney-water", name: "Sydney Water", color: "bg-violet-500", env: "Collibra" },
+  { id: "tfnsw", name: "Transport for NSW", color: "bg-violet-500", env: "Collibra" },
 ]
 
 // ── Nav Secondary ──
 
 export const NAV_SECONDARY: SecondaryItem[] = [
   {
-    id: "settings",
-    label: "Settings",
-    icon: (
-      <SettingsIcon aria-hidden="true" />
-    ),
+    id: "policy",
+    label: "Policy",
+    icon: <SettingsIcon aria-hidden="true" />,
   },
   {
-    id: "invite",
-    label: "Invite Team",
-    icon: (
-      <UsersIcon aria-hidden="true" />
-    ),
-  },
-  {
-    id: "docs",
-    label: "Documentation",
-    icon: (
-      <BookOpenIcon aria-hidden="true" />
-    ),
+    id: "brief",
+    label: "Project brief",
+    icon: <BookOpenIcon aria-hidden="true" />,
   },
 ]
 
@@ -161,34 +186,26 @@ export const NAV_SECONDARY: SecondaryItem[] = [
 export const ITEM_ACTIONS: ItemAction[] = [
   {
     id: "open",
-    label: "Details",
-    icon: (
-      <ExternalLinkIcon aria-hidden="true" />
-    ),
+    label: "Open engagement",
+    icon: <ExternalLinkIcon aria-hidden="true" />,
     destructive: false,
   },
   {
     id: "copy",
-    label: "Copy Link",
-    icon: (
-      <CopyIcon aria-hidden="true" />
-    ),
+    label: "Copy link",
+    icon: <CopyIcon aria-hidden="true" />,
     destructive: false,
   },
   {
-    id: "pin",
-    label: "Pin to Favorites",
-    icon: (
-      <StarIcon aria-hidden="true" />
-    ),
+    id: "unpin",
+    label: "Unpin",
+    icon: <StarIcon aria-hidden="true" />,
     destructive: false,
   },
   {
-    id: "remove",
-    label: "Remove",
-    icon: (
-      <Trash2Icon aria-hidden="true" />
-    ),
+    id: "hide",
+    label: "Hide from sidebar",
+    icon: <Trash2Icon aria-hidden="true" />,
     destructive: true,
   },
 ]

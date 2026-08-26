@@ -30,12 +30,14 @@ import { SunIcon, MoonIcon, MonitorIcon, UserIcon, CreditCardIcon, SettingsIcon,
 
 // ── Constants ──
 
+// The brief's "Users" decision: one user, Shane. No permission model.
+// No avatar URL: the box is on a home LAN behind Cloudflare Access, and the
+// initials fallback is what renders when a remote image cannot load.
 const USER = {
-  name: "Nick Bold",
-  email: "nick@reui.io",
-  avatar:
-    "https://images.unsplash.com/photo-1543299750-19d1d6297053?w=96&h=96&dpr=2&q=80",
-  initials: "NB",
+  name: "Shane Dolley",
+  email: "shane@koinon.com.au",
+  avatar: "",
+  initials: "SD",
 } as const
 
 const THEMES = [
