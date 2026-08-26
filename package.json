@@ -1,0 +1,25 @@
+{
+  "name": "kpa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Koinon Personal Assistant: the memory store and its migration.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "migrate": "node --env-file-if-exists=.env src/db/migrate.ts",
+    "test": "node --env-file-if-exists=.env --test \"test/**/*.test.ts\"",
+    "lint": "oxlint src test --deny-warnings",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/pg": "^8.23.1",
+    "oxlint": "^1.80.0",
+    "typescript": "^7.0.2"
+  }
+}
