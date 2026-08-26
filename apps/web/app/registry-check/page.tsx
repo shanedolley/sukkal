@@ -27,8 +27,10 @@ const QUEUE = [
 ];
 
 export default function RegistryCheck() {
+  // w-full matters: body is a flex column, and mx-auto alone cancels the
+  // stretch, so the element shrinks to its content instead of the max-width.
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-10 p-10">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-10 p-10">
       <section className="flex flex-col gap-3">
         <h1 className="text-2xl font-semibold">Registry check</h1>
         <p className="text-muted-foreground text-sm">
