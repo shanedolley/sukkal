@@ -28,8 +28,30 @@
       "id": "2",
       "jiraKey": "KPA-2",
       "title": "Provision PostgreSQL with pgvector on amaterasu",
-      "status": "pending",
-      "estimate": 8
+      "status": "complete",
+      "classifiedAgent": "human",
+      "classifierConfidence": "high",
+      "implementedBy": "human",
+      "reviewIterations": 1,
+      "verified": true,
+      "docImpact": [
+        {
+          "category": "technical-knowledge",
+          "note": "docs/runbooks/postgres-setup.md records the twelve tuning settings and where each number came from. They are scaled from nabium's postgres-tuning.md rather than copied, because that runbook targets a 32 GB host and amaterasu holds 7.6 GB shared with NFS.",
+          "files": [
+            "docs/runbooks/postgres-setup.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "The stock unit orders After=network.target, which is not enough when listen_addresses names an address: the address may not be up yet. A drop-in orders Postgres after network-online.target, and scripts/provision-amaterasu-root.sh writes it.",
+          "files": [
+            "scripts/provision-amaterasu-root.sh",
+            "docs/runbooks/postgres-setup.md"
+          ]
+        }
+      ],
+      "completedAt": "2026-08-26T15:47:00Z"
     },
     {
       "id": "19",
