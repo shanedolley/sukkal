@@ -1,0 +1,50 @@
+name: CI
+
+# Every push, and every pull request. A failing check therefore reports before
+# a reviewer reads the change, which is the point of it.
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    # The same versions amaterasu runs: PostgreSQL 18, pgvector 0.8.6. The
+    # tag is pinned, so a new release cannot change what CI tested.
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kpa_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      # Loopback inside the runner, so no TLS and no secret. src/db/connect.ts
+      # allows a loopback host in the clear and requires encryption everywhere
+      # else. DATABASE_URL is deliberately unset: nothing here migrates a real
+      # database.
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/kpa_dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run build
+
+      - run: npm test

@@ -17,6 +17,16 @@ import pg from 'pg';
 const ENCRYPTED = new Set(['require', 'verify-ca', 'verify-full', 'no-verify']);
 
 /**
+ * Hosts that need no encryption, because the traffic reaches no network.
+ *
+ * amaterasu's Postgres listens on `127.0.0.1` as well as the LAN address, so
+ * a worker running on the box connects this way and pays nothing for TLS it
+ * does not need. Continuous integration uses the same path against a service
+ * container. Every other host must encrypt.
+ */
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+/**
  * Opens a client against the connection string in `variable`.
  *
  * The caller connects and ends it. Two translations happen here and nowhere
@@ -44,10 +54,12 @@ export function connect(variable = 'DATABASE_URL'): pg.Client {
 
   const url = new URL(value);
   const mode = url.searchParams.get('sslmode');
-  if (mode === null || !ENCRYPTED.has(mode)) {
+  const local = LOOPBACK.has(url.hostname);
+  if (!local && (mode === null || !ENCRYPTED.has(mode))) {
     throw new Error(
-      `${variable} asks for sslmode=${mode ?? 'nothing'}. This connection carries ` +
-        'customer material over a shared LAN, so it must be encrypted. Use sslmode=require.',
+      `${variable} asks for sslmode=${mode ?? 'nothing'} against ${url.hostname}. ` +
+        'This connection carries customer material over a shared LAN, so it must ' +
+        'be encrypted. Use sslmode=require.',
     );
   }
 

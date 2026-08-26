@@ -22,7 +22,7 @@ function withEnv<T>(variable: string, value: string | undefined, work: () => T):
 }
 
 const VARIABLE = 'DATABASE_URL_CONNECT_TEST';
-const BASE = 'postgresql://someone:PLACEHOLDER@10.0.0.1:5432/nowhere';
+const BASE = 'postgresql://someone:PLACEHOLDER@10.0.0.1:5432/nowhere';  // remote, so TLS is required
 
 describe('connect', () => {
   test('names the variable it could not find', () => {
@@ -35,6 +35,16 @@ describe('connect', () => {
     for (const mode of ['disable', 'prefer', 'allow']) {
       withEnv(VARIABLE, `${BASE}?sslmode=${mode}`, () => {
         assert.throws(() => connect(VARIABLE), /must be encrypted/, `sslmode=${mode}`);
+      });
+    }
+  });
+
+  test('lets a loopback host connect in the clear', () => {
+    // amaterasu's Postgres also listens on 127.0.0.1, and CI uses a service
+    // container. Neither connection reaches a network, so neither needs TLS.
+    for (const host of ['localhost', '127.0.0.1']) {
+      withEnv(VARIABLE, `postgresql://someone:PLACEHOLDER@${host}:5432/kpa_dev`, () => {
+        assert.doesNotThrow(() => connect(VARIABLE), `host ${host}`);
       });
     }
   });

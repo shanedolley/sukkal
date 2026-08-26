@@ -36,9 +36,64 @@ Every other rule in the global `CLAUDE.md` still holds. Absolute paths for every
 delete. No destructive git without `KOTHAR_ALLOW_DESTRUCTIVE=1`. Commits credit
 Shane and never Claude Code, and end with the `Claude-Session` line.
 
-## The rest of these conventions
+## Commands
 
-KPA-17 writes them: the build, test and migrate commands, the directory layout,
-and how to reach the database. They are absent here because no code exists yet,
-and a convention invented before the thing it governs is a convention nobody
-follows.
+| Command | What it does |
+|---|---|
+| `npm run lint` | `oxlint` over `src` and `test`. A warning fails the run |
+| `npm run build` | `tsc --noEmit`. It checks types and emits nothing |
+| `npm test` | `node --test` over `test/**/*.test.ts` |
+| `npm run migrate` | Applies pending migrations. `npm run migrate down` reverses every one |
+| `./scripts/scan-history.sh` | Scans every commit for a credential. Run it before you push |
+
+Run the lint, the build and the tests before you report anything finished.
+`.github/workflows/ci.yml` runs those three on every push, against PostgreSQL 18
+with pgvector 0.8.6, the versions amaterasu runs. It never migrates, because no
+database it could migrate exists in a runner.
+
+**There is no build step.** Node 22.18 strips types as it loads a file, so
+nothing compiles and nothing bundles. `npm run build` is a type check that
+writes no output. Import a local module by its real name, `./connect.ts`, not
+`./connect.js`.
+
+## Reaching the database
+
+Two databases on amaterasu at `192.168.20.110`, both owned by the `kpa` role.
+
+| Variable | Database | Written by |
+|---|---|---|
+| `DATABASE_URL` | `kpa` | The migration. It holds the facts |
+| `DATABASE_URL_TEST` | `kpa_dev` | Every test and every rehearsal |
+
+**Never point a test at `kpa`.** Separating the two is the whole reason
+`kpa_dev` exists, and `test/migrate.test.ts` asserts the database it connected
+to is not `kpa`.
+
+Values live at `~/.config/kpa/env`, mode 0600, outside the repository.
+`docs/runbooks/secrets.md` says why and how to create it.
+
+`src/db/connect.ts` is the only place a connection opens. It reads a named
+environment variable, refuses a remote host that does not encrypt, and lets a
+loopback host through in the clear.
+
+## Layout
+
+```
+migrations/     One .sql file per migration, applied in filename order
+src/db/         The connection module and the migration runner
+test/           The suite, and its fixtures under test/fixtures/
+docs/adr/       Decisions that were hard to reverse
+docs/runbooks/  Operating the server, and where the secrets live
+scripts/        Provisioning and checks, all bash
+```
+
+A migration file carries both directions, separated by a line reading
+`-- @down`. The runner refuses rather than guesses: a database holding tables
+it did not create stops it, and so does a second run with nothing left to
+apply. Neither is a bug. Read what it names.
+
+## Committing
+
+The rules are in *Committing: push straight to main* above. Nothing else.
+
+One commit per story. Stage the files by name, and never `git add -A`.
