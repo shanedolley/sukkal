@@ -1,5 +1,3 @@
-import { Suspense } from "react"
-
 import { cn } from "@/lib/utils"
 import {
   SidebarContent,
@@ -83,9 +81,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SearchTrigger />
-        <Suspense fallback={null}>
-          <NavMain />
-        </Suspense>
+        <NavMain />
         <NavResources />
         <div className="mt-auto">
           <NavSecondary />

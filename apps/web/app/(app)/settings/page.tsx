@@ -8,11 +8,16 @@
 import { useTheme } from "next-themes";
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 
+import { useAppearance } from "@/components/appearance-provider";
+import { ChartPreview } from "@/components/settings/chart-preview";
+import { ColourPicker } from "@/components/settings/colour-picker";
 import { SHORTCUTS } from "@/components/shortcuts";
+import { ACCENTS, CHART_PALETTES } from "@/lib/appearance";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useModifierKey } from "@/lib/platform";
+import { useIsClient } from "@/lib/local-store";
 import { useSpace, type SpaceFilter } from "@/lib/space-context";
 import { SPACE_LABELS } from "@/lib/types";
 
@@ -52,14 +57,18 @@ function Section({
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { space, setSpace } = useSpace();
+  const { accent, charts, setAccent, setCharts } = useAppearance();
   const modifier = useModifierKey();
+  // Nothing reads as selected until the browser is in charge of the answer.
+  const ready = useIsClient();
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold tracking-tight">Preferences</h1>
         <p className="text-muted-foreground text-sm">
-          Both settings live in this browser. Nothing here reaches the server.
+          Everything here lives in this browser and takes effect at once.
+          Nothing needs a rebuild, and nothing reaches the server.
         </p>
       </header>
 
@@ -72,14 +81,41 @@ export default function SettingsPage() {
             <Button
               key={value}
               size="sm"
-              variant={theme === value ? "default" : "outline"}
-              aria-pressed={theme === value}
+              variant={ready && theme === value ? "default" : "outline"}
+              aria-pressed={ready && theme === value}
               onClick={() => setTheme(value)}
             >
               <Icon className="size-3.5" aria-hidden="true" />
               {label}
             </Button>
           ))}
+        </div>
+      </Section>
+
+      <Section
+        title="Menu colour"
+        description="The accent on the navigation, the buttons and anything selected."
+      >
+        <ColourPicker
+          label="Menu colour"
+          presets={ACCENTS}
+          value={ready ? accent : ""}
+          onChange={setAccent}
+        />
+      </Section>
+
+      <Section
+        title="Chart colours"
+        description="Distinct hues suit categories, which have no order. A ramp of one hue suits a scale, which does."
+      >
+        <div className="flex flex-col gap-4">
+          <ColourPicker
+            label="Chart colours"
+            presets={CHART_PALETTES}
+            value={ready ? charts : ""}
+            onChange={setCharts}
+          />
+          <ChartPreview />
         </div>
       </Section>
 
@@ -92,8 +128,8 @@ export default function SettingsPage() {
             <Button
               key={value}
               size="sm"
-              variant={space === value ? "default" : "outline"}
-              aria-pressed={space === value}
+              variant={ready && space === value ? "default" : "outline"}
+              aria-pressed={ready && space === value}
               onClick={() => setSpace(value)}
             >
               {label}

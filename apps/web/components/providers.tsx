@@ -5,6 +5,7 @@
 
 import { ThemeProvider } from "next-themes";
 
+import { AppearanceProvider } from "@/components/appearance-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -15,7 +16,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <TooltipProvider>{children}</TooltipProvider>
+      <AppearanceProvider>
+        <TooltipProvider>{children}</TooltipProvider>
+      </AppearanceProvider>
     </ThemeProvider>
   );
 }
