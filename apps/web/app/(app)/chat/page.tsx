@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert";
-import { useSourceDrawer } from "@/components/source-drawer";
+import { useDetailPanel } from "@/components/detail-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
@@ -45,7 +45,7 @@ function CrossingFlag({ answer }: { answer: ChatAnswer }) {
 }
 
 function Answer({ answer }: { answer: ChatAnswer }) {
-  const { open } = useSourceDrawer();
+  const { open } = useDetailPanel();
 
   return (
     <div className="flex flex-col gap-4">
@@ -75,6 +75,7 @@ function Answer({ answer }: { answer: ChatAnswer }) {
                     type="button"
                     onClick={() =>
                       open({
+                        kind: "source",
                         sourceId: citation.sourceId,
                         chunkId: citation.chunkId,
                       })

@@ -131,17 +131,17 @@ export function navMain(
         {
           id: "proposed",
           label: known ? `Proposed facts (${proposed})` : "Proposed facts",
-          href: "/dashboard#proposed-facts",
+          href: "/review/proposed",
         },
         {
           id: "stale",
           label: known ? `Stale facts (${stale})` : "Stale facts",
-          href: "/dashboard#stale-facts",
+          href: "/review/stale",
         },
         {
           id: "meetings",
           label: known ? `Meetings today (${meetings})` : "Meetings today",
-          href: "/dashboard#meetings-today",
+          href: "/meetings",
         },
       ],
     },

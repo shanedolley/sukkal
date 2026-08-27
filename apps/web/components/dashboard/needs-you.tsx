@@ -2,10 +2,15 @@
 
 // KPA-39. The items that wait on a decision from Shane.
 //
+// Every row opens a panel that says where it came from: the meeting or the
+// mail, the date, the author, and the passage itself. A row that says Priya
+// asked about the archive tier is no use in a reply until you can cite the
+// session it came from, so the panel carries a control that puts a quotable
+// line on the clipboard.
+//
 // A draft row links out to Gmail rather than showing an editor. The brief's
 // "Triaging mail" ends with Shane reviewing and sending in Gmail, and the
-// policy says a message leaves the box only after he clicks. Keeping the send
-// button where he already trusts it is the point.
+// policy says a message leaves the box only after he clicks.
 
 import {
   ArrowUpRightIcon,
@@ -16,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/reui/badge";
+import { useDetailPanel } from "@/components/detail-panel";
 import { SPACE_LABELS, type NeedsYouItem, type NeedsYouKind } from "@/lib/types";
 
 // Semantic tokens, not palette steps: the ReUI theme defines these and they
@@ -35,6 +41,8 @@ const KIND: Record<
 };
 
 export function NeedsYou({ items }: { items: NeedsYouItem[] }) {
+  const { open } = useDetailPanel();
+
   return (
     <ul className="flex flex-col gap-3">
       {items.map((item) => {
@@ -43,18 +51,33 @@ export function NeedsYou({ items }: { items: NeedsYouItem[] }) {
         return (
           <li
             key={item.id}
-            className="border-border/70 flex flex-col gap-2 rounded-lg border p-3"
+            className="border-border/70 hover:border-border hover:bg-muted/30 relative flex flex-col gap-2 rounded-lg border p-3 transition-colors"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <Icon className={`size-3.5 shrink-0 ${kind.tone}`} aria-hidden="true" />
+              <Icon
+                className={`size-3.5 shrink-0 ${kind.tone}`}
+                aria-hidden="true"
+              />
               <span className="text-muted-foreground text-xs">{kind.label}</span>
               <Badge variant="outline" size="sm">
                 {SPACE_LABELS[item.space]}
               </Badge>
-              <span className="text-muted-foreground text-xs">{item.entity}</span>
+              <span className="text-muted-foreground text-xs">
+                {item.entity}
+              </span>
             </div>
 
-            <p className="text-sm leading-snug font-medium">{item.title}</p>
+            {/* The title stretches over the card, so the whole row is the
+                target, while the Gmail link below stays its own control. */}
+            <button
+              type="button"
+              onClick={() => open({ kind: "needsYou", itemId: item.id })}
+              className="focus-visible:ring-ring rounded-sm text-left text-sm leading-snug font-medium after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:outline-none"
+            >
+              {item.title}
+              <span className="sr-only">. Open its detail and source.</span>
+            </button>
+
             <p className="text-muted-foreground text-xs leading-relaxed">
               {item.detail}
             </p>
@@ -70,7 +93,7 @@ export function NeedsYou({ items }: { items: NeedsYouItem[] }) {
                 href={item.gmailUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary focus-visible:ring-ring inline-flex w-fit items-center gap-1 rounded-sm text-xs font-medium underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
+                className="text-primary focus-visible:ring-ring relative z-10 inline-flex w-fit items-center gap-1 rounded-sm text-xs font-medium underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
               >
                 Open in Gmail
                 <ArrowUpRightIcon className="size-3" aria-hidden="true" />

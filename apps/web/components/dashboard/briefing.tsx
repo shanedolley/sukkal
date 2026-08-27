@@ -1,20 +1,17 @@
 "use client";
 
-// KPA-38, KPA-39, KPA-40. The screen he opens.
+// KPA-38, KPA-39. The screen he opens.
 //
-// The brief's sketch puts four regions and a chat entry on one screen. On a
-// wide screen the two review queues take the right column, so the work reads
-// as one column. On a narrow one the grid collapses, and the source order
-// puts the queue second rather than below three read-only cards: the screen
-// exists to surface decisions, so a decision should never be 900px down.
+// Needs you sits here in full, because those rows are the ones that will not
+// wait. The three queues are summarised: a count and the engagements the work
+// sits with, so the shape of the morning reads before anything is opened.
+// Each card is a link to the page that holds the queue itself.
 
 import Link from "next/link";
 import { ArrowRightIcon, MessagesSquareIcon } from "lucide-react";
 
-import { MeetingsToday } from "@/components/dashboard/meetings-today";
-import { ProposedFacts } from "@/components/dashboard/proposed-facts";
+import { QueueCard, byEntity } from "@/components/dashboard/queue-card";
 import { Region } from "@/components/dashboard/region";
-import { StaleFacts } from "@/components/dashboard/stale-facts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatLongDay } from "@/lib/format";
@@ -28,7 +25,7 @@ import { inSpace, useSpace } from "@/lib/space-context";
 export function Briefing() {
   const { space } = useSpace();
   const status = useForcedStatus();
-  const { facts, accept, reject, reconfirm } = useReview();
+  const { facts } = useReview();
 
   const needsYou = inSpace(NEEDS_YOU, space);
   const meetings = inSpace(MEETINGS, space);
@@ -36,9 +33,7 @@ export function Briefing() {
   const stale = inSpace(facts, space).filter(isStale);
 
   // The summary counts rows, so it has to say something different in each
-  // state. A confident number beside a spinner is worse than no number, and
-  // "Reading your briefing" above four regions that each say they are empty
-  // contradicts the screen underneath it.
+  // state. A confident number beside a spinner is worse than no number.
   const summary: Record<PageStatus, string> = {
     ready: `${needsYou.length} waiting on you, ${proposed.length} to review, ${stale.length} going stale.`,
     loading: "Reading your briefing.",
@@ -65,74 +60,67 @@ export function Briefing() {
         </Button>
       </header>
 
-      {/* One grid, not two stacked columns. The explicit row placement keeps
-          the wide layout ("read-only left, queue right") while letting the
-          narrow one follow source order. */}
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <Region
-          id="needs-you"
-          title="Needs you"
-          count={needsYou.length}
-          status={status}
-          emptyTitle="Nothing is waiting on you"
-          emptyDescription="Every decision has been made. New items arrive after the next mail poll."
-        >
-          <NeedsYou items={needsYou} />
-        </Region>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-muted-foreground text-xs font-medium">
+          The review queue
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <QueueCard
+            title="Proposed facts"
+            href="/review/proposed"
+            count={proposed.length}
+            breakdown={byEntity(proposed)}
+            status={status}
+            emptyLabel="Nothing an agent wrote is waiting for your confirmation."
+          />
+          <QueueCard
+            title="Stale facts"
+            href="/review/stale"
+            count={stale.length}
+            breakdown={byEntity(stale)}
+            status={status}
+            tone="warning"
+            emptyLabel="Every fact is inside its review window."
+          />
+          <QueueCard
+            title="Meetings today"
+            href="/meetings"
+            count={meetings.length}
+            breakdown={byEntity(
+              meetings.map((m) => ({ ...m, entity: m.engagement }))
+            )}
+            status={status}
+            emptyLabel="Nothing in the calendar for this space."
+          />
+        </div>
+      </section>
 
-        <Region
-          id="proposed-facts"
-          title="Proposed facts"
-          count={proposed.length}
-          status={status}
-          emptyTitle="The review queue is clear"
-          emptyDescription="Nothing an agent wrote is waiting for your confirmation."
-        >
-          <ProposedFacts facts={proposed} onAccept={accept} onReject={reject} />
-        </Region>
+      <Region
+        id="needs-you"
+        title="Needs you"
+        count={needsYou.length}
+        status={status}
+        emptyTitle="Nothing is waiting on you"
+        emptyDescription="Every decision has been made. New items arrive after the next mail poll."
+      >
+        <NeedsYou items={needsYou} />
+      </Region>
 
-        <Region
-          id="meetings-today"
-          title="Meetings today"
-          count={meetings.length}
-          status={status}
-          emptyTitle="No meetings today"
-          emptyDescription="Nothing in the calendar for this space."
-        >
-          <MeetingsToday meetings={meetings} />
-        </Region>
-
-        <Region
-          id="stale-facts"
-          title="Stale facts"
-          count={stale.length}
-          status={status}
-          emptyTitle="Nothing is going stale"
-          emptyDescription="Every fact is inside its review window."
-        >
-          <StaleFacts facts={stale} today={TODAY} onReconfirm={reconfirm} />
-        </Region>
-
-        <Card className="bg-muted/30 border-dashed lg:col-span-2">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-col gap-0.5">
-              <p className="text-sm font-medium">Dig into anything</p>
-              <p className="text-muted-foreground text-xs">
-                One question across three mailboxes, every transcript and the
-                fact graph. Answers open to their sources.
-              </p>
-            </div>
-            <Button
-              render={<Link href="/chat" />}
-              nativeButton={false}
-              size="sm"
-            >
-              Open chat
-              <ArrowRightIcon className="size-4" aria-hidden="true" />
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="bg-muted/30 border-dashed">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm font-medium">Dig into anything</p>
+            <p className="text-muted-foreground text-xs">
+              One question across three mailboxes, every transcript and the fact
+              graph. Answers open to their sources.
+            </p>
+          </div>
+          <Button render={<Link href="/chat" />} nativeButton={false} size="sm">
+            Open chat
+            <ArrowRightIcon className="size-4" aria-hidden="true" />
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

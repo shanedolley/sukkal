@@ -2,11 +2,14 @@
 
 // One fact, with everything the brief says a reader needs to judge it:
 // the state, the dates it holds between, and where it came from.
-
-import { ArrowUpRightIcon } from "lucide-react";
+//
+// The whole card opens the panel, but the card is not a button. The statement
+// is, and it stretches over the card with an ::after overlay. The review
+// controls sit above that overlay. A button inside a button would be invalid
+// markup and would give the keyboard two targets for one row.
 
 import { Badge } from "@/components/reui/badge";
-import { useSourceDrawer } from "@/components/source-drawer";
+import { useDetailPanel } from "@/components/detail-panel";
 import { formatDay } from "@/lib/format";
 import { findSource } from "@/lib/fixtures";
 import { FACT_STATE_LABELS, SPACE_LABELS, type Fact, type FactState } from "@/lib/types";
@@ -41,11 +44,11 @@ export function FactCard({
   /** The review controls, when the region offers any. */
   children?: React.ReactNode;
 }) {
-  const { open } = useSourceDrawer();
+  const { open } = useDetailPanel();
   const source = findSource(fact.provenance.sourceId);
 
   return (
-    <li className="border-border/70 flex flex-col gap-3 rounded-lg border p-3">
+    <li className="border-border/70 hover:border-border hover:bg-muted/30 relative flex flex-col gap-3 rounded-lg border p-3 transition-colors">
       <div className="flex flex-wrap items-center gap-2">
         <FactStateBadge state={fact.state} />
         <Badge variant="outline" size="sm">
@@ -53,11 +56,20 @@ export function FactCard({
         </Badge>
         <span className="text-muted-foreground text-xs">{fact.entity}</span>
         {fact.generatedByAgent && (
-          <span className="text-muted-foreground text-xs">· written by an agent</span>
+          <span className="text-muted-foreground text-xs">
+            &middot; written by an agent
+          </span>
         )}
       </div>
 
-      <p className="text-sm leading-snug">{fact.statement}</p>
+      <button
+        type="button"
+        onClick={() => open({ kind: "fact", factId: fact.id })}
+        className="focus-visible:ring-ring rounded-sm text-left text-sm leading-snug after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:outline-none"
+      >
+        {fact.statement}
+        <span className="sr-only">. Open its detail and source.</span>
+      </button>
 
       <dl className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
         <div className="flex gap-1">
@@ -86,21 +98,11 @@ export function FactCard({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
         {source ? (
-          <button
-            type="button"
-            onClick={() =>
-              open({
-                sourceId: fact.provenance.sourceId,
-                chunkId: fact.provenance.chunkId,
-              })
-            }
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex max-w-full items-center gap-1 rounded-sm text-xs underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <span className="truncate">{source.title}</span>
-            <ArrowUpRightIcon className="size-3 shrink-0" aria-hidden="true" />
-          </button>
+          <span className="text-muted-foreground max-w-full truncate text-xs">
+            {source.title}
+          </span>
         ) : (
           <span />
         )}

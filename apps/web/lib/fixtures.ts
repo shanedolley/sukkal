@@ -8,12 +8,31 @@ import type {
   Fact,
   Meeting,
   NeedsYouItem,
+  Provenance,
   Source,
+  SourceChunk,
 } from "./types";
 
 /** Resolve a provenance or a citation to the source it points at. */
 export function findSource(sourceId: string): Source | undefined {
   return SOURCES.find((source) => source.id === sourceId);
+}
+
+/** The passage a provenance names, for quoting in a reply. */
+export function findChunk(
+  provenance: Provenance
+): SourceChunk | undefined {
+  return findSource(provenance.sourceId)?.chunks.find(
+    (chunk) => chunk.id === provenance.chunkId
+  );
+}
+
+export function findNeedsYou(id: string): NeedsYouItem | undefined {
+  return NEEDS_YOU.find((item) => item.id === id);
+}
+
+export function findAudit(id: string): AuditEntry | undefined {
+  return AUDIT.find((entry) => entry.id === id);
 }
 
 /** The day the prototype renders. The brief's sketch reads "Tuesday 25 Aug". */
@@ -71,6 +90,20 @@ export const SOURCES: Source[] = [
       {
         id: "c1",
         text: "Please note that Nigel Barros left Transport for NSW in June. Data quality now reports to Amara Okonkwo.",
+      },
+    ],
+  },
+  {
+    id: "src-tfnsw-invoice",
+    kind: "mail",
+    title: "Invoice 2026-114: which cost centre?",
+    date: "2026-08-24",
+    space: "collibra",
+    author: "accounts.payable@transport.nsw.gov.au",
+    chunks: [
+      {
+        id: "c1",
+        text: "Invoice 2026-114 has been received but carries no cost centre. Please confirm which centre it should be booked against so we can process payment this cycle.",
       },
     ],
   },
@@ -287,6 +320,7 @@ export const NEEDS_YOU: NeedsYouItem[] = [
     space: "collibra",
     entity: "BHP Meridian",
     raisedAt: "2026-08-25T07:42:00+10:00",
+    provenance: { sourceId: "src-meridian-retention", chunkId: "c1" },
   },
   {
     id: "need-maybank-sow",
@@ -297,6 +331,7 @@ export const NEEDS_YOU: NeedsYouItem[] = [
     space: "koinon",
     entity: "Maybank",
     raisedAt: "2026-08-25T07:42:00+10:00",
+    provenance: { sourceId: "src-maybank-sow", chunkId: "c2" },
   },
   {
     id: "need-tfnsw-draft",
@@ -308,6 +343,7 @@ export const NEEDS_YOU: NeedsYouItem[] = [
     entity: "Transport for NSW",
     raisedAt: "2026-08-25T06:15:00+10:00",
     gmailUrl: "https://mail.google.com/mail/u/0/#drafts",
+    provenance: { sourceId: "src-tfnsw-invoice", chunkId: "c1" },
   },
   {
     id: "need-tax-receipts",
@@ -318,6 +354,7 @@ export const NEEDS_YOU: NeedsYouItem[] = [
     space: "personal",
     entity: "Brighton Partners",
     raisedAt: "2026-08-25T07:42:00+10:00",
+    provenance: { sourceId: "src-tax-receipts", chunkId: "c1" },
   },
   {
     id: "need-denied-calendar",
@@ -329,6 +366,7 @@ export const NEEDS_YOU: NeedsYouItem[] = [
     entity: "Sydney Water",
     raisedAt: "2026-08-25T05:03:00+10:00",
     rule: "calendar.hold.max-minutes = 60",
+    auditId: "audit-hold-sydney-water",
   },
 ];
 

@@ -38,9 +38,13 @@ import { navMain, type NavChild, type NavItem } from "./data"
 import { ChevronRightIcon } from "lucide-react"
 
 function NavSubItem({ child }: { child: NavChild }) {
+  const pathname = usePathname()
   return (
     <SidebarMenuSubItem>
-      <SidebarMenuSubButton render={<Link href={child.href} />}>
+      <SidebarMenuSubButton
+        render={<Link href={child.href} />}
+        isActive={pathname === child.href}
+      >
         <span>{child.label}</span>
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
@@ -192,7 +196,9 @@ export function NavMain() {
       <SidebarGroupContent>
         <SidebarMenu className="gap-1!">
           {items.map((item) => {
-            const isActive = item.href ? pathname === item.href : false
+            const isActive = item.href
+              ? pathname === item.href
+              : (item.children ?? []).some((c) => c.href === pathname)
             const withActive = { ...item, isActive }
             return item.children ? (
               <CollapsibleNavItem

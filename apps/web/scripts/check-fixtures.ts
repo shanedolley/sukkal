@@ -40,6 +40,27 @@ for (const fact of FACTS) {
   );
 }
 
+// 2b. Every Needs you row resolves the source or the audit entry it names.
+//     A row whose panel opens blank is worse than a row with no panel.
+for (const item of NEEDS_YOU) {
+  if (item.provenance) {
+    assert.ok(
+      chunkExists(item.provenance.sourceId, item.provenance.chunkId),
+      `needs-you ${item.id} points at ${item.provenance.sourceId}#${item.provenance.chunkId}, which does not exist`
+    );
+  }
+  if (item.auditId) {
+    assert.ok(
+      AUDIT.some((entry) => entry.id === item.auditId),
+      `needs-you ${item.id} points at audit entry ${item.auditId}, which does not exist`
+    );
+  }
+  assert.ok(
+    item.provenance || item.auditId,
+    `needs-you ${item.id} names neither a source nor an audit entry, so its panel has nothing to show`
+  );
+}
+
 // 3. Every fact state appears, so every badge variant has a row behind it.
 //    This list must match FactState exactly. It said five when the type had
 //    six, so the rejected badge and the rejection-reason line went untested.

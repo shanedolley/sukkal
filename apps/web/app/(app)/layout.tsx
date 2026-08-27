@@ -3,12 +3,15 @@
 import { usePathname } from "next/navigation";
 
 import { AppShell } from "@/components/blocks/app-shell-1/components/app-shell";
-import { SourceDrawerProvider } from "@/components/source-drawer";
+import { DetailPanelProvider } from "@/components/detail-panel";
 import { ReviewProvider } from "@/lib/review-context";
 import { SpaceProvider } from "@/lib/space-context";
 
 const CRUMBS: Record<string, string[]> = {
   "/dashboard": ["Assistant", "Briefing"],
+  "/review/proposed": ["Assistant", "Review queue", "Proposed facts"],
+  "/review/stale": ["Assistant", "Review queue", "Stale facts"],
+  "/meetings": ["Assistant", "Review queue", "Meetings today"],
   "/chat": ["Assistant", "Chat"],
   "/audit": ["Assistant", "Audit log"],
 };
@@ -18,11 +21,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SpaceProvider>
       <ReviewProvider>
-        <SourceDrawerProvider>
+        <DetailPanelProvider>
           <AppShell crumb={CRUMBS[pathname] ?? ["Assistant"]}>
             {children}
           </AppShell>
-        </SourceDrawerProvider>
+        </DetailPanelProvider>
       </ReviewProvider>
     </SpaceProvider>
   );

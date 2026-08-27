@@ -75,6 +75,14 @@ export interface NeedsYouItem {
   gmailUrl?: string;
   /** Named on a denied-action row: the policy rule that stopped it. */
   rule?: string;
+  /**
+   * Where the item came from. Every row that an ingested source raised has
+   * one, so the panel can say whether it was a meeting or a mail, on what
+   * date, and from whom. Without it a row is an assertion with no address.
+   */
+  provenance?: Provenance;
+  /** A row the policy engine raised points at its audit entry instead. */
+  auditId?: string;
 }
 
 export interface Meeting {
