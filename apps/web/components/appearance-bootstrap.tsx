@@ -4,37 +4,35 @@
 // colour once the provider mounts, and every load flashes. The same problem
 // next-themes solves the same way.
 //
+// It applies tokens rather than resolving them. The provider writes the fully
+// resolved light and dark sets to one key whenever the selection changes, so
+// this script needs no preset table and no colour conversion. That matters: a
+// custom colour is computed in TypeScript, and a copy of that maths inlined
+// here would be a second implementation to keep in step.
+//
 // It goes through next/script with beforeInteractive rather than a bare
-// <script> element. React does not execute a script tag rendered by a
-// component and warns about it; this is the supported way to run something
-// ahead of hydration.
+// <script>. React does not execute a script tag rendered by a component and
+// warns about it; this is the supported way to run something before
+// hydration.
 //
 // This is the one place the codebase sets HTML directly. The string is
-// authored here and the only data in it is JSON.stringify of the presets in
-// lib/appearance.ts, which are constants in this repository. Nothing a user
-// or an ingested source can reach it, so there is no injection surface: the
-// script reads localStorage itself rather than having a value interpolated.
+// authored here and nothing is interpolated into it but a constant key name.
+// The script reads localStorage itself, so no value from a user or an
+// ingested source can reach it.
 
 import Script from "next/script";
 
-import { ACCENTS, ACCENT_KEY, CHARTS_KEY, CHART_PALETTES } from "@/lib/appearance";
-
-const PRESETS = JSON.stringify([...ACCENTS, ...CHART_PALETTES]);
+import { RESOLVED_KEY } from "@/lib/appearance";
 
 const SCRIPT = `(function(){try{
-var root=document.documentElement;
-var accent=localStorage.getItem(${JSON.stringify(ACCENT_KEY)});
-var charts=localStorage.getItem(${JSON.stringify(CHARTS_KEY)});
+var saved=localStorage.getItem(${JSON.stringify(RESOLVED_KEY)});
+if(!saved)return;
 var theme=localStorage.getItem('theme')||'system';
 var dark=theme==='dark'||(theme==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
-var presets=${PRESETS};
-[accent,charts].forEach(function(id){
-  if(!id)return;
-  var preset=presets.filter(function(p){return p.id===id})[0];
-  var tokens=preset&&(dark?preset.dark:preset.light);
-  if(!tokens)return;
-  Object.keys(tokens).forEach(function(key){root.style.setProperty(key,tokens[key])});
-});
+var tokens=JSON.parse(saved)[dark?'dark':'light'];
+if(!tokens)return;
+var root=document.documentElement;
+Object.keys(tokens).forEach(function(key){root.style.setProperty(key,tokens[key])});
 }catch(e){}})();`;
 
 export function AppearanceBootstrap() {

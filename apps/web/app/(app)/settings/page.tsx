@@ -12,7 +12,12 @@ import { useAppearance } from "@/components/appearance-provider";
 import { ChartPreview } from "@/components/settings/chart-preview";
 import { ColourPicker } from "@/components/settings/colour-picker";
 import { SHORTCUTS } from "@/components/shortcuts";
-import { ACCENTS, CHART_PALETTES } from "@/lib/appearance";
+import {
+  ACCENTS,
+  CHART_PALETTES,
+  customAccent,
+  customChart,
+} from "@/lib/appearance";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
@@ -57,7 +62,16 @@ function Section({
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { space, setSpace } = useSpace();
-  const { accent, charts, setAccent, setCharts } = useAppearance();
+  const {
+    accent,
+    charts,
+    accentHex,
+    chartsHex,
+    setAccent,
+    setCharts,
+    setAccentHex,
+    setChartsHex,
+  } = useAppearance();
   const modifier = useModifierKey();
   // Nothing reads as selected until the browser is in charge of the answer.
   const ready = useIsClient();
@@ -94,13 +108,18 @@ export default function SettingsPage() {
 
       <Section
         title="Menu colour"
-        description="The accent on the navigation, the buttons and anything selected."
+        description="The accent on the navigation, the buttons and anything selected. A colour of your own keeps its hue and takes the theme's lightness, so text on it stays readable."
       >
         <ColourPicker
           label="Menu colour"
           presets={ACCENTS}
           value={ready ? accent : ""}
           onChange={setAccent}
+          custom={{
+            hex: accentHex,
+            swatch: customAccent(accentHex).swatch,
+            onPick: setAccentHex,
+          }}
         />
       </Section>
 
@@ -114,6 +133,11 @@ export default function SettingsPage() {
             presets={CHART_PALETTES}
             value={ready ? charts : ""}
             onChange={setCharts}
+            custom={{
+              hex: chartsHex,
+              swatch: customChart(chartsHex).swatch,
+              onPick: setChartsHex,
+            }}
           />
           <ChartPreview />
         </div>

@@ -13,25 +13,44 @@ import { useTheme } from "next-themes";
 
 import {
   ACCENTS,
+  ACCENT_HEX_KEY,
   ACCENT_KEY,
+  CHARTS_HEX_KEY,
   CHARTS_KEY,
   CHART_PALETTES,
+  RESOLVED_KEY,
   applyAppearance,
+  resolveAppearance,
 } from "@/lib/appearance";
 import { createLocalStore } from "@/lib/local-store";
 
-const accentStore = createLocalStore<string>(ACCENT_KEY, "green", (id) =>
-  ACCENTS.some((preset) => preset.id === id)
+const isPreset = (presets: { id: string }[]) => (id: string) =>
+  id === "custom" || presets.some((preset) => preset.id === id);
+
+/** Six hex digits with a leading hash, which is what a colour input gives. */
+const isHex = (value: string) => /^#[0-9a-f]{6}$/i.test(value);
+
+const DEFAULT_HEX = "#0d6b45";
+
+const accentStore = createLocalStore<string>(ACCENT_KEY, "green", isPreset(ACCENTS));
+const chartsStore = createLocalStore<string>(
+  CHARTS_KEY,
+  "greens",
+  isPreset(CHART_PALETTES)
 );
-const chartsStore = createLocalStore<string>(CHARTS_KEY, "greens", (id) =>
-  CHART_PALETTES.some((preset) => preset.id === id)
-);
+const accentHexStore = createLocalStore<string>(ACCENT_HEX_KEY, DEFAULT_HEX, isHex);
+const chartsHexStore = createLocalStore<string>(CHARTS_HEX_KEY, DEFAULT_HEX, isHex);
 
 interface AppearanceValue {
   accent: string;
   charts: string;
+  accentHex: string;
+  chartsHex: string;
   setAccent: (id: string) => void;
   setCharts: (id: string) => void;
+  /** Choosing a colour also selects the custom option. */
+  setAccentHex: (hex: string) => void;
+  setChartsHex: (hex: string) => void;
 }
 
 const AppearanceContext = createContext<AppearanceValue | null>(null);
@@ -51,25 +70,56 @@ export function AppearanceProvider({
 }) {
   const accent = accentStore.useValue();
   const charts = chartsStore.useValue();
+  const accentHex = accentHexStore.useValue();
+  const chartsHex = chartsHexStore.useValue();
   const { resolvedTheme } = useTheme();
+
+  const selection = useMemo(
+    () => ({ accentId: accent, chartsId: charts, accentHex, chartsHex }),
+    [accent, charts, accentHex, chartsHex]
+  );
 
   useEffect(() => {
     applyAppearance(
       document.documentElement,
-      accent,
-      charts,
+      selection,
       resolvedTheme === "dark"
     );
-  }, [accent, charts, resolvedTheme]);
+  }, [selection, resolvedTheme]);
+
+  // Written for the bootstrap script, which applies it on the next load
+  // before React runs. Kept here so the colour maths lives in one place.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        RESOLVED_KEY,
+        JSON.stringify(resolveAppearance(selection))
+      );
+    } catch {
+      // A private window. The colours still hold for this session.
+    }
+  }, [selection]);
 
   const value = useMemo(
     () => ({
       accent,
       charts,
+      accentHex,
+      chartsHex,
       setAccent: accentStore.set,
       setCharts: chartsStore.set,
+      // Picking a colour is the same act as choosing to use one, so it does
+      // both rather than making you press the swatch and then a Custom button.
+      setAccentHex: (hex: string) => {
+        accentHexStore.set(hex);
+        accentStore.set("custom");
+      },
+      setChartsHex: (hex: string) => {
+        chartsHexStore.set(hex);
+        chartsStore.set("custom");
+      },
     }),
-    [accent, charts]
+    [accent, charts, accentHex, chartsHex]
   );
 
   return <AppearanceContext value={value}>{children}</AppearanceContext>;

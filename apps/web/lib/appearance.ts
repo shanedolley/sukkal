@@ -13,6 +13,36 @@
 
 export type Tokens = Record<string, string>;
 
+// ── sRGB hex to OKLCh ────────────────────────────────────────────────────
+//
+// Thirty lines rather than a colour library, because this is the only
+// conversion the app needs and the matrices are fixed. The hue is what we
+// keep: see the note on `accent` below for why the lightness is not.
+
+const srgbToLinear = (channel: number) =>
+  channel <= 0.04045
+    ? channel / 12.92
+    : Math.pow((channel + 0.055) / 1.055, 2.4);
+
+export function hexToOklch(hex: string): { l: number; c: number; h: number } {
+  const value = Number.parseInt(hex.replace("#", ""), 16);
+  const r = srgbToLinear(((value >> 16) & 255) / 255);
+  const g = srgbToLinear(((value >> 8) & 255) / 255);
+  const b = srgbToLinear((value & 255) / 255);
+
+  const lp = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const mp = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const sp = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+
+  const l = 0.2104542553 * lp + 0.793617785 * mp - 0.0040720468 * sp;
+  const a = 1.9779984951 * lp - 2.428592205 * mp + 0.4505937099 * sp;
+  const bb = 0.0259040371 * lp + 0.7827717662 * mp - 0.808675766 * sp;
+
+  const c = Math.hypot(a, bb);
+  const h = (Math.atan2(bb, a) * 180) / Math.PI;
+  return { l, c, h: h < 0 ? h + 360 : h };
+}
+
 export interface Preset {
   id: string;
   label: string;
@@ -119,8 +149,51 @@ export const CHART_PALETTES: Preset[] = [
   },
 ];
 
+/**
+ * A colour of your own.
+ *
+ * The hue and the chroma come from what you picked. The lightness does not:
+ * it stays at the two values the theme already uses, so white text on the
+ * accent keeps its contrast whatever you choose. A picker that let you make
+ * the buttons unreadable would be a worse tool, not a freer one, so the
+ * swatch shows the colour that will actually be used.
+ */
+export function customAccent(hex: string): Preset {
+  const { c, h } = hexToOklch(hex);
+  // Past about 0.2 the colour leaves the sRGB gamut at these lightnesses and
+  // the browser clips it, which looks like the picker ignoring you.
+  const chroma = Math.min(c, 0.19);
+  return {
+    id: "custom",
+    label: "Custom",
+    swatch: `oklch(0.527 ${chroma} ${h})`,
+    ...accent(h, chroma),
+  };
+}
+
+/** A ramp built from one chosen hue. */
+export function customChart(hex: string): Preset {
+  const { h } = hexToOklch(hex);
+  return {
+    id: "custom",
+    label: "Custom",
+    swatch: `oklch(0.627 0.194 ${h})`,
+    light: ramp(h),
+    dark: ramp(h),
+  };
+}
+
 export const ACCENT_KEY = "kpa.accent";
 export const CHARTS_KEY = "kpa.charts";
+/**
+ * The resolved tokens for the current selection, written by the provider and
+ * read by the bootstrap script. One key so the script needs no preset table
+ * and no colour maths of its own.
+ */
+export const RESOLVED_KEY = "kpa.appearance";
+
+export const ACCENT_HEX_KEY = "kpa.accent.hex";
+export const CHARTS_HEX_KEY = "kpa.charts.hex";
 
 /** Every property any preset can set, so a change clears the last one. */
 const ALL_KEYS = [
@@ -133,24 +206,47 @@ const ALL_KEYS = [
   "--chart-5",
 ];
 
-export function applyAppearance(
-  root: HTMLElement,
-  accentId: string,
-  chartsId: string,
-  isDark: boolean
-) {
-  for (const key of ALL_KEYS) root.style.removeProperty(key);
+export interface Selection {
+  accentId: string;
+  chartsId: string;
+  accentHex: string;
+  chartsHex: string;
+}
 
+/** Everything a selection sets, in both themes. */
+export function resolveAppearance(selection: Selection): {
+  light: Tokens;
+  dark: Tokens;
+} {
   const chosen = [
-    ACCENTS.find((p) => p.id === accentId),
-    CHART_PALETTES.find((p) => p.id === chartsId),
+    selection.accentId === "custom"
+      ? customAccent(selection.accentHex)
+      : ACCENTS.find((p) => p.id === selection.accentId),
+    selection.chartsId === "custom"
+      ? customChart(selection.chartsHex)
+      : CHART_PALETTES.find((p) => p.id === selection.chartsId),
   ];
 
+  const light: Tokens = {};
+  const dark: Tokens = {};
   for (const preset of chosen) {
-    const tokens = isDark ? preset?.dark : preset?.light;
-    if (!tokens) continue;
-    for (const [key, value] of Object.entries(tokens)) {
-      root.style.setProperty(key, value);
-    }
+    Object.assign(light, preset?.light ?? {});
+    Object.assign(dark, preset?.dark ?? {});
+  }
+  return { light, dark };
+}
+
+export function applyAppearance(
+  root: HTMLElement,
+  selection: Selection,
+  isDark: boolean
+) {
+  // Cleared first, so switching away from a preset drops what it set rather
+  // than leaving half of the last one behind.
+  for (const key of ALL_KEYS) root.style.removeProperty(key);
+
+  const resolved = resolveAppearance(selection);
+  for (const [key, value] of Object.entries(isDark ? resolved.dark : resolved.light)) {
+    root.style.setProperty(key, value);
   }
 }
