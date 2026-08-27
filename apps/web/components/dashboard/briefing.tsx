@@ -43,7 +43,7 @@ export function Briefing() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="bg-background sticky top-12 z-10 -mx-4 flex flex-wrap items-end justify-between gap-3 border-b px-4 py-4 md:-mx-6 md:px-6">
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold tracking-tight">
             {formatLongDay(TODAY)}
