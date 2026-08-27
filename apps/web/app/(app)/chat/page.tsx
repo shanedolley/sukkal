@@ -24,11 +24,22 @@ import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import { Textarea } from "@/components/ui/textarea";
 import { CHAT_ANSWERS } from "@/lib/fixtures";
 import { useForcedStatus } from "@/lib/forced-state";
+import { useSearchParams } from "next/navigation";
 import { PageError, PageLoading } from "@/components/page-status";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SPACE_LABELS, type ChatAnswer } from "@/lib/types";
 
 const SUGGESTIONS = CHAT_ANSWERS.map((a) => a.question);
+
+// The prototype answers from fixtures. An unmatched question returns the
+// nearest one, which is enough to review the layout.
+function answerFor(question: string, index: number): ChatAnswer {
+  const match =
+    CHAT_ANSWERS.find(
+      (a) => a.question.toLowerCase() === question.toLowerCase()
+    ) ?? CHAT_ANSWERS[index % CHAT_ANSWERS.length];
+  return { ...match, question };
+}
 
 function CrossingFlag({ answer }: { answer: ChatAnswer }) {
   const names = answer.spaces.map((s) => SPACE_LABELS[s]).join(" and ");
@@ -103,19 +114,19 @@ function Answer({ answer }: { answer: ChatAnswer }) {
 
 function Chat() {
   const status = useForcedStatus();
-  const [asked, setAsked] = useState<ChatAnswer[]>([]);
+  const handed = useSearchParams().get("q")?.trim();
+
+  // Seeded rather than answered in an effect: the search palette hands the
+  // question over in the URL, so the first render already knows it.
+  const [asked, setAsked] = useState<ChatAnswer[]>(() =>
+    handed ? [answerFor(handed, 0)] : []
+  );
   const [question, setQuestion] = useState("");
 
-  // The prototype answers from fixtures. An unmatched question returns the
-  // nearest fixture, which is enough to review the layout.
   function ask(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
-    const match =
-      CHAT_ANSWERS.find(
-        (a) => a.question.toLowerCase() === trimmed.toLowerCase()
-      ) ?? CHAT_ANSWERS[asked.length % CHAT_ANSWERS.length];
-    setAsked((current) => [...current, { ...match, question: trimmed }]);
+    setAsked((current) => [...current, answerFor(trimmed, current.length)]);
     setQuestion("");
   }
 

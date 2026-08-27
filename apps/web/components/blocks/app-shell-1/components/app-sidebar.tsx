@@ -9,6 +9,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
+import { SearchTrigger } from "@/components/search/search-trigger"
+
 import { NavMain } from "./nav-main"
 import { NavResources } from "./nav-resources"
 import { NavSecondary } from "./nav-secondary"
@@ -80,6 +82,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        <SearchTrigger />
         <Suspense fallback={null}>
           <NavMain />
         </Suspense>

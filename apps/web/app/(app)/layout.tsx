@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 
 import { AppShell } from "@/components/blocks/app-shell-1/components/app-shell";
 import { DetailPanelProvider } from "@/components/detail-panel";
+import { SearchProvider } from "@/components/search/search-provider";
+import { Shortcuts } from "@/components/shortcuts";
 import { ReviewProvider } from "@/lib/review-context";
 import { SpaceProvider } from "@/lib/space-context";
 
@@ -14,6 +16,7 @@ const CRUMBS: Record<string, string[]> = {
   "/meetings": ["Assistant", "Review queue", "Meetings today"],
   "/chat": ["Assistant", "Chat"],
   "/audit": ["Assistant", "Audit log"],
+  "/settings": ["Assistant", "Preferences"],
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,9 +25,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SpaceProvider>
       <ReviewProvider>
         <DetailPanelProvider>
-          <AppShell crumb={CRUMBS[pathname] ?? ["Assistant"]}>
-            {children}
-          </AppShell>
+          <SearchProvider>
+            <Shortcuts />
+            <AppShell crumb={CRUMBS[pathname] ?? ["Assistant"]}>
+              {children}
+            </AppShell>
+          </SearchProvider>
         </DetailPanelProvider>
       </ReviewProvider>
     </SpaceProvider>

@@ -8,6 +8,7 @@ import {
   ScrollTextIcon,
   ShieldCheckIcon,
   BookOpenIcon,
+  ScaleIcon,
   SettingsIcon,
   ExternalLinkIcon,
   CopyIcon,
@@ -172,16 +173,26 @@ export const PINNED_RESOURCES: PinnedResource[] = [
 
 // ── Nav Secondary ──
 
+// A cog means preferences and nothing else. The policy is the set of rules
+// the assistant is judged against, which is a different idea and deserves a
+// different mark. An item with no href is not built yet, and says so rather
+// than pretending to be a link.
 export const NAV_SECONDARY: SecondaryItem[] = [
   {
     id: "policy",
     label: "Policy",
-    icon: <SettingsIcon aria-hidden="true" />,
+    icon: <ScaleIcon aria-hidden="true" />,
   },
   {
     id: "brief",
     label: "Project brief",
     icon: <BookOpenIcon aria-hidden="true" />,
+  },
+  {
+    id: "settings",
+    label: "Preferences",
+    href: "/settings",
+    icon: <SettingsIcon aria-hidden="true" />,
   },
 ]
 
