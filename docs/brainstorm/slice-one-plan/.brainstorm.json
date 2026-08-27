@@ -491,13 +491,13 @@
       "id": "17",
       "jiraKey": "KPA-17",
       "title": "Run the checks on every push, and record the repository's conventions",
-      "status": "blocked",
+      "status": "complete",
       "estimate": 3,
       "classifiedAgent": "kothar:developer",
       "classifierConfidence": "high",
       "implementedBy": "kothar:brainstorm-execute",
       "reviewIterations": 1,
-      "verified": false,
+      "verified": true,
       "docImpact": [
         {
           "category": "user-guide",
@@ -528,10 +528,31 @@
             "test/migrate.test.ts",
             "src/db/connect.ts"
           ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "CI runs the lint, the build and the tests on every push, against pgvector/pgvector:0.8.6-pg18, the versions amaterasu runs. Green on the trunk: run 32991921233 on 3121cb7. It needs no model credential and no database outside the runner.",
+          "files": [
+            ".github/workflows/ci.yml"
+          ]
+        },
+        {
+          "category": "user-guide",
+          "note": "CLAUDE.md's conventions section is filled in: the commands, the two databases, the layout, the date rule and the prompt-file rule. Lines 1 to 38 are untouched, so the push-straight-to-main decision survives.",
+          "files": [
+            "CLAUDE.md"
+          ]
+        },
+        {
+          "category": "technical-knowledge",
+          "note": "A branch push stands in for the pull request the story names. This project's CLAUDE.md forbids pull requests, so the two cannot both be honoured. The branch fires the same on: push trigger and proves the same thing: run 33030393608 is red with 'this test fails on purpose' as the only failure, 58 passing. The team lead decided this; the story predates that CLAUDE.md section.",
+          "files": [
+            ".github/workflows/ci.yml",
+            "CLAUDE.md"
+          ]
         }
       ],
-      "completedAt": null,
-      "blockedBy": "GitHub Actions outage from 2026-08-26T15:11Z. Two queued runs got through at 16:23 and 16:24 UTC and then it went quiet again; four later pushes produced no run. Those two proved the workflow is sound and that a failing test turns the check red (not ok 2 - this test fails on purpose). Still missing: a green run, because both runs predate commit 11c4d79. When Actions recovers, push an empty commit to main for green, then merge main into ci-proof-failing-test and push for a clean red."
+      "completedAt": "2026-08-27T01:40:00Z"
     },
     {
       "id": "18",
