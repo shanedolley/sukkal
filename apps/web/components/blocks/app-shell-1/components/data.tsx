@@ -16,7 +16,7 @@ import {
   EyeOffIcon,
 } from "lucide-react"
 
-import { AUDIT, MEETINGS, NEEDS_YOU } from "@/lib/fixtures"
+import { AUDIT, CONVERSATIONS, MEETINGS, NEEDS_YOU } from "@/lib/fixtures"
 import { inSpace, type SpaceFilter } from "@/lib/space-context"
 import type { Fact } from "@/lib/types"
 
@@ -149,8 +149,15 @@ export function navMain(
     {
       id: "chat",
       label: "Chat",
-      href: "/chat",
       icon: <MessagesSquareIcon aria-hidden="true" />,
+      children: [
+        { id: "chat-new", label: "New chat", href: "/chat" },
+        {
+          id: "chat-history",
+          label: `History (${CONVERSATIONS.length})`,
+          href: "/chat/history",
+        },
+      ],
     },
     {
       id: "audit",

@@ -5,6 +5,7 @@
 import type {
   AuditEntry,
   ChatAnswer,
+  Conversation,
   Fact,
   Meeting,
   NeedsYouItem,
@@ -442,6 +443,49 @@ export const CHAT_ANSWERS: ChatAnswer[] = [
     askedAt: "2026-08-25T08:22:00+10:00",
   },
 ];
+
+// Past chats, so History has something to show and the meter has a
+// conversation near its limit to warn about.
+export const CONVERSATIONS: Conversation[] = [
+  {
+    id: "conv-retention",
+    title: "BHP lineage retention",
+    startedAt: "2026-08-25T08:10:00+10:00",
+    lastAt: "2026-08-25T08:12:00+10:00",
+    answers: [CHAT_ANSWERS[0]],
+  },
+  {
+    id: "conv-rates",
+    title: "Day rates across both companies",
+    startedAt: "2026-08-25T08:22:00+10:00",
+    lastAt: "2026-08-25T08:24:00+10:00",
+    answers: [CHAT_ANSWERS[1]],
+  },
+  {
+    id: "conv-meridian-history",
+    title: "Everything Meridian agreed this year",
+    startedAt: "2026-08-21T14:02:00+10:00",
+    lastAt: "2026-08-21T15:47:00+10:00",
+    answers: [CHAT_ANSWERS[0]],
+    // Forty turns over eleven transcripts. The record keeps the last one and
+    // counts the rest, which is what the model is still carrying.
+    carriedTokens: 156_000,
+  },
+  {
+    id: "conv-tfnsw-audit",
+    title: "Transport for NSW: the whole data quality history",
+    startedAt: "2026-08-18T09:14:00+10:00",
+    lastAt: "2026-08-18T12:31:00+10:00",
+    answers: [CHAT_ANSWERS[0]],
+    // Near the ceiling. The meter says to start again rather than to ask a
+    // shorter question, because a shorter question does not help here.
+    carriedTokens: 186_000,
+  },
+];
+
+export function findConversation(id: string): Conversation | undefined {
+  return CONVERSATIONS.find((conversation) => conversation.id === id);
+}
 
 export const AUDIT: AuditEntry[] = [
   {

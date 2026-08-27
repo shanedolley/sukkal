@@ -112,6 +112,23 @@ export interface ChatAnswer {
   askedAt: string;
 }
 
+/** One chat, kept so it can be reopened. */
+export interface Conversation {
+  id: string;
+  title: string;
+  /** ISO datetime of the first question. */
+  startedAt: string;
+  /** ISO datetime of the last answer. */
+  lastAt: string;
+  answers: ChatAnswer[];
+  /**
+   * Tokens from turns this record does not store verbatim. A long
+   * conversation keeps its whole transcript in the prompt, so the meter has
+   * to count what came before, not only what is on screen.
+   */
+  carriedTokens?: number;
+}
+
 export type AuditOutcome = "allowed" | "denied";
 
 /** The brief requires four fields on every entry, plus the rule on a denial. */

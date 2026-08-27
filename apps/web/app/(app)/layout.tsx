@@ -14,10 +14,18 @@ const CRUMBS: Record<string, string[]> = {
   "/review/proposed": ["Assistant", "Review queue", "Proposed facts"],
   "/review/stale": ["Assistant", "Review queue", "Stale facts"],
   "/meetings": ["Assistant", "Review queue", "Meetings today"],
-  "/chat": ["Assistant", "Chat"],
+  "/chat": ["Assistant", "Chat", "New chat"],
+  "/chat/history": ["Assistant", "Chat", "History"],
   "/audit": ["Assistant", "Audit log"],
   "/settings": ["Assistant", "Preferences"],
 };
+
+function crumbFor(pathname: string): string[] {
+  if (CRUMBS[pathname]) return CRUMBS[pathname];
+  // A saved chat carries an id the map cannot list.
+  if (pathname.startsWith("/chat/")) return ["Assistant", "Chat", "Conversation"];
+  return ["Assistant"];
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -27,7 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <DetailPanelProvider>
           <SearchProvider>
             <Shortcuts />
-            <AppShell crumb={CRUMBS[pathname] ?? ["Assistant"]}>
+            <AppShell crumb={crumbFor(pathname)}>
               {children}
             </AppShell>
           </SearchProvider>
