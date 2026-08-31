@@ -293,6 +293,9 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Microsoft Graph | Not pursued | Customer-tenant consent is unobtainable. Nabium's desktop capture covers the same material. |
 | Application shape | Next.js for the web tier, a separate worker process for everything long-running | Agent runs and ingestion must never sit in a request handler. The split is load bearing. |
 | Job queue | pg-boss, backed by the same Postgres | No Redis, so no second store and no extra RAM on a box where RAM is the constraint. |
+| Issue text | The tracker owns it, KPA caches and adapts at the boundary | Jira's ADF is a ProseMirror schema, so the round trip costs a node rename and a second copy earns nothing. Boards Shane shares with colleagues have other writers, and two masters over one rich-text blob do not merge. ADR-0007. |
+| Issue editor | TipTap, whose document model is ProseMirror | Every adapter starts one rename from ADF. Slate and Lexical would need a parser instead. ADR-0007. |
+| Tracker freshness | Poll on a pg-boss schedule, push to the browser over SSE | Jira refuses webhook registration to an API token, and the admin route needs a permission Shane lacks on the Collibra site. Polling also keeps Cloudflare Access closed, where a webhook would need a bypass on a public path. ADR-0008. |
 | First slice | Migrate the memory | Proves the model before any volume reaches it. |
 | Jira stories | Spec carrying | Each story states its acceptance criteria, the files it touches, its test, and a definition of done an agent can verify alone. |
 | Repository | Git from the first commit, private on GitHub | Matches nabium and the memory vault. The design carries history from line one. |
@@ -358,7 +361,7 @@ flowchart TB
     cfd["cloudflared"]
     web["kpa-web<br/>Next.js :3000"]
     worker["kpa-worker<br/>ingest · agents · schedules<br/>pg-boss"]
-    pg[("KPA Postgres + pgvector<br/>sources · facts · edges · audit")]
+    pg[("KPA Postgres + pgvector<br/>sources · facts · edges · audit · issue cache")]
     cfd --> web
     web --> pg
     worker --> pg
@@ -368,7 +371,7 @@ flowchart TB
     goog["Google Workspace ×3<br/>Gmail · Calendar · Drive"]
     voy["Voyage AI<br/>embeddings"]
     llm["Claude CLI (subscription)<br/>OpenRouter (metered)"]
-    jira["Jira KPA"]
+    jira["Jira ×2<br/>koinon · engineering-collibra"]
   end
 
   cf["Cloudflare Access"]
@@ -379,7 +382,8 @@ flowchart TB
   worker <--> goog
   worker --> voy
   worker --> llm
-  worker --> jira
+  worker -- "poll · write" --> jira
+  web -- "SSE" --> shane
   web --> llm
   web --> voy
 ```
