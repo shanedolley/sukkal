@@ -10,9 +10,11 @@ import {
   AUDIT,
   CHAT_ANSWERS,
   FACTS,
+  ISSUES,
   MEETINGS,
   NEEDS_YOU,
   SOURCES,
+  SPRINTS,
 } from "../lib/fixtures.ts";
 import type { FactState, Space } from "../lib/types.ts";
 
@@ -99,6 +101,7 @@ const COLLECTIONS: Record<string, { space: Space }[]> = {
   NEEDS_YOU,
   MEETINGS,
   AUDIT,
+  ISSUES,
 };
 for (const [name, rows] of Object.entries(COLLECTIONS)) {
   for (const space of SPACES) {
@@ -143,6 +146,78 @@ assert.ok(
   "no chat answer crosses two spaces, so the crossing flag is untested"
 );
 
+// 8. Exactly one sprint is in flight. Two, and the current sprint view has to
+//    guess which one it means.
+assert.equal(
+  SPRINTS.filter((sprint) => sprint.state === "active").length,
+  1,
+  "the sprints do not name exactly one active sprint"
+);
+
+// 9. Every sprint state carries an issue, or that sprint view renders empty.
+for (const state of ["active", "future", "closed"] as const) {
+  const ids = SPRINTS.filter((s) => s.state === state).map((s) => s.id);
+  assert.ok(
+    ISSUES.some((issue) => issue.sprintId && ids.includes(issue.sprintId)),
+    `no issue sits in a ${state} sprint, so that sprint view renders empty`
+  );
+}
+
+// 10. Every issue resolves the sprint and the parent it names.
+for (const issue of ISSUES) {
+  if (issue.sprintId) {
+    assert.ok(
+      SPRINTS.some((sprint) => sprint.id === issue.sprintId),
+      `issue ${issue.key} sits in sprint ${issue.sprintId}, which does not exist`
+    );
+  }
+  if (issue.parent) {
+    assert.ok(
+      ISSUES.some((other) => other.key === issue.parent),
+      `issue ${issue.key} hangs under ${issue.parent}, which does not exist`
+    );
+  }
+}
+
+// 11. A dependency points at a row that exists, and no issue blocks itself.
+//     A dangling key renders a pill counting something nobody can open.
+for (const issue of ISSUES) {
+  for (const held of issue.blocks) {
+    assert.ok(
+      ISSUES.some((other) => other.key === held),
+      `issue ${issue.key} blocks ${held}, which does not exist`
+    );
+    assert.notEqual(held, issue.key, `issue ${issue.key} blocks itself`);
+  }
+  assert.equal(
+    new Set(issue.blocks).size,
+    issue.blocks.length,
+    `issue ${issue.key} names the same blocked issue twice`
+  );
+}
+
+// 12. Work starts before it is due. The two dates are set apart in the
+//     interface, so nothing else stops them crossing.
+for (const issue of ISSUES) {
+  if (issue.start && issue.due) {
+    assert.ok(
+      issue.start <= issue.due,
+      `issue ${issue.key} starts on ${issue.start} and is due on ${issue.due}`
+    );
+  }
+}
+
+// 13. The fixtures exercise both new fields. Empty ones pass every check
+//     above without proving anything.
+assert.ok(
+  ISSUES.some((issue) => issue.blocks.length > 0),
+  "no issue blocks another, so the dependency pill is untested"
+);
+assert.ok(
+  ISSUES.some((issue) => issue.start),
+  "no issue carries a start date, so that pill is untested"
+);
+
 console.log(
-  `fixtures OK: ${SOURCES.length} sources, ${FACTS.length} facts, ${NEEDS_YOU.length} needs-you, ${MEETINGS.length} meetings, ${CHAT_ANSWERS.length} answers, ${AUDIT.length} audit entries`
+  `fixtures OK: ${SOURCES.length} sources, ${FACTS.length} facts, ${NEEDS_YOU.length} needs-you, ${MEETINGS.length} meetings, ${CHAT_ANSWERS.length} answers, ${AUDIT.length} audit entries, ${ISSUES.length} issues in ${SPRINTS.length} sprints`
 );

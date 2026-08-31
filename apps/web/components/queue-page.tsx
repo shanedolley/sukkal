@@ -18,6 +18,7 @@ export function QueuePage({
   status,
   emptyTitle,
   emptyDescription,
+  action,
   children,
 }: {
   title: string;
@@ -26,6 +27,8 @@ export function QueuePage({
   status: PageStatus;
   emptyTitle: string;
   emptyDescription: string;
+  /** A control on the right of the title, such as the + that adds a row. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const empty = status === "empty" || (status === "ready" && count === 0);
@@ -47,6 +50,7 @@ export function QueuePage({
               {count}
             </Badge>
           )}
+          {action && <div className="ml-auto">{action}</div>}
         </div>
         <p className="text-muted-foreground max-w-2xl text-sm">{lede}</p>
       </header>

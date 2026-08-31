@@ -43,6 +43,15 @@ export function formatFullDay(iso: string): string {
   });
 }
 
+/** 19 Aug */
+export function formatShortDay(iso: string): string {
+  return new Date(iso).toLocaleDateString(LOCALE, {
+    timeZone: ZONE,
+    day: "numeric",
+    month: "short",
+  });
+}
+
 /** 10:00 am */
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(LOCALE, {

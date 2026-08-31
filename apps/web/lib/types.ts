@@ -129,6 +129,68 @@ export interface Conversation {
   carriedTokens?: number;
 }
 
+/** ── Jira ──
+ *
+ * The shapes the project management section reads. Jira is the source, so
+ * these mirror what its API returns rather than inventing a second model.
+ */
+
+/** Where an issue sits on the board. */
+export type IssueStatus =
+  | "backlog"
+  | "todo"
+  | "in-progress"
+  | "in-review"
+  | "done"
+  | "cancelled";
+
+export type IssuePriority = "none" | "low" | "medium" | "high" | "urgent";
+
+export type SprintState = "active" | "future" | "closed";
+
+export interface Sprint {
+  id: string;
+  name: string;
+  /** ISO date the sprint opens. */
+  start: string;
+  /** ISO date it closes. */
+  end: string;
+  state: SprintState;
+}
+
+export interface Issue {
+  /** The Jira key, such as MP-142. */
+  key: string;
+  title: string;
+  /** What the issue is, at length. Empty until somebody writes it. */
+  description: string;
+  status: IssueStatus;
+  priority: IssuePriority;
+  /** The project name the sidebar lists. */
+  project: string;
+  space: Space;
+  labels: string[];
+  assignee: string;
+  /** ISO date work is meant to start. Null when Jira holds no start date. */
+  start: string | null;
+  /** ISO date it is due. Null when Jira holds no due date. */
+  due: string | null;
+  /** ISO date it last moved. */
+  updated: string;
+  /** The sprint it sits in. Null while it sits in the backlog. */
+  sprintId: string | null;
+  /**
+   * The keys this issue blocks.
+   *
+   * One direction, stored once. "Blocked by" is read from the other end,
+   * because holding both sides invites them to disagree, and Jira's own link
+   * puts the truth at the inward end.
+   */
+  blocks: string[];
+  /** The key of the issue it hangs under, on a sub-task. */
+  parent?: string;
+}
+
 export type AuditOutcome = "allowed" | "denied";
 
 /** The brief requires four fields on every entry, plus the rule on a denial. */
@@ -164,4 +226,13 @@ export const FACT_STATE_LABELS: Record<FactState, string> = {
   stale: "Stale",
   retired: "Retired",
   rejected: "Rejected",
+};
+
+
+export const ISSUE_PRIORITY_LABELS: Record<IssuePriority, string> = {
+  none: "No priority",
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  urgent: "Urgent",
 };

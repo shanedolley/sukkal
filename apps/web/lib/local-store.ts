@@ -9,7 +9,8 @@
 // server snapshot is what keeps the server and the first client render in
 // agreement rather than producing a hydration mismatch.
 //
-// Two callers already: the space filter and the appearance presets.
+// Four callers already: the space filter, the appearance presets, and the two
+// grouping fields on the sprint list.
 
 import { useSyncExternalStore } from "react";
 

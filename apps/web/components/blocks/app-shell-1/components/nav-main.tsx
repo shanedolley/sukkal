@@ -126,11 +126,15 @@ function ExpandedNavItem({
         <ChevronRightIcon
           className={cn(
             "ml-auto size-4 shrink-0 opacity-60 transition-transform duration-200",
-            open && "rotate-90"
+            open && "rotate-90",
+            // The action sits on the right edge, so the chevron steps aside.
+            item.action && "mr-5"
           )}
           aria-hidden="true"
         />
       </SidebarMenuButton>
+
+      {item.action}
 
       {open && <NavSubMenu id={item.id} items={item.children} />}
     </SidebarMenuItem>
@@ -180,15 +184,19 @@ function LeafNavItem({ item }: { item: NavItem }) {
   )
 }
 
-export function NavMain() {
+/** One labelled group of nav items. Project management uses it too. */
+export function NavGroup({
+  label,
+  items,
+}: {
+  label: string
+  items: NavItem[]
+}) {
   const pathname = usePathname()
-  const { space } = useSpace()
-  const { facts } = useReview()
-  const items = navMain(space, facts)
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Assistant</SidebarGroupLabel>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu className="gap-1!">
           {items.map((item) => {
@@ -209,4 +217,10 @@ export function NavMain() {
       </SidebarGroupContent>
     </SidebarGroup>
   )
+}
+
+export function NavMain() {
+  const { space } = useSpace()
+  const { facts } = useReview()
+  return <NavGroup label="Assistant" items={navMain(space, facts)} />
 }

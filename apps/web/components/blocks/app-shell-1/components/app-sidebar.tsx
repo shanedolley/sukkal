@@ -10,6 +10,7 @@ import {
 import { SearchTrigger } from "@/components/search/search-trigger"
 
 import { NavMain } from "./nav-main"
+import { NavProjects } from "./nav-projects"
 import { NavResources } from "./nav-resources"
 import { NavSecondary } from "./nav-secondary"
 import { NavUser } from "./nav-user"
@@ -82,6 +83,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SearchTrigger />
         <NavMain />
+        <NavProjects />
         <NavResources />
         <div className="mt-auto">
           <NavSecondary />

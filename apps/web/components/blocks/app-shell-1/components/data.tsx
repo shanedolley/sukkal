@@ -10,6 +10,8 @@ import {
   BookOpenIcon,
   ScaleIcon,
   SettingsIcon,
+  RocketIcon,
+  FolderKanbanIcon,
   ExternalLinkIcon,
   CopyIcon,
   StarIcon,
@@ -36,6 +38,8 @@ export type NavItem = {
   badge?: string | number
   isActive?: boolean
   children?: NavChild[]
+  /** A control on the right of the row, such as the + on Projects. */
+  action?: ReactNode
 }
 
 export type PinnedResource = {
@@ -168,6 +172,35 @@ export function navMain(
     },
   ]
 }
+
+// ── Project management ──
+// Jira, one step removed. The routes exist before the data does, so the shape
+// of the section gets reviewed while the API work is still open.
+
+export const SPRINTS_NAV: NavItem = {
+  id: "sprints",
+  label: "Sprints",
+  icon: <RocketIcon aria-hidden="true" />,
+  // The future sprint has no entry of its own. The arrows on the current
+  // sprint page step to it, which is where a person already is when they
+  // wonder what comes next.
+  children: [
+    { id: "sprint-current", label: "Current sprint", href: "/sprints/current" },
+    { id: "sprint-all", label: "All sprints", href: "/sprints/all" },
+  ],
+}
+
+export const PROJECTS_ICON = <FolderKanbanIcon aria-hidden="true" />
+
+export const PROJECTS: NavChild[] = [
+  { id: "collibra", label: "Collibra", href: "/projects/collibra" },
+  {
+    id: "koinon-engineering",
+    label: "Koinon Engineering",
+    href: "/projects/koinon-engineering",
+  },
+  { id: "personal", label: "Personal", href: "/projects/personal" },
+]
 
 // ── Pinned engagements ──
 
