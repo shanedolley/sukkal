@@ -9,11 +9,12 @@
 import { createContext, useContext, useMemo } from "react";
 
 import { createLocalStore } from "./local-store";
-import type { Space } from "./types";
+import type { SpaceFilter } from "./space";
 import { spaceOf } from "./workspaces";
 
-/** "all" means no filter. The brief flags a crossing rather than blocking it. */
-export type SpaceFilter = Space | "all";
+// inSpace and crosses live in lib/space.ts so a check can import them without
+// JSX. They are re-exported here, so no caller has to know that.
+export { crosses, inSpace, type SpaceFilter } from "./space";
 
 const VALID: string[] = ["all", "collibra", "koinon", "personal"];
 
@@ -55,12 +56,4 @@ export function issuesInSpace<T extends { workspace: string }>(
   return filter === "all"
     ? issues
     : issues.filter((issue) => spaceOf(issue.workspace) === filter);
-}
-
-/** Narrow any row that carries a space. */
-export function inSpace<T extends { space: Space }>(
-  rows: T[],
-  filter: SpaceFilter
-): T[] {
-  return filter === "all" ? rows : rows.filter((row) => row.space === filter);
 }

@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { tokensUsed } from "@/lib/context-window";
 import { CHAT_ANSWERS } from "@/lib/fixtures";
 import type { PageStatus } from "@/lib/forced-state";
+import { crosses } from "@/lib/space";
 import { SPACE_LABELS, type ChatAnswer } from "@/lib/types";
 
 const SUGGESTIONS = CHAT_ANSWERS.map((a) => a.question);
@@ -76,7 +77,7 @@ function Answer({ answer }: { answer: ChatAnswer }) {
 
           <p className="text-sm leading-relaxed">{answer.answer}</p>
 
-          {answer.spaces.length > 1 && <CrossingFlag answer={answer} />}
+          {crosses(answer.spaces) && <CrossingFlag answer={answer} />}
 
           <div className="flex flex-col gap-2 border-t pt-3">
             <p className="text-muted-foreground text-xs font-medium">
