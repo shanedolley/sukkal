@@ -6,7 +6,7 @@ not yet answered.
 **Jira project:** KPA, `koinon.atlassian.net`. Empty as of 23 August 2026. It
 becomes the source of work once this brief settles.
 
-**Last updated:** 23 August 2026
+**Last updated:** 1 September 2026
 
 ---
 
@@ -19,6 +19,12 @@ itself.
 
 He works with it daily. That is the test the product has to pass: not whether it
 demonstrates well, but whether he opens it every morning by choice.
+
+**It also ships to other people.** Somebody else runs it on a server of their
+own, or in a container, and it belongs to them from the first boot. One
+installation still serves one owner: the change is which owner, not how many.
+That decision is what took identity out of Cloudflare Access and into the
+application. ADR-0009.
 
 ## The problem
 
@@ -278,15 +284,16 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Memory store | PostgreSQL with typed edges and pgvector | The data is a graph, but the queries are neighbourhood queries rather than open traversal. Postgres does those in milliseconds at this scale, and row-level security enforces the Collibra and Koinon separation in the database rather than in application code. Neo4j Community has no role-based access control, so that boundary would live in application code where one missed filter leaks employer customer material. |
 | Inference | Claude subscription through the headless CLI, with OpenRouter as the metered path | Reuses the pattern the launchd jobs already prove. No marginal cost on the scheduled work. |
 | Local models | None | Rejected 23 August 2026. The hardware holds 7.6 GB of RAM and has no CUDA device, which caps local generation at a 3B model at roughly 10 tokens per second. |
-| Deployment | Bare metal on Ubuntu, systemd units | Matches how the existing services on the box run, and spends no RAM on container overhead where RAM is the binding constraint. |
+| Deployment | Bare metal on Ubuntu, systemd units, on Shane's box | Matches how the existing services on the box run, and spends no RAM on container overhead where RAM is the binding constraint. That reasoning is about `amaterasu` and does not travel: anybody else gets a container. |
 | Runtime | Node | Stated requirement. Framework choice is open. |
+| Distribution | A container, and a first boot that asks who you are | The install has to work on a machine that holds nothing but Docker. Everything the assistant needs beyond that is asked for on screen rather than assumed from the environment. ADR-0009. |
 | Autonomy | Autonomous within policy | Acts inside rules Shane sets, logs everything, audited after. |
 | Nabium integration | Read-only database role, triggered by a LAN push | Cheapest to build, no API to design and maintain across two personal projects. |
 | Nabium cloud flag | Ignored by KPA | Shane's call, 23 August 2026. |
 | Entity ownership | KPA is canonical, nabium feeds it | KPA sees mail as well as meetings, which is a far wider source of people. Nabium's entities merge in on ingest. |
 | Memory vault | KPA replaces it | The 17 facts and 32 sources migrate into Postgres. The vault and its three launchd jobs retire. One system, no sync problem. |
 | Collibra and Koinon separation | A guideline, not a database constraint | Decided 23 August 2026. Retrieval filters by space and crossing answers get flagged. Nothing structurally prevents a leak. |
-| Remote access | Cloudflare Tunnel with Access in front | Works on any device without installing a client. Traffic transits Cloudflare. |
+| Remote access | Cloudflare Tunnel with Access in front, on Shane's box | Works on any device without installing a client. Traffic transits Cloudflare. Another installation reaches itself however its owner chooses, and the application no longer depends on the answer. ADR-0009. |
 | Ingestion depth | Six months | Covers current engagements at a bounded one-off cost. |
 | Embeddings | Voyage AI, `voyage-4` at 1024 dimensions | Anthropic's own recommendation. This row named `voyage-3` until 27 August 2026, when KPA-26 read Voyage's model list and found it listed as legacy. `voyage-4` over `voyage-4-large` because a corpus of 17 facts and 32 sources cannot show the larger model's quality. Both default to 1024, so moving up later changes a model name and not the schema. Adds a vendor and a key. |
 | Time model | Facts carry `valid_from` and `valid_to` | Retirement becomes a date rather than a delete, so the system answers what was true in March and fact decay stays visible. |
@@ -307,8 +314,8 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Backup | Copy nabium's runbook | `docs/runbooks/database-backup.md` already exists and already covers Postgres on this hardware. |
 | Employer policy checklist | Not a gate | Shane is the decision maker and has accepted the risk directly. Recorded, not chased. |
 | Mail triage rule | Carries forward unchanged | If a person composed the words it stays in the inbox, and the sending address proves nothing. The rule earned itself through use in `docs/mail-triage-method.md`. |
-| Identity | WorkOS AuthKit, wired into Cloudflare Access as an OIDC provider | Shane creates and invites accounts in WorkOS. Access still enforces the wall, so the application never sees an unauthenticated request. |
-| Users | One, Shane, for now | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means him. |
+| Identity | The installation owns its own account, created on the first boot | An installation somebody else runs has no Access in front of it and no WorkOS tenant behind it, so the application authenticates rather than assuming the network already did. Access and WorkOS stay in front of Shane's box as that deployment's own choice. Supersedes the WorkOS decision of 23 August 2026. ADR-0009. |
+| Users | One owner per installation | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means the owner. On Shane's box that owner is Shane. |
 
 **A note on the memory store decision.** Row-level security enforcing the
 Collibra and Koinon wall was the tiebreaker that chose Postgres over Neo4j. That
@@ -379,7 +386,7 @@ flowchart TB
     jira["Jira ×2<br/>koinon · engineering-collibra"]
   end
 
-  cf["Cloudflare Access"]
+  cf["Cloudflare Access<br/>Shane's box only"]
   shane --> cf --> cfd
 
   nab -- "session ready · LAN push" --> worker
@@ -445,6 +452,11 @@ the wider source of people.
 
 KPA is single user. No permission model, no per-user partitioning, no sharing.
 Building any of that now would be building a different product.
+
+Single user means one owner per installation. The first boot asks who that is
+and writes the account, so an installation somebody else runs belongs to them
+rather than to Shane. Nothing above this line changes: one owner, one set of
+facts, one voice.
 
 The one concession to "for now" is an `owner_id` column on `sources`, `facts` and
 `tasks`, defaulted to a single row in `users`. It costs one column and one
@@ -643,6 +655,11 @@ front handles authentication properly, but the system now holds employer custome
 data, operates autonomously, and is reachable from anywhere rather than from the
 LAN. Every layer has to hold, not just the tunnel.
 
+**Somebody else's installation has no tunnel in front of it.** The application
+is the only gate there, so its own login carries weight that Access used to
+carry on Shane's box. That is why the password rules are strict and why the
+reset path needs a command line escape hatch on the server. ADR-0009.
+
 **The Collibra OAuth grant is revocable.** It works because no administrator
 blocked it. A tenant policy change removes KPA's access to that mailbox without
 warning, and the design should degrade rather than break when it happens.
@@ -726,8 +743,9 @@ push over the LAN, rather than inventing a second mechanism.
 
 ## Open questions
 
-1. Which second factor does WorkOS enforce? The recommendation is a hardware key
-   or TOTP rather than an emailed one-time code.
+1. Which second factor does WorkOS enforce on Shane's box? The recommendation is
+   a hardware key or TOTP rather than an emailed one-time code. A second factor
+   for the application's own login is a separate question, and it is unanswered.
 2. Are nabium's Teams and chat collectors built, and what do they produce? The
    only route to customer-tenant material. Deferred by Shane, to be decided
    later.
