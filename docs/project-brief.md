@@ -411,6 +411,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Employer policy checklist | Not a gate | Shane is the decision maker and has accepted the risk directly. Recorded, not chased. |
 | Mail triage rule | Carries forward unchanged | If a person composed the words it stays in the inbox, and the sending address proves nothing. The rule earned itself through use in `docs/mail-triage-method.md`. |
 | Identity | The installation owns its own account, created on the first boot | An installation somebody else runs has no Access in front of it and no WorkOS tenant behind it, so the application authenticates rather than assuming the network already did. Access and WorkOS stay in front of Shane's box as that deployment's own choice. Supersedes the WorkOS decision of 23 August 2026. ADR-0009. |
+| Fact state | Store the review position, derive the rest | `facts` already carries `verified`, `stale_after` and `valid_to`, so a status column repeating them holds one truth twice and the two eventually disagree. `candidate`, `proposed` and `rejected` are stored. `verified`, `stale` and `retired` are read from the dates. Replaces `fact_status`, whose three values described a vault note's maturity and had no word for a fact waiting on Shane. ADR-0010. |
 | Users | One owner per installation | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means the owner. On Shane's box that owner is Shane. |
 
 **A note on the memory store decision.** Row-level security enforcing the
@@ -544,10 +545,12 @@ a schema boundary rather than a deployment one.
 migrate them. The interface models what Shane reads. Four differences need a
 decision.
 
-1. **The fact states disagree.** `fact_status` holds `draft`, `stable`, and
-   `deprecated`. The interface runs on six: `candidate`, `proposed`, `verified`,
-   `stale`, `retired`, and `rejected`. Every review control rests on the six,
-   and the review queue is the product's core loop. *Open.*
+1. **The fact states disagree, and the answer is settled.** `fact_status` holds
+   `draft`, `stable`, and `deprecated`, which is the vault's note maturity and
+   answers a different question. The interface runs on six: `candidate`,
+   `proposed`, `verified`, `stale`, `retired`, and `rejected`. Three of the six
+   are stored and three are read from the dates `facts` already carries.
+   ADR-0010.
 2. **`sources` holds four columns:** `path`, `body`, `recorded_at`, and
    `owner_id`. The source drawer shows a kind, a title, a date, an author, and a
    space. None of the five exists.
@@ -936,8 +939,6 @@ push over the LAN, rather than inventing a second mechanism.
    later.
 3. Push notification: agreed in principle, deferred. The channel is undecided,
    and an iMessage integration already exists.
-4. Which fact-state vocabulary wins, the database's three or the interface's
-   six? See *What each store still needs*. The review queue rests on the six.
-5. Does the Microsoft card serve a tenant Shane owns? *Every connection the
+4. Does the Microsoft card serve a tenant Shane owns? *Every connection the
    product offers* names the contradiction: the catalogue offers Microsoft and
    the brief rules out customer-tenant Graph access.
