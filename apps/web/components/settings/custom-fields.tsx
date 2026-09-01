@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/popover";
 import { FIELDS_SCANNED_AT, JIRA_FIELDS } from "@/lib/fixtures";
 import { formatShortDay } from "@/lib/format";
-import { setProjectFields, useProjectFields } from "@/lib/project-fields";
+import { setWorkspaceFields, useWorkspaceFields } from "@/lib/workspace-fields";
 import type { CustomField } from "@/lib/types";
 
 /**
@@ -174,13 +174,13 @@ function AddField({
 }
 
 export function CustomFields({ project }: { project: string }) {
-  const fields = useProjectFields(project);
+  const fields = useWorkspaceFields(project);
   const [scan, setScan] = useState<{ at: string; running: boolean }>({
     at: FIELDS_SCANNED_AT,
     running: false,
   });
 
-  const write = (next: CustomField[]) => setProjectFields(project, next);
+  const write = (next: CustomField[]) => setWorkspaceFields(project, next);
 
   function rescan() {
     setScan((current) => ({ ...current, running: true }));

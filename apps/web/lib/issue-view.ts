@@ -26,7 +26,7 @@ import type { Issue, IssuePriority, IssueStatus } from "./types";
 export type GroupField =
   | "none"
   | "status"
-  | "project"
+  | "workspace"
   | "assignee"
   | "labels"
   | "sprint";
@@ -34,7 +34,7 @@ export type GroupField =
 export const GROUP_FIELDS: GroupField[] = [
   "none",
   "status",
-  "project",
+  "workspace",
   "assignee",
   "labels",
   "sprint",
@@ -43,7 +43,7 @@ export const GROUP_FIELDS: GroupField[] = [
 export const GROUP_FIELD_LABELS: Record<GroupField, string> = {
   none: "None",
   status: "Status",
-  project: "Project",
+  workspace: "Workspace",
   assignee: "Assignee",
   labels: "Labels",
   sprint: "Sprint",
@@ -277,8 +277,14 @@ export function bucketsFor(
         },
       ];
     }
-    case "project":
-      return [{ key: issue.project, label: issue.project, sort: issue.project }];
+    case "workspace":
+      return [
+        {
+          key: issue.workspace,
+          label: issue.workspace,
+          sort: issue.workspace,
+        },
+      ];
     case "assignee":
       return [
         { key: issue.assignee, label: issue.assignee, sort: issue.assignee },

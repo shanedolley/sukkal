@@ -64,7 +64,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
-import type { CustomField, Issue, Space } from "@/lib/types";
+import type { CustomField, Issue } from "@/lib/types";
 import { dotFor } from "./glyphs";
 
 // The order lives beside the status order it is sorted with. Two copies
@@ -75,14 +75,13 @@ export { PRIORITY_ORDER } from "@/lib/issue-view";
 export const NO_SPRINT = "__none__";
 
 export interface IssueFieldOptions {
-  projects: string[];
+  /** Every workspace a row can sit in, by name. */
+  workspaces: string[];
   assignees: string[];
   labels: string[];
   sprints: { id: string; name: string }[];
   /** Who a new row goes to. Alphabetical order would pick a colleague. */
   defaultAssignee: string;
-  /** Which space each project belongs to, so a row inherits one. */
-  spaceOf: (project: string) => Space;
 }
 
 /**
@@ -93,7 +92,6 @@ export interface IssueFieldOptions {
  * form stay open and write a second row.
  */
 export function blank(sprintId: string | null, o: IssueFieldOptions): Issue {
-  const project = o.projects[0] ?? "Personal";
   return {
     key: "",
     title: "",
@@ -101,8 +99,7 @@ export function blank(sprintId: string | null, o: IssueFieldOptions): Issue {
     status: "backlog",
     kind: "story",
     priority: "none",
-    project,
-    space: o.spaceOf(project),
+    workspace: o.workspaces[0] ?? "Personal",
     labels: [],
     assignee: o.defaultAssignee,
     start: null,

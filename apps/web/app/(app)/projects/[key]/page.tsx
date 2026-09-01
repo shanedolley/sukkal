@@ -15,7 +15,7 @@ import { ArrowLeftIcon, PlusIcon } from "lucide-react";
 import { ProjectOverview } from "@/components/projects/project-overview";
 import { ProjectDetailSettings } from "@/components/projects/project-detail-settings";
 import { ProjectSettings } from "@/components/projects/project-settings";
-import { isWorkspace } from "@/components/blocks/app-shell-1/components/data";
+import { isWorkspace } from "@/lib/workspaces";
 import { useProjectBoard } from "@/components/projects/project-board";
 import { QueueBody } from "@/components/queue-page";
 import { Badge } from "@/components/reui/badge";

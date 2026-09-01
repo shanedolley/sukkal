@@ -10,6 +10,7 @@ import { createContext, useContext, useMemo } from "react";
 
 import { createLocalStore } from "./local-store";
 import type { Space } from "./types";
+import { spaceOf } from "./workspaces";
 
 /** "all" means no filter. The brief flags a crossing rather than blocking it. */
 export type SpaceFilter = Space | "all";
@@ -39,6 +40,21 @@ export function useSpace(): SpaceContextValue {
     throw new Error("useSpace must be used inside SpaceProvider");
   }
   return value;
+}
+
+/**
+ * Narrow issues, which carry a workspace rather than a space.
+ *
+ * The space is the workspace's, so an issue never holds one of its own and
+ * the two can never disagree.
+ */
+export function issuesInSpace<T extends { workspace: string }>(
+  issues: T[],
+  filter: SpaceFilter
+): T[] {
+  return filter === "all"
+    ? issues
+    : issues.filter((issue) => spaceOf(issue.workspace) === filter);
 }
 
 /** Narrow any row that carries a space. */

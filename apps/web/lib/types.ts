@@ -238,9 +238,13 @@ export interface Issue {
   status: IssueStatus;
   kind: IssueKind;
   priority: IssuePriority;
-  /** The project name the sidebar lists. */
-  project: string;
-  space: Space;
+  /**
+   * The workspace it sits in, by name. A workspace is a Jira project, so this
+   * is what Jira calls the project. Which project inside the workspace it
+   * belongs to is read from the rule that project carries: see
+   * lib/workspaces.ts.
+   */
+  workspace: string;
   labels: string[];
   assignee: string;
   /** ISO date work is meant to start. Null when Jira holds no start date. */

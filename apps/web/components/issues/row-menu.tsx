@@ -59,9 +59,8 @@ import {
 } from "@/lib/types";
 import { dotFor, KindGlyph, PriorityGlyph, StatusGlyph } from "./glyphs";
 import { DateBox, DeleteIssues, NO_SPRINT } from "./issue-fields";
-import { ISSUE_OPTIONS } from "./issue-options";
-import { WORKSPACE_ROWS } from "@/components/blocks/app-shell-1/components/data";
 import { useProjectSettings } from "@/lib/project-settings";
+import { PROJECTS, WORKSPACES } from "@/lib/workspaces";
 
 const KIND_ORDER: IssueKind[] = ["epic", "story", "subtask"];
 
@@ -71,25 +70,15 @@ const NO_PROJECT = "__none__";
 /**
  * Where a row can be moved, and what moving it there writes.
  *
- * "Project" means two things in this application, so the menu offers both.
- * A workspace is a Jira project, and an issue names it in its project field.
- * An engagement inside a workspace is not: Collibra runs every one of them
- * through PSAPAC, and a label is what tells one from another. So moving
- * between workspaces writes the project field, and moving between projects
- * writes a label.
- *
- * Worked out once, because the rows do not change while the page is open.
+ * A workspace and a project are two different things, so the menu offers
+ * both. Moving between workspaces writes the workspace field. Moving between
+ * projects writes whatever the project's own rule matches on, which is a
+ * label. A project matched by its key prefix cannot be moved into, because
+ * the key is Jira's to give. See lib/workspaces.ts.
  */
-const WORKSPACES = WORKSPACE_ROWS.map((row) => ({
-  ...row,
-  /** The workspace's name is what an issue carries in its project field. */
-  space: ISSUE_OPTIONS.spaceOf(row.label),
-}));
-
-/** Every label that says which project a row belongs to. */
-const PROJECT_KEYS = WORKSPACE_ROWS.flatMap((row) =>
-  row.projects.map((project) => project.id)
-);
+const PROJECT_KEYS = PROJECTS.filter(
+  (project) => project.match.by === "label",
+).map((project) => project.id);
 
 /** What the row can be given, and what it holds now. */
 export interface RowEdits {
@@ -310,7 +299,8 @@ export function RowMenu({
 
   /**
    * Moving to a project swaps one label for another, because a row belongs
-   * to one engagement at a time. Every other label it carries stays.
+   * to one project at a time. Every other label it carries stays, and the
+   * workspace comes with the project that runs it.
    */
   function moveTo(key: string): Partial<Issue> {
     const others = issue.labels.filter(
@@ -323,10 +313,7 @@ export function RowMenu({
     );
     return {
       labels: [...others, labelOf(key)],
-      ...(workspace && {
-        project: workspace.label,
-        space: workspace.space,
-      }),
+      ...(workspace && { workspace: workspace.name }),
     };
   }
 
@@ -408,20 +395,15 @@ export function RowMenu({
             <DropdownMenuSubTrigger>Workspace</DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
               <DropdownMenuRadioGroup
-                value={issue.project}
-                onValueChange={(name) =>
-                  onMove({
-                    project: name,
-                    space: ISSUE_OPTIONS.spaceOf(name),
-                  })
-                }
+                value={issue.workspace}
+                onValueChange={(name) => onMove({ workspace: name })}
               >
                 {WORKSPACES.map((workspace) => (
                   <DropdownMenuRadioItem
                     key={workspace.id}
-                    value={workspace.label}
+                    value={workspace.name}
                   >
-                    {workspace.label}
+                    {workspace.name}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
@@ -437,21 +419,26 @@ export function RowMenu({
                 value={inProject ?? NO_PROJECT}
                 onValueChange={(key) => onMove(moveTo(key))}
               >
-                {WORKSPACES.filter(
-                  (workspace) => workspace.projects.length > 0,
-                ).map((workspace) => (
-                  <DropdownMenuGroup key={workspace.id}>
-                    <DropdownMenuLabel>{workspace.label}</DropdownMenuLabel>
-                    {workspace.projects.map((project) => (
-                      <DropdownMenuRadioItem
-                        key={project.id}
-                        value={project.id}
-                      >
-                        {project.label}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuGroup>
-                ))}
+                {WORKSPACES.map((workspace) => ({
+                  workspace,
+                  projects: workspace.projects.filter(
+                    (project) => project.match.by === "label",
+                  ),
+                }))
+                  .filter(({ projects }) => projects.length > 0)
+                  .map(({ workspace, projects }) => (
+                    <DropdownMenuGroup key={workspace.id}>
+                      <DropdownMenuLabel>{workspace.name}</DropdownMenuLabel>
+                      {projects.map((project) => (
+                        <DropdownMenuRadioItem
+                          key={project.id}
+                          value={project.id}
+                        >
+                          {project.name}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuGroup>
+                  ))}
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Neither</DropdownMenuLabel>
                   <DropdownMenuRadioItem value={NO_PROJECT}>

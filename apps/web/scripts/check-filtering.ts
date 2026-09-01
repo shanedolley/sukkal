@@ -84,11 +84,11 @@ for (const field of FILTER_FIELDS) {
 // 6. Fields narrow the result. Adding a second field never returns more.
 {
   const status = optionsFor(ISSUES, "status", sprintNames)[0];
-  const project = optionsFor(ISSUES, "project", sprintNames)[0];
+  const workspace = optionsFor(ISSUES, "workspace", sprintNames)[0];
   const one = applyFilters(ISSUES, { status: [status.key] }, sprintNames);
   const two = applyFilters(
     ISSUES,
-    { status: [status.key], project: [project.key] },
+    { status: [status.key], workspace: [workspace.key] },
     sprintNames
   );
   assert.ok(
@@ -97,7 +97,11 @@ for (const field of FILTER_FIELDS) {
   );
   for (const issue of two) {
     assert.equal(issue.status, status.key, "a row escaped the status filter");
-    assert.equal(issue.project, project.key, "a row escaped the project filter");
+    assert.equal(
+      issue.workspace,
+      workspace.key,
+      "a row escaped the workspace filter"
+    );
   }
 }
 

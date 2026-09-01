@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ISSUES, SPRINTS, TODAY } from "@/lib/fixtures";
 import { formatShortDay } from "@/lib/format";
 import { useForcedStatus } from "@/lib/forced-state";
-import { inSpace, useSpace } from "@/lib/space-context";
+import { issuesInSpace, useSpace } from "@/lib/space-context";
 import type { Sprint, SprintState } from "@/lib/types";
 
 const TITLES: Record<SprintState, string> = {
@@ -140,7 +140,7 @@ function SprintView() {
   const board = useBoard({
     base: ISSUES,
     issues: (known) =>
-      inSpace(known, space).filter(
+      issuesInSpace(known, space).filter(
         (issue) => issue.sprintId && ids.includes(issue.sprintId)
       ),
     today: TODAY,

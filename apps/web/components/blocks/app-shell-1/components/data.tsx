@@ -21,6 +21,7 @@ import {
 
 import { AUDIT, CONVERSATIONS, MEETINGS, NEEDS_YOU } from "@/lib/fixtures"
 import { inSpace, type SpaceFilter } from "@/lib/space-context"
+import { WORKSPACES } from "@/lib/workspaces"
 import type { Fact } from "@/lib/types"
 
 // ── Types ──
@@ -75,7 +76,8 @@ export type SecondaryItem = {
   href?: string
 }
 
-export type Workspace = {
+/** One choice in the space switcher at the top of the sidebar. */
+export type SpaceOption = {
   id: string
   name: string
   tier?: string
@@ -92,10 +94,12 @@ export type ItemAction = {
 }
 
 // ── Spaces ──
-// The block calls these workspaces. KPA calls them spaces, and the brief
-// keeps Collibra and Koinon apart as a guideline rather than a wall.
+// The ReUI block called these workspaces. They are spaces: whose world you
+// are looking at. A workspace is a Jira project, and those live in
+// lib/workspaces.ts. The brief keeps Collibra and Koinon apart as a guideline
+// rather than a wall.
 
-export const WORKSPACES: Workspace[] = [
+export const SPACE_OPTIONS: SpaceOption[] = [
   {
     id: "all",
     name: "All spaces",
@@ -211,73 +215,34 @@ export const SPRINTS_NAV: NavItem = {
 
 export const WORKSPACES_ICON = <BriefcaseIcon aria-hidden="true" />
 
-// A workspace is who the work is for. Each tracker names a project its own
-// way: Collibra runs every engagement through one Jira project and tells them
-// apart by label, while Koinon gives each one a space and a ticket prefix.
-type WorkspaceRow = {
-  id: string
-  label: string
-  projects: { id: string; label: string }[]
-}
+// The sidebar draws the workspaces and the projects inside them. What they
+// are and how an issue is matched to one lives in lib/workspaces.ts, because
+// the issue screens ask the same question and two lists would drift.
 
-export const WORKSPACE_ROWS: WorkspaceRow[] = [
-  {
-    id: "collibra",
-    label: "Collibra",
-    // PSAPAC carries every engagement. The label on the issue names which one.
-    projects: [
-      { id: "bhp-meridian", label: "BHP Meridian" },
-      { id: "sydney-water", label: "Sydney Water" },
-      { id: "transport-for-nsw", label: "Transport for NSW" },
-    ],
-  },
-  {
-    id: "koinon-engineering",
-    label: "Koinon Engineering",
-    // A Jira project each, so the key in front of the name is the prefix every
-    // ticket in that project carries.
-    projects: [
-      { id: "mp", label: "MP · Marinucci Engineering" },
-      { id: "ms", label: "MS · Marinucci Support" },
-      { id: "kpa", label: "KPA · Personal Assistant" },
-    ],
-  },
-  // ponytail: nothing personal is tracked in Jira yet. The + fills this.
-  { id: "personal", label: "Personal", projects: [] },
-]
-
-export const WORKSPACES_NAV: NavChild[] = WORKSPACE_ROWS.map(
-  ({ id, label, projects }) => ({
+export const WORKSPACES_NAV: NavChild[] = WORKSPACES.map(
+  ({ id, name, projects }) => ({
     id,
-    label,
+    label: name,
     href: `/projects/${id}`,
     // Every project opens on its issues, so the one route serves them all.
     children: workspacePages(
       `/projects/${id}`,
       projects.map((project) => ({
-        ...project,
+        id: project.id,
+        label: project.name,
         href: `/projects/${project.id}`,
       }))
     ),
   })
 )
 
-/**
- * Whether a key names a workspace rather than a project inside one.
- *
- * The two carry different settings: a workspace holds the tracker and the
- * custom fields, a project holds its label and its dates.
- */
-export function isWorkspace(key: string): boolean {
-  return WORKSPACE_ROWS.some((row) => row.id === key);
-}
-
 /** Every row a key can name: the workspaces and the projects inside them. */
-export const NAMED_ROWS: NavChild[] = WORKSPACE_ROWS.flatMap(
-  ({ id, label, projects }) => [
-    { id, label, href: `/projects/${id}` },
+export const NAMED_ROWS: NavChild[] = WORKSPACES.flatMap(
+  ({ id, name, projects }) => [
+    { id, label: name, href: `/projects/${id}` },
     ...projects.map((project) => ({
-      ...project,
+      id: project.id,
+      label: project.name,
       href: `/projects/${project.id}`,
     })),
   ]

@@ -23,10 +23,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { WORKSPACES, type Workspace } from "./data"
+import { SPACE_OPTIONS, type SpaceOption } from "./data"
 import { CheckIcon, MoreHorizontalIcon } from "lucide-react"
 
-function getWorkspaceInitials(name: string): string {
+function getSpaceOptionInitials(name: string): string {
   return name.charAt(0).toUpperCase()
 }
 
@@ -75,16 +75,16 @@ function SidebarLogo({ className }: { className?: string }) {
   )
 }
 
-function WorkspaceAvatar({
+function SpaceOptionAvatar({
   workspace,
   className,
   size = "default",
 }: {
-  workspace: Workspace
+  workspace: SpaceOption
   className?: string
   size?: "default" | "sm" | "lg"
 }) {
-  const initials = getWorkspaceInitials(workspace.name)
+  const initials = getSpaceOptionInitials(workspace.name)
   return (
     <Avatar size={size} className={cn("size-6! shrink-0", className)}>
       {workspace.imageUrl ? (
@@ -106,18 +106,18 @@ function WorkspaceAvatar({
   )
 }
 
-function WorkspaceItem({
+function SpaceOptionItem({
   workspace,
   isActive,
   onSelect,
 }: {
-  workspace: Workspace
+  workspace: SpaceOption
   isActive: boolean
-  onSelect: (ws: Workspace) => void
+  onSelect: (ws: SpaceOption) => void
 }) {
   return (
     <DropdownMenuItem onClick={() => onSelect(workspace)}>
-      <WorkspaceAvatar workspace={workspace} />
+      <SpaceOptionAvatar workspace={workspace} />
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-sm">{workspace.name}</span>
         {workspace.tier && (
@@ -133,10 +133,10 @@ function WorkspaceItem({
   )
 }
 
-export function WorkspaceSwitcher() {
+export function SpaceSwitcher() {
   const { space, setSpace } = useSpace()
   const active =
-    WORKSPACES.find((ws) => ws.id === space) ?? WORKSPACES[0]
+    SPACE_OPTIONS.find((one) => one.id === space) ?? SPACE_OPTIONS[0]
 
   return (
     <SidebarMenu>
@@ -159,8 +159,8 @@ export function WorkspaceSwitcher() {
             <DropdownMenuGroup>
               <DropdownMenuLabel>Space</DropdownMenuLabel>
               <DropdownMenuGroup>
-                {WORKSPACES.map((ws) => (
-                  <WorkspaceItem
+                {SPACE_OPTIONS.map((ws) => (
+                  <SpaceOptionItem
                     key={ws.id}
                     workspace={ws}
                     isActive={active.id === ws.id}

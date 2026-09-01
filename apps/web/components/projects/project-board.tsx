@@ -18,8 +18,9 @@ import {
 import { ISSUES, TODAY } from "@/lib/fixtures";
 import { useForcedStatus } from "@/lib/forced-state";
 import { useProjectSetting } from "@/lib/project-settings";
-import { issuesForProject } from "@/lib/project-view";
-import { inSpace, useSpace } from "@/lib/space-context";
+import { issuesForProject, issuesForWorkspace } from "@/lib/project-view";
+import { isWorkspace, projectNamed } from "@/lib/workspaces";
+import { issuesInSpace, useSpace } from "@/lib/space-context";
 import { projectName } from "@/app/(app)/projects/[key]/project-name";
 
 /** Every sprint, because a project's issues span all of them. */
@@ -35,9 +36,22 @@ export function useProjectBoard() {
   const name = projectName(key);
   const { label } = useProjectSetting(key);
 
+  // A workspace row and a project row are found different ways, and the key
+  // says which kind of row this is.
+  const belong = (known: typeof ISSUES) => {
+    const rows = issuesInSpace(known, space);
+    if (isWorkspace(key)) return issuesForWorkspace(rows, name);
+    const project = projectNamed(key);
+    // A project added in the sidebar this session carries no rule yet, so its
+    // own key stands in as the label until one is written.
+    return project
+      ? issuesForProject(rows, project, label)
+      : rows.filter((issue) => issue.labels.includes(label));
+  };
+
   const board = useBoard({
     base: ISSUES,
-    issues: (known) => issuesForProject(inSpace(known, space), label, name),
+    issues: belong,
     today: TODAY,
     options: ISSUE_OPTIONS,
     currentSprintId: CURRENT_SPRINT_ID,
@@ -49,6 +63,6 @@ export function useProjectBoard() {
     name,
     status,
     board,
-    count: issuesForProject(board.known, label, name).length,
+    count: belong(board.known).length,
   };
 }

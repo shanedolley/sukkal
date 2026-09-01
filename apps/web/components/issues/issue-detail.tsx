@@ -39,7 +39,7 @@ import {
   type IssuePriority,
   type IssueStatus,
 } from "@/lib/types";
-import { useProjectFields } from "@/lib/project-fields";
+import { useWorkspaceFields } from "@/lib/workspace-fields";
 import { dotFor, PriorityGlyph, StatusGlyph } from "./glyphs";
 import {
   CustomFieldInputs,
@@ -154,7 +154,7 @@ export function IssueDetail({
 
   // The project's own fields. Changing the project changes the set, and a
   // value already written stays where it is rather than being thrown away.
-  const custom = useProjectFields(issue.project);
+  const custom = useWorkspaceFields(issue.workspace);
 
   const sprint = sprintChoices(options);
   const sprintName = issue.sprintId
@@ -172,7 +172,7 @@ export function IssueDetail({
         {/* Where the issue sits, before what it is. */}
         <div className="border-border/70 text-muted-foreground flex items-center gap-1.5 border-b px-4 py-2.5 pr-12 text-xs">
           <FolderKanbanIcon className="size-3.5 shrink-0" aria-hidden="true" />
-          <span className="truncate">{issue.project}</span>
+          <span className="truncate">{issue.workspace}</span>
           <span aria-hidden="true">›</span>
           <span className="truncate">{sprintName ?? "No sprint"}</span>
           <span aria-hidden="true">›</span>
@@ -213,7 +213,7 @@ export function IssueDetail({
 
             {custom.length > 0 && (
               <section className="flex flex-col gap-2">
-                <RailHeading>{issue.project} fields</RailHeading>
+                <RailHeading>{issue.workspace} fields</RailHeading>
                 <CustomFieldInputs
                   fields={custom}
                   values={issue.fields}
@@ -398,14 +398,12 @@ export function IssueDetail({
             <section className="flex flex-col gap-1">
               <RailHeading>Placement</RailHeading>
               <FieldMenu
-                name="Project"
-                options={options.projects}
+                name="Workspace"
+                options={options.workspaces}
                 labels={Object.fromEntries(
-                  options.projects.map((name) => [name, name])
+                  options.workspaces.map((name) => [name, name])
                 )}
-                onChange={(project) =>
-                  onChange({ project, space: options.spaceOf(project) })
-                }
+                onChange={(workspace) => onChange({ workspace })}
                 trigger={
                   <RailButton
                     icon={
@@ -415,7 +413,7 @@ export function IssueDetail({
                       />
                     }
                   >
-                    {issue.project}
+                    {issue.workspace}
                   </RailButton>
                 }
               />

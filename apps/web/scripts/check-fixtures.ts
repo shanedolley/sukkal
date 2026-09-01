@@ -13,12 +13,13 @@ import {
   ISSUES,
   JIRA_FIELDS,
   MEETINGS,
-  PROJECT_FIELDS,
+  WORKSPACE_FIELDS,
   NEEDS_YOU,
   SOURCES,
   SPRINTS,
 } from "../lib/fixtures.ts";
 import type { FactState, Space } from "../lib/types.ts";
+import { spaceOf, workspaceNamed } from "../lib/workspaces.ts";
 
 const chunkExists = (sourceId: string, chunkId: string) =>
   SOURCES.some(
@@ -103,7 +104,9 @@ const COLLECTIONS: Record<string, { space: Space }[]> = {
   NEEDS_YOU,
   MEETINGS,
   AUDIT,
-  ISSUES,
+  // An issue carries a workspace rather than a space, and its space is that
+  // workspace's. It is checked below with the same rule.
+  ISSUES: ISSUES.map((issue) => ({ space: spaceOf(issue.workspace) })),
 };
 for (const [name, rows] of Object.entries(COLLECTIONS)) {
   for (const space of SPACES) {
@@ -220,20 +223,24 @@ assert.ok(
   "no issue carries a start date, so that pill is untested"
 );
 
-// 14. Every project an issue names carries a custom field list, even an
-//     empty one. A project missing from the map reads as "no fields", which
-//     is right, but only by accident.
-for (const project of new Set(ISSUES.map((issue) => issue.project))) {
+// 14. Every workspace an issue names is one the model knows, and carries a
+//     custom field list, even an empty one. A workspace missing from the map
+//     reads as "no fields", which is right, but only by accident.
+for (const name of new Set(ISSUES.map((issue) => issue.workspace))) {
   assert.ok(
-    project in PROJECT_FIELDS,
-    `project ${project} has no custom field list`
+    workspaceNamed(name),
+    `issues name the workspace ${name}, which lib/workspaces.ts does not hold`
+  );
+  assert.ok(
+    name in WORKSPACE_FIELDS,
+    `workspace ${name} has no custom field list`
   );
 }
 
-// 15. A field id is unique within its project, and every value an issue
-//     carries is filed under an id that project declares. A stray value is a
-//     value no screen would ever show.
-for (const [project, fields] of Object.entries(PROJECT_FIELDS)) {
+// 15. A field id is unique within its workspace, and every value an issue
+//     carries is filed under an id that workspace declares. A stray value is
+//     a value no screen would ever show.
+for (const [project, fields] of Object.entries(WORKSPACE_FIELDS)) {
   const ids = fields.map((field) => field.id);
   assert.equal(
     new Set(ids).size,
@@ -245,11 +252,13 @@ for (const [project, fields] of Object.entries(PROJECT_FIELDS)) {
   }
 }
 for (const issue of ISSUES) {
-  const ids = new Set((PROJECT_FIELDS[issue.project] ?? []).map((f) => f.id));
+  const ids = new Set(
+    (WORKSPACE_FIELDS[issue.workspace] ?? []).map((f) => f.id)
+  );
   for (const id of Object.keys(issue.fields)) {
     assert.ok(
       ids.has(id),
-      `issue ${issue.key} carries ${id}, which ${issue.project} does not declare`
+      `issue ${issue.key} carries ${id}, which ${issue.workspace} does not declare`
     );
   }
 }
@@ -257,7 +266,7 @@ for (const issue of ISSUES) {
 // 16. The fixtures exercise a required field that some rows leave empty, so
 //     the create form's refusal has something to refuse.
 {
-  const required = Object.values(PROJECT_FIELDS)
+  const required = Object.values(WORKSPACE_FIELDS)
     .flat()
     .filter((field) => field.required);
   assert.ok(required.length > 0, "no custom field is required anywhere");
@@ -277,7 +286,7 @@ for (const issue of ISSUES) {
     JIRA_FIELDS.length,
     "the site catalogue lists the same field id twice"
   );
-  for (const [project, fields] of Object.entries(PROJECT_FIELDS)) {
+  for (const [project, fields] of Object.entries(WORKSPACE_FIELDS)) {
     for (const field of fields) {
       assert.ok(
         offered.has(field.id),

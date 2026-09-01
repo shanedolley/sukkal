@@ -754,8 +754,8 @@ function IssueRow({
                 }
               />
             )}
-            {show("project") && (
-              <Pill className="hidden xl:inline-flex">{issue.project}</Pill>
+            {show("workspace") && (
+              <Pill className="hidden xl:inline-flex">{issue.workspace}</Pill>
             )}
             {show("links") && (
               <Dependency
@@ -1190,7 +1190,7 @@ const ROW_FIELDS = [
   "key",
   "status",
   "labels",
-  "project",
+  "workspace",
   "links",
   "dates",
   "assignee",
@@ -1206,7 +1206,7 @@ const ROW_FIELD_LABELS: Record<RowField, string> = {
   key: "Key",
   status: "Status",
   labels: "Labels",
-  project: "Project",
+  workspace: "Workspace",
   links: "Dependencies",
   dates: "Dates",
   assignee: "Assignee",

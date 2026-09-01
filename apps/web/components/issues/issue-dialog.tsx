@@ -49,7 +49,7 @@ import {
   type IssuePriority,
   type IssueStatus,
 } from "@/lib/types";
-import { missingFields, useProjectFields } from "@/lib/project-fields";
+import { missingFields, useWorkspaceFields } from "@/lib/workspace-fields";
 import { PriorityGlyph, StatusGlyph } from "./glyphs";
 import {
   blank,
@@ -141,13 +141,13 @@ const KIND_ORDER: IssueKind[] = ["epic", "story", "subtask"];
  */
 function ParentField({
   kind,
-  project,
+  workspace,
   issues,
   value,
   onChange,
 }: {
   kind: IssueKind;
-  project: string;
+  workspace: string;
   issues: Issue[];
   value: string | undefined;
   onChange: (parent: string | undefined) => void;
@@ -156,7 +156,7 @@ function ParentField({
   if (!wanted) return null;
 
   const choices = issues.filter(
-    (issue) => issue.kind === wanted && issue.project === project,
+    (issue) => issue.kind === wanted && issue.workspace === workspace,
   );
   const noun = ISSUE_KIND_LABELS[wanted].toLowerCase();
   const label = (key: string) => {
@@ -167,7 +167,7 @@ function ParentField({
   if (choices.length === 0) {
     return (
       <span className="text-muted-foreground text-xs">
-        No {noun} on {project} yet.
+        No {noun} on {workspace} yet.
       </span>
     );
   }
@@ -271,7 +271,7 @@ export function IssueDialog({
     setDraft((current) => ({ ...current, ...change }));
 
   // The project's own fields, which change the moment the project does.
-  const custom = useProjectFields(draft.project);
+  const custom = useWorkspaceFields(draft.workspace);
   const missing = missingFields(custom, draft.fields);
 
   const sprint = sprintChoices(options);
@@ -292,8 +292,7 @@ export function IssueDialog({
       setTried(false);
       setDraft({
         ...blank(currentSprintId, options),
-        project: draft.project,
-        space: draft.space,
+        workspace: draft.workspace,
         sprintId: draft.sprintId,
         assignee: draft.assignee,
       });
@@ -372,14 +371,12 @@ export function IssueDialog({
                   <ArrowLeftIcon className="size-3.5" aria-hidden="true" />
                 </button>
                 <FieldMenu
-                  name="Project"
-                  options={options.projects}
+                  name="Workspace"
+                  options={options.workspaces}
                   labels={Object.fromEntries(
-                    options.projects.map((name) => [name, name]),
+                    options.workspaces.map((name) => [name, name]),
                   )}
-                  onChange={(project) =>
-                    set({ project, space: options.spaceOf(project) })
-                  }
+                  onChange={(workspace) => set({ workspace })}
                   trigger={
                     <Chip
                       icon={
@@ -390,7 +387,7 @@ export function IssueDialog({
                       }
                       set
                     >
-                      {draft.project}
+                      {draft.workspace}
                     </Chip>
                   }
                 />
@@ -442,7 +439,7 @@ export function IssueDialog({
 
                 <ParentField
                   kind={draft.kind}
-                  project={draft.project}
+                  workspace={draft.workspace}
                   issues={issues}
                   value={draft.parent}
                   onChange={(parent) => set({ parent })}
@@ -481,7 +478,7 @@ export function IssueDialog({
                     <p className="text-destructive text-xs" role="alert">
                       {missing.map((field) => field.name).join(" and ")}{" "}
                       {missing.length === 1 ? "is" : "are"} required on a{" "}
-                      {draft.project} issue.
+                      {draft.workspace} issue.
                     </p>
                   )}
                 </div>

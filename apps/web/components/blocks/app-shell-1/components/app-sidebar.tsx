@@ -13,7 +13,7 @@ import { NavMain } from "./nav-main"
 import { NavProjects } from "./nav-projects"
 import { NavSecondary } from "./nav-secondary"
 import { NavUser } from "./nav-user"
-import { WorkspaceSwitcher } from "./workspace-switcher"
+import { SpaceSwitcher } from "./space-switcher"
 
 function SidebarRailToggle() {
   const { state, toggleSidebar } = useSidebar()
@@ -76,7 +76,7 @@ export function AppSidebar() {
   return (
     <SidebarRoot collapsible="icon">
       <SidebarHeader>
-        <WorkspaceSwitcher />
+        <SpaceSwitcher />
       </SidebarHeader>
 
       <SidebarContent>
