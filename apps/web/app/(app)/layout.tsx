@@ -1,7 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
+import { useAccount } from "@/lib/account";
+import { useIsClient } from "@/lib/local-store";
 import { AppShell } from "@/components/blocks/app-shell-1/components/app-shell";
 import { DetailPanelProvider } from "@/components/detail-panel";
 import { SearchProvider } from "@/components/search/search-provider";
@@ -46,6 +49,25 @@ function crumbFor(pathname: string): string[] {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  // The account is read from localStorage, which the server cannot see. Until
+  // the browser has taken over, every render says "no account", so a gate
+  // that trusted it would throw a person who set this box up months ago back
+  // into the setup screen on every reload.
+  const ready = useIsClient();
+  const configured = useAccount() !== null;
+  const firstBoot = ready && !configured;
+
+  // The first boot. Nobody has set this box up, so every screen behind the
+  // door leads back to the one that asks who you are.
+  useEffect(() => {
+    if (firstBoot) router.replace("/setup");
+  }, [firstBoot, router]);
+
+  // Nothing while it leaves, or the whole application paints for a second on
+  // a box that has no account to paint it for.
+  if (firstBoot) return null;
+
   return (
     <SpaceProvider>
       <ReviewProvider>

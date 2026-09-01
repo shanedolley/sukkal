@@ -11,11 +11,13 @@
 import { useState, type ComponentProps } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { EyeIcon, EyeOffIcon, KeyRoundIcon, ShieldCheckIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, KeyRoundIcon } from "lucide-react";
 
-import { AuthLogo } from "@/components/blocks/auth-20/components/auth-logo";
+import { AuthCard } from "@/components/auth/auth-card";
+import { useAccount } from "@/lib/account";
+import { looksLikeEmail } from "@/lib/email";
+import { check, PASSWORD_MINIMUM, passes } from "@/lib/password";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,13 +54,13 @@ const COPY = {
   },
 } as const;
 
-// Deliberately loose. A trust boundary needs a real check on the server, and
-// this form has no server. It catches the typo and nothing more.
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const copy = COPY[mode];
   const router = useRouter();
+  // Nothing here authenticates anybody, and nothing writes an account. So a
+  // box nobody has set up has nowhere to send them but the setup screen,
+  // which is where the application itself sends them.
+  const configured = useAccount() !== null;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -72,11 +74,20 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     if (mode === "sign-up" && name.trim().length < 2) {
       next.name = "Enter your name.";
     }
-    if (!EMAIL.test(email.trim())) {
+    if (!looksLikeEmail(email)) {
       next.email = "Enter an email address, for example shane@koinon.com.au.";
     }
-    if (password.length < 8) {
-      next.password = "Use at least 8 characters.";
+    // A new password meets the installation's rules, wherever it is typed.
+    // The sign-in box only catches an empty one, because the password it is
+    // checking already exists and its rules were met when it was set.
+    if (mode === "sign-up" && !passes(password)) {
+      next.password = `It needs ${check(password)
+        .filter((rule) => !rule.met)
+        .map((rule) => rule.text.toLowerCase())
+        .join(", ")}.`;
+    }
+    if (mode === "sign-in" && password.length === 0) {
+      next.password = "Enter your password.";
     }
     return next;
   }
@@ -87,161 +98,143 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     setBusy(true);
-    router.push("/dashboard");
+    router.push(configured ? "/dashboard" : "/setup");
   }
 
   return (
-    <div className="flex w-full max-w-[26rem] flex-col gap-5">
-      <Card className="w-full gap-0 overflow-hidden p-0 shadow-sm">
-        <CardHeader className="flex flex-col items-center gap-4 px-6 pt-8 pb-0 text-center sm:px-8 sm:pt-9">
-          <AuthLogo />
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-xl font-semibold text-balance">{copy.title}</h1>
-            <p className="text-muted-foreground text-sm text-pretty">
-              {copy.lead}
-            </p>
-          </div>
-        </CardHeader>
+    <AuthCard
+      title={copy.title}
+      lead={copy.lead}
+      footer={
+        <>
+          {copy.footer}{" "}
+          <Link
+            href={copy.footerHref}
+            className="text-foreground underline underline-offset-4"
+          >
+            {copy.footerLink}
+          </Link>
+        </>
+      }
+    >
+      <Button type="button" variant="outline" className="w-full">
+        <KeyRoundIcon className="size-4 shrink-0" aria-hidden="true" />
+        Continue with WorkOS
+      </Button>
 
-        <CardContent className="flex flex-col gap-6 px-6 pt-6 pb-6 sm:px-8 sm:pt-7 sm:pb-8">
-          <Button type="button" variant="outline" className="w-full">
-            <KeyRoundIcon className="size-4 shrink-0" aria-hidden="true" />
-            Continue with WorkOS
-          </Button>
-
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-muted-foreground text-xs">
-              {copy.divider}
-            </span>
-            <Separator className="flex-1" />
-          </div>
-
-          <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
-            <FieldGroup className="gap-4">
-              {mode === "sign-up" && (
-                <Field className="gap-2">
-                  <FieldLabel htmlFor="auth-name">Name</FieldLabel>
-                  <Input
-                    id="auth-name"
-                    type="text"
-                    autoComplete="name"
-                    placeholder="Shane Dolley"
-                    value={name}
-                    aria-invalid={Boolean(errors.name)}
-                    aria-describedby={errors.name ? "auth-name-error" : undefined}
-                    onChange={(event) => setName(event.target.value)}
-                  />
-                  {errors.name && (
-                    <p id="auth-name-error" className="text-destructive text-xs">
-                      {errors.name}
-                    </p>
-                  )}
-                </Field>
-              )}
-
-              <Field className="gap-2">
-                <FieldLabel htmlFor="auth-email">Email</FieldLabel>
-                <Input
-                  id="auth-email"
-                  type="email"
-                  autoComplete="username"
-                  placeholder="shane@koinon.com.au"
-                  value={email}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? "auth-email-error" : undefined}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-                {errors.email && (
-                  <p id="auth-email-error" className="text-destructive text-xs">
-                    {errors.email}
-                  </p>
-                )}
-              </Field>
-
-              <Field className="gap-2">
-                <div className="flex items-center justify-between gap-3">
-                  <FieldLabel htmlFor="auth-password">Password</FieldLabel>
-                  {mode === "sign-in" && (
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="text-muted-foreground h-auto cursor-pointer p-0 text-xs font-normal"
-                    >
-                      Forgot password?
-                    </Button>
-                  )}
-                </div>
-
-                <InputGroup className="w-full">
-                  <InputGroupInput
-                    id="auth-password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete={
-                      mode === "sign-in" ? "current-password" : "new-password"
-                    }
-                    placeholder="At least 8 characters"
-                    value={password}
-                    aria-invalid={Boolean(errors.password)}
-                    aria-describedby={
-                      errors.password ? "auth-password-error" : undefined
-                    }
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupButton
-                      type="button"
-                      size="icon-xs"
-                      className="text-muted-foreground"
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
-                      aria-pressed={showPassword}
-                      onClick={() => setShowPassword((current) => !current)}
-                    >
-                      {showPassword ? (
-                        <EyeOffIcon aria-hidden="true" />
-                      ) : (
-                        <EyeIcon aria-hidden="true" />
-                      )}
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                </InputGroup>
-                {errors.password && (
-                  <p id="auth-password-error" className="text-destructive text-xs">
-                    {errors.password}
-                  </p>
-                )}
-              </Field>
-            </FieldGroup>
-
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Opening your briefing..." : copy.submit}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <p className="text-muted-foreground text-center text-sm">
-        {copy.footer}{" "}
-        <Link
-          href={copy.footerHref}
-          className="text-foreground underline underline-offset-4"
-        >
-          {copy.footerLink}
-        </Link>
-      </p>
-
-      {/* The page exists because Shane asked for it, not because the design
-          needs it. Saying so on the screen keeps the prototype honest. */}
-      <p className="text-muted-foreground mx-auto flex max-w-[26rem] items-start gap-2 text-center text-xs">
-        <ShieldCheckIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-        <span className="text-left">
-          Prototype only. In production Cloudflare Access and WorkOS AuthKit
-          authenticate you before the application sees the request, so this
-          screen never appears.
+      <div className="flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-muted-foreground text-xs">
+          {copy.divider}
         </span>
-      </p>
-    </div>
+        <Separator className="flex-1" />
+      </div>
+
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
+        <FieldGroup className="gap-4">
+          {mode === "sign-up" && (
+            <Field className="gap-2">
+              <FieldLabel htmlFor="auth-name">Name</FieldLabel>
+              <Input
+                id="auth-name"
+                type="text"
+                autoComplete="name"
+                placeholder="Shane Dolley"
+                value={name}
+                aria-invalid={Boolean(errors.name)}
+                aria-describedby={errors.name ? "auth-name-error" : undefined}
+                onChange={(event) => setName(event.target.value)}
+              />
+              {errors.name && (
+                <p id="auth-name-error" className="text-destructive text-xs">
+                  {errors.name}
+                </p>
+              )}
+            </Field>
+          )}
+
+          <Field className="gap-2">
+            <FieldLabel htmlFor="auth-email">Email</FieldLabel>
+            <Input
+              id="auth-email"
+              type="email"
+              autoComplete="username"
+              placeholder="shane@koinon.com.au"
+              value={email}
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "auth-email-error" : undefined}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            {errors.email && (
+              <p id="auth-email-error" className="text-destructive text-xs">
+                {errors.email}
+              </p>
+            )}
+          </Field>
+
+          <Field className="gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <FieldLabel htmlFor="auth-password">Password</FieldLabel>
+              {mode === "sign-in" && (
+                <Link
+                  href="/forgot-password"
+                  className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4"
+                >
+                  Forgot password?
+                </Link>
+              )}
+            </div>
+
+            <InputGroup className="w-full">
+              <InputGroupInput
+                id="auth-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete={
+                  mode === "sign-in" ? "current-password" : "new-password"
+                }
+                placeholder={
+                  mode === "sign-up"
+                    ? `At least ${PASSWORD_MINIMUM} characters`
+                    : "Your password"
+                }
+                value={password}
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={
+                  errors.password ? "auth-password-error" : undefined
+                }
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  type="button"
+                  size="icon-xs"
+                  className="text-muted-foreground"
+                  aria-label={
+                    showPassword ? "Hide password" : "Show password"
+                  }
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((current) => !current)}
+                >
+                  {showPassword ? (
+                    <EyeOffIcon aria-hidden="true" />
+                  ) : (
+                    <EyeIcon aria-hidden="true" />
+                  )}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            {errors.password && (
+              <p id="auth-password-error" className="text-destructive text-xs">
+                {errors.password}
+              </p>
+            )}
+          </Field>
+        </FieldGroup>
+
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy ? "Opening your briefing..." : copy.submit}
+        </Button>
+      </form>
+    </AuthCard>
   );
 }
