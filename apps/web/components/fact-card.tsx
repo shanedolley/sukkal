@@ -5,8 +5,8 @@
 //
 // The whole card opens the panel, but the card is not a button. The statement
 // is, and it stretches over the card with an ::after overlay. The review
-// controls sit above that overlay. A button inside a button would be invalid
-// markup and would give the keyboard two targets for one row.
+// controls and the provenance sit above that overlay. A button inside a button
+// would be invalid markup and would give the keyboard two targets for one row.
 
 import { Badge } from "@/components/reui/badge";
 import { useDetailPanel } from "@/components/detail-panel";
@@ -100,9 +100,23 @@ export function FactCard({
 
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
         {source ? (
-          <span className="text-muted-foreground max-w-full truncate text-xs">
+          // KPA-42. The provenance opens the same drawer a citation opens, on
+          // the chunk this fact came from. It sits above the statement's
+          // overlay, so it takes the click rather than passing it on.
+          <button
+            type="button"
+            onClick={() =>
+              open({
+                kind: "source",
+                sourceId: fact.provenance.sourceId,
+                chunkId: fact.provenance.chunkId,
+              })
+            }
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring max-w-full truncate rounded-sm text-xs underline decoration-dotted underline-offset-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          >
             {source.title}
-          </span>
+            <span className="sr-only">. Open the passage this came from.</span>
+          </button>
         ) : (
           <span />
         )}
