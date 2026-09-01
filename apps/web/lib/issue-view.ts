@@ -21,7 +21,7 @@
 // so grouping by labels puts the same row under each one. That is what Jira
 // means by a label, and hiding it would under-report every count.
 
-import type { Issue, IssueStatus } from "./types";
+import type { Issue, IssuePriority, IssueStatus } from "./types";
 
 export type GroupField =
   | "none"
@@ -126,6 +126,15 @@ export const STATUS_LABELS: Record<IssueStatus, string> = {
 };
 
 /** Work in flight first, finished work last. */
+/** Urgent first. The list reads down the scale, so an index is the rank. */
+export const PRIORITY_ORDER: IssuePriority[] = [
+  "urgent",
+  "high",
+  "medium",
+  "low",
+  "none",
+];
+
 export const STATUS_ORDER: IssueStatus[] = [
   "in-progress",
   "in-review",
@@ -134,6 +143,107 @@ export const STATUS_ORDER: IssueStatus[] = [
   "done",
   "cancelled",
 ];
+
+/**
+ * What the rows inside a group are put in order by.
+ *
+ * Each field has one sensible direction and no toggle, because a reader
+ * asking for start dates wants the earliest first every time, and a reader
+ * asking for priority wants the urgent one at the top. A direction switch
+ * would be a second control answering a question nobody asks.
+ */
+export const ROW_SORTS = [
+  "none",
+  "priority",
+  "status",
+  "start",
+  "due",
+  "updated",
+  "title",
+] as const;
+
+export type RowSort = (typeof ROW_SORTS)[number];
+
+export const ROW_SORT_LABELS: Record<RowSort, string> = {
+  none: "As they come",
+  priority: "Priority",
+  status: "Status",
+  start: "Start date",
+  due: "Due date",
+  updated: "Last moved",
+  title: "Title",
+};
+
+export function isRowSort(value: string): value is RowSort {
+  return (ROW_SORTS as readonly string[]).includes(value);
+}
+
+/** An empty date sorts last, whichever way the field runs. */
+const LAST = Number.MAX_SAFE_INTEGER;
+
+function day(iso: string | null): number {
+  return iso ? Date.parse(`${iso}T00:00:00Z`) : LAST;
+}
+
+/**
+ * The values a sort field can hold, where it holds a countable few.
+ *
+ * These are the fields whose order somebody can arrange by hand. A date has
+ * no such list: there is no arranging every day there has ever been.
+ */
+export function rowValues(by: RowSort): readonly string[] | null {
+  if (by === "priority") return PRIORITY_ORDER;
+  if (by === "status") return STATUS_ORDER;
+  return null;
+}
+
+/** Below zero puts a before b. Ties hold the order they arrived in. */
+function compare(
+  a: Issue,
+  b: Issue,
+  by: RowSort,
+  rank: readonly string[] | null,
+): number {
+  switch (by) {
+    case "priority": {
+      // Urgent first, unless somebody said otherwise.
+      const order = rank ?? PRIORITY_ORDER;
+      return order.indexOf(a.priority) - order.indexOf(b.priority);
+    }
+    case "status": {
+      const order = rank ?? STATUS_ORDER;
+      return order.indexOf(a.status) - order.indexOf(b.status);
+    }
+    case "start":
+      return day(a.start) - day(b.start);
+    case "due":
+      return day(b.due) === day(a.due) ? 0 : day(a.due) - day(b.due);
+    case "updated":
+      // The other way round: what moved last is what a reader came to see.
+      return day(b.updated) - day(a.updated);
+    case "title":
+      return a.title.localeCompare(b.title);
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Put the nodes in order, parents only.
+ *
+ * A sub-task follows its parent wherever the parent lands, so sorting reads
+ * the parent alone. Sorting children among themselves would scatter a pair
+ * that reads as one piece of work.
+ */
+export function sortNodes(
+  nodes: IssueNode[],
+  by: RowSort,
+  /** The values in the order somebody arranged them, when they did. */
+  rank: readonly string[] | null = null,
+): IssueNode[] {
+  if (by === "none") return nodes;
+  return [...nodes].sort((a, b) => compare(a.issue, b.issue, by, rank));
+}
 
 /** The row that names an absence sorts last, whatever it is called. */
 const ABSENT = "￿";

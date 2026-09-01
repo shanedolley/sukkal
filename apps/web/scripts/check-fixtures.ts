@@ -11,7 +11,9 @@ import {
   CHAT_ANSWERS,
   FACTS,
   ISSUES,
+  JIRA_FIELDS,
   MEETINGS,
+  PROJECT_FIELDS,
   NEEDS_YOU,
   SOURCES,
   SPRINTS,
@@ -217,6 +219,79 @@ assert.ok(
   ISSUES.some((issue) => issue.start),
   "no issue carries a start date, so that pill is untested"
 );
+
+// 14. Every project an issue names carries a custom field list, even an
+//     empty one. A project missing from the map reads as "no fields", which
+//     is right, but only by accident.
+for (const project of new Set(ISSUES.map((issue) => issue.project))) {
+  assert.ok(
+    project in PROJECT_FIELDS,
+    `project ${project} has no custom field list`
+  );
+}
+
+// 15. A field id is unique within its project, and every value an issue
+//     carries is filed under an id that project declares. A stray value is a
+//     value no screen would ever show.
+for (const [project, fields] of Object.entries(PROJECT_FIELDS)) {
+  const ids = fields.map((field) => field.id);
+  assert.equal(
+    new Set(ids).size,
+    ids.length,
+    `project ${project} declares the same field id twice`
+  );
+  for (const field of fields) {
+    assert.ok(field.name, `a field on ${project} has no name`);
+  }
+}
+for (const issue of ISSUES) {
+  const ids = new Set((PROJECT_FIELDS[issue.project] ?? []).map((f) => f.id));
+  for (const id of Object.keys(issue.fields)) {
+    assert.ok(
+      ids.has(id),
+      `issue ${issue.key} carries ${id}, which ${issue.project} does not declare`
+    );
+  }
+}
+
+// 16. The fixtures exercise a required field that some rows leave empty, so
+//     the create form's refusal has something to refuse.
+{
+  const required = Object.values(PROJECT_FIELDS)
+    .flat()
+    .filter((field) => field.required);
+  assert.ok(required.length > 0, "no custom field is required anywhere");
+  assert.ok(
+    ISSUES.some((issue) => Object.keys(issue.fields).length > 0),
+    "no issue carries a custom field value, so the column is untested"
+  );
+}
+
+// 17. Every field a project carries is one the site offers. A project field
+//     the catalogue does not hold could never be picked again once removed,
+//     and would write a value to a field Jira does not have.
+{
+  const offered = new Set(JIRA_FIELDS.map((field) => field.id));
+  assert.equal(
+    offered.size,
+    JIRA_FIELDS.length,
+    "the site catalogue lists the same field id twice"
+  );
+  for (const [project, fields] of Object.entries(PROJECT_FIELDS)) {
+    for (const field of fields) {
+      assert.ok(
+        offered.has(field.id),
+        `${project} carries ${field.id}, which the site does not offer`
+      );
+      const named = JIRA_FIELDS.find((one) => one.id === field.id);
+      assert.equal(
+        field.name,
+        named?.name,
+        `${project} calls ${field.id} "${field.name}" and the site calls it "${named?.name}"`
+      );
+    }
+  }
+}
 
 console.log(
   `fixtures OK: ${SOURCES.length} sources, ${FACTS.length} facts, ${NEEDS_YOU.length} needs-you, ${MEETINGS.length} meetings, ${CHAT_ANSWERS.length} answers, ${AUDIT.length} audit entries, ${ISSUES.length} issues in ${SPRINTS.length} sprints`

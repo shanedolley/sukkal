@@ -9,9 +9,10 @@ import {
   ShieldCheckIcon,
   BookOpenIcon,
   ScaleIcon,
+  PlugIcon,
   SettingsIcon,
   RocketIcon,
-  FolderKanbanIcon,
+  BriefcaseIcon,
   ExternalLinkIcon,
   CopyIcon,
   StarIcon,
@@ -28,6 +29,24 @@ export type NavChild = {
   id: string
   label: string
   href: string
+  /** Deeper levels. A workspace holds pages, and one page holds projects. */
+  children?: NavChild[]
+  /** A control on the right of the row, such as the + on Projects. */
+  action?: ReactNode
+}
+
+/** What every workspace holds. The href is built from the workspace's own. */
+export function workspacePages(
+  href: string,
+  projects: NavChild[] = []
+): NavChild[] {
+  return [
+    // A folder, so the row opens rather than goes anywhere. The href only
+    // matters on the collapsed rail, which cannot nest.
+    { id: "projects", label: "Projects", href, children: projects },
+    { id: "issues", label: "Issues", href: `${href}/issues` },
+    { id: "settings", label: "Settings", href: `${href}/settings` },
+  ]
 }
 
 export type NavItem = {
@@ -173,7 +192,7 @@ export function navMain(
   ]
 }
 
-// ── Project management ──
+// ── Sprints and workspaces ──
 // Jira, one step removed. The routes exist before the data does, so the shape
 // of the section gets reviewed while the API work is still open.
 
@@ -190,17 +209,79 @@ export const SPRINTS_NAV: NavItem = {
   ],
 }
 
-export const PROJECTS_ICON = <FolderKanbanIcon aria-hidden="true" />
+export const WORKSPACES_ICON = <BriefcaseIcon aria-hidden="true" />
 
-export const PROJECTS: NavChild[] = [
-  { id: "collibra", label: "Collibra", href: "/projects/collibra" },
+// A workspace is who the work is for. Each tracker names a project its own
+// way: Collibra runs every engagement through one Jira project and tells them
+// apart by label, while Koinon gives each one a space and a ticket prefix.
+type WorkspaceRow = {
+  id: string
+  label: string
+  projects: { id: string; label: string }[]
+}
+
+export const WORKSPACE_ROWS: WorkspaceRow[] = [
+  {
+    id: "collibra",
+    label: "Collibra",
+    // PSAPAC carries every engagement. The label on the issue names which one.
+    projects: [
+      { id: "bhp-meridian", label: "BHP Meridian" },
+      { id: "sydney-water", label: "Sydney Water" },
+      { id: "transport-for-nsw", label: "Transport for NSW" },
+    ],
+  },
   {
     id: "koinon-engineering",
     label: "Koinon Engineering",
-    href: "/projects/koinon-engineering",
+    // A Jira project each, so the key in front of the name is the prefix every
+    // ticket in that project carries.
+    projects: [
+      { id: "mp", label: "MP · Marinucci Engineering" },
+      { id: "ms", label: "MS · Marinucci Support" },
+      { id: "kpa", label: "KPA · Personal Assistant" },
+    ],
   },
-  { id: "personal", label: "Personal", href: "/projects/personal" },
+  // ponytail: nothing personal is tracked in Jira yet. The + fills this.
+  { id: "personal", label: "Personal", projects: [] },
 ]
+
+export const WORKSPACES_NAV: NavChild[] = WORKSPACE_ROWS.map(
+  ({ id, label, projects }) => ({
+    id,
+    label,
+    href: `/projects/${id}`,
+    // Every project opens on its issues, so the one route serves them all.
+    children: workspacePages(
+      `/projects/${id}`,
+      projects.map((project) => ({
+        ...project,
+        href: `/projects/${project.id}`,
+      }))
+    ),
+  })
+)
+
+/**
+ * Whether a key names a workspace rather than a project inside one.
+ *
+ * The two carry different settings: a workspace holds the tracker and the
+ * custom fields, a project holds its label and its dates.
+ */
+export function isWorkspace(key: string): boolean {
+  return WORKSPACE_ROWS.some((row) => row.id === key);
+}
+
+/** Every row a key can name: the workspaces and the projects inside them. */
+export const NAMED_ROWS: NavChild[] = WORKSPACE_ROWS.flatMap(
+  ({ id, label, projects }) => [
+    { id, label, href: `/projects/${id}` },
+    ...projects.map((project) => ({
+      ...project,
+      href: `/projects/${project.id}`,
+    })),
+  ]
+)
 
 // ── Pinned engagements ──
 
@@ -218,6 +299,12 @@ export const PINNED_RESOURCES: PinnedResource[] = [
 // different mark. An item with no href is not built yet, and says so rather
 // than pretending to be a link.
 export const NAV_SECONDARY: SecondaryItem[] = [
+  {
+    id: "connections",
+    label: "Connections",
+    href: "/connections",
+    icon: <PlugIcon aria-hidden="true" />,
+  },
   {
     id: "policy",
     label: "Policy",

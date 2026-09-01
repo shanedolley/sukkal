@@ -17,7 +17,8 @@ const CRUMBS: Record<string, string[]> = {
   "/chat": ["Assistant", "Chat", "New chat"],
   "/chat/history": ["Assistant", "Chat", "History"],
   "/audit": ["Assistant", "Audit log"],
-  "/settings": ["Assistant", "Preferences"],
+  "/settings": ["Preferences"],
+  "/connections": ["Connections"],
   "/sprints/current": ["Project management", "Sprints", "Current sprint"],
   "/sprints/all": ["Project management", "Sprints", "All sprints"],
 };
@@ -28,7 +29,13 @@ function crumbFor(pathname: string): string[] {
   if (pathname.startsWith("/chat/")) return ["Assistant", "Chat", "Conversation"];
   // A project added in the sidebar carries a key the map cannot list either.
   if (pathname.startsWith("/projects/")) {
-    return ["Project management", "Projects", "Project"];
+    const page = pathname.endsWith("/settings")
+      ? "Settings"
+      : pathname.endsWith("/issues")
+        ? "Issues"
+        : undefined;
+    const trail = ["Project management", "Projects", "Project"];
+    return page ? [...trail, page] : trail;
   }
   // The arrows on the current sprint page reach a sprint by its id.
   if (pathname.startsWith("/sprints/")) {

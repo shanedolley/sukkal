@@ -39,10 +39,13 @@ import {
   type IssuePriority,
   type IssueStatus,
 } from "@/lib/types";
+import { useProjectFields } from "@/lib/project-fields";
 import { dotFor, PriorityGlyph, StatusGlyph } from "./glyphs";
 import {
+  CustomFieldInputs,
   dateLabel,
   DeleteIssues,
+  DescriptionField,
   FieldDate,
   FieldLabels,
   FieldMenu,
@@ -149,6 +152,10 @@ export function IssueDetail({
     .filter((one): one is Issue => Boolean(one));
   const blockedBy = issues.filter((one) => one.blocks.includes(issue.key));
 
+  // The project's own fields. Changing the project changes the set, and a
+  // value already written stays where it is rather than being thrown away.
+  const custom = useProjectFields(issue.project);
+
   const sprint = sprintChoices(options);
   const sprintName = issue.sprintId
     ? (sprint.labels[issue.sprintId] ?? issue.sprintId)
@@ -197,16 +204,23 @@ export function IssueDetail({
               </div>
             )}
 
-            <textarea
+            <DescriptionField
               value={issue.description}
-              onChange={(event) =>
-                onChange({ description: event.target.value })
-              }
-              placeholder="Add description..."
-              aria-label="Description"
+              onChange={(description) => onChange({ description })}
               rows={4}
-              className="placeholder:text-muted-foreground/70 field-sizing-content min-h-24 w-full resize-none bg-transparent text-sm leading-relaxed outline-none"
+              className="min-h-24 leading-relaxed"
             />
+
+            {custom.length > 0 && (
+              <section className="flex flex-col gap-2">
+                <RailHeading>{issue.project} fields</RailHeading>
+                <CustomFieldInputs
+                  fields={custom}
+                  values={issue.fields}
+                  onChange={(fields) => onChange({ fields })}
+                />
+              </section>
+            )}
 
             {children.length > 0 && (
               <section className="flex flex-col gap-1">

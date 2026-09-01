@@ -213,3 +213,70 @@
     @apply font-sans;
   }
 }
+/*
+ * A moving neon edge on the field the pointer is over.
+ *
+ * The ring is a masked pseudo-element and not a real border, so it costs no
+ * layout, keeps the corner radius the element already has, and sits over
+ * whatever colour the row happens to be painted.
+ *
+ * The sweep runs once and then leaves. It says the field takes a click; it is
+ * not a state, so it has no business sitting there once it has said so.
+ */
+@keyframes edge-sweep {
+  from {
+    background-position: 100% 0;
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    background-position: 0% 0;
+    opacity: 0;
+  }
+}
+
+.neon-edge {
+  position: relative;
+}
+
+.neon-edge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  /* Twice the width, so the band has somewhere to travel from. Growing the
+     position moves the image left, so the sweep runs from 100% down to 0. */
+  background: linear-gradient(
+    90deg,
+    var(--chart-1),
+    var(--info),
+    var(--chart-2),
+    var(--info),
+    var(--chart-1)
+  );
+  background-size: 200% 100%;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.neon-edge:hover::before,
+.neon-edge:focus-visible::before {
+  animation: edge-sweep 700ms ease-out forwards;
+}
+
+/* No sweep to make the point, so the edge holds while the pointer is on it.
+   The field still has to say it takes a click. */
+@media (prefers-reduced-motion: reduce) {
+  .neon-edge:hover::before,
+  .neon-edge:focus-visible::before {
+    animation: none;
+    opacity: 1;
+  }
+}

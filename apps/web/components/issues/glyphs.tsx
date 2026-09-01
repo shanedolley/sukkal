@@ -6,9 +6,13 @@
 // status and the same priority, and two copies would drift the day one of
 // them changed.
 
+import { BlocksIcon, TagIcon, ZapIcon, type LucideIcon } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import {
+  ISSUE_KIND_LABELS,
   ISSUE_PRIORITY_LABELS,
+  type IssueKind,
   type IssuePriority,
   type IssueStatus,
 } from "@/lib/types";
@@ -21,6 +25,44 @@ const STATUS_COLOUR: Record<IssueStatus, string> = {
   done: "text-primary",
   cancelled: "text-muted-foreground",
 };
+
+/**
+ * The mark each kind wears.
+ *
+ * Violet and yellow are the two the new-issue form already puts on its parent
+ * field, so an epic looks like an epic wherever it is drawn. There is no blue
+ * token, and three kinds told apart at a glance is worth the raw colour.
+ */
+const KIND_GLYPH: Record<IssueKind, { icon: LucideIcon; colour: string }> = {
+  epic: { icon: ZapIcon, colour: "text-info" },
+  story: { icon: TagIcon, colour: "text-warning" },
+  subtask: { icon: BlocksIcon, colour: "text-blue-500" },
+};
+
+export function KindGlyph({
+  kind,
+  silent,
+}: {
+  kind: IssueKind;
+  /** Set where the name is already written beside the mark. */
+  silent?: boolean;
+}) {
+  const { icon: Icon, colour } = KIND_GLYPH[kind];
+  const label = silent ? undefined : ISSUE_KIND_LABELS[kind];
+
+  return (
+    <span
+      title={label}
+      className={cn(
+        "flex size-4 shrink-0 items-center justify-center",
+        colour,
+      )}
+    >
+      <Icon className="size-3.5" aria-hidden="true" />
+      {label && <span className="sr-only">{label}</span>}
+    </span>
+  );
+}
 
 /** How many of the three bars are lit. */
 const PRIORITY_LEVEL: Record<IssuePriority, number> = {

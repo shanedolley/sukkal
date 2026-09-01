@@ -33,6 +33,19 @@ export function formatLongDay(iso: string): string {
   });
 }
 
+/**
+ * Today, on the clock, in the zone the rest of this file prints in.
+ *
+ * The fixtures freeze a different day so the demo always has a current sprint
+ * and a stale fact to show. That frozen day is right for reading the data and
+ * wrong for reading a person: somebody typing "Friday" means the Friday on
+ * the calendar in front of them. en-CA is the locale that spells a date
+ * YYYY-MM-DD, which is the shape every date in this app is stored in.
+ */
+export function realToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: ZONE });
+}
+
 /** 19 August 2026 */
 export function formatFullDay(iso: string): string {
   return new Date(iso).toLocaleDateString(LOCALE, {

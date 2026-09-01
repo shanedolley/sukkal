@@ -11,6 +11,47 @@ import { PageError, PageLoading } from "@/components/page-status";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
 import type { PageStatus } from "@/lib/forced-state";
 
+/**
+ * Everything a queue draws below its title: the busy, failed and empty states,
+ * and the rows themselves.
+ *
+ * It sits apart from the frame because a queue inside a tab already has a
+ * title above the tab strip, and a second one under it reads as a mistake.
+ */
+export function QueueBody({
+  title,
+  count,
+  status,
+  emptyTitle,
+  emptyDescription,
+  children,
+}: {
+  title: string;
+  count: number;
+  status: PageStatus;
+  emptyTitle: string;
+  emptyDescription: string;
+  children: React.ReactNode;
+}) {
+  const empty = status === "empty" || (status === "ready" && count === 0);
+
+  return (
+    <>
+      {status === "loading" && <PageLoading label={title} rows={4} />}
+      {status === "error" && <PageError what={title} />}
+
+      {empty && (
+        <Empty className="border-none py-10">
+          <EmptyTitle className="text-base">{emptyTitle}</EmptyTitle>
+          <EmptyDescription>{emptyDescription}</EmptyDescription>
+        </Empty>
+      )}
+
+      {status === "ready" && count > 0 && children}
+    </>
+  );
+}
+
 export function QueuePage({
   title,
   lede,
@@ -31,8 +72,6 @@ export function QueuePage({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const empty = status === "empty" || (status === "ready" && count === 0);
-
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
@@ -55,17 +94,15 @@ export function QueuePage({
         <p className="text-muted-foreground max-w-2xl text-sm">{lede}</p>
       </header>
 
-      {status === "loading" && <PageLoading label={title} rows={4} />}
-      {status === "error" && <PageError what={title} />}
-
-      {empty && (
-        <Empty className="border-none py-10">
-          <EmptyTitle className="text-base">{emptyTitle}</EmptyTitle>
-          <EmptyDescription>{emptyDescription}</EmptyDescription>
-        </Empty>
-      )}
-
-      {status === "ready" && count > 0 && children}
+      <QueueBody
+        title={title}
+        count={count}
+        status={status}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+      >
+        {children}
+      </QueueBody>
     </div>
   );
 }

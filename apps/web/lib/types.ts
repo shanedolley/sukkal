@@ -144,6 +144,28 @@ export type IssueStatus =
   | "done"
   | "cancelled";
 
+/**
+ * Where an issue sits in the tree.
+ *
+ * An epic hangs off nothing, a story hangs off an epic, and a sub-task hangs
+ * off a story. Jira allows more shapes than this; the three are the ones this
+ * assistant files.
+ */
+export type IssueKind = "epic" | "story" | "subtask";
+
+/** What a kind may hang off. An epic hangs off nothing. */
+export const PARENT_KIND: Record<IssueKind, IssueKind | null> = {
+  epic: null,
+  story: "epic",
+  subtask: "story",
+};
+
+export const ISSUE_KIND_LABELS: Record<IssueKind, string> = {
+  epic: "Epic",
+  story: "Story",
+  subtask: "Sub-task",
+};
+
 export type IssuePriority = "none" | "low" | "medium" | "high" | "urgent";
 
 export type SprintState = "active" | "future" | "closed";
@@ -158,6 +180,55 @@ export interface Sprint {
   state: SprintState;
 }
 
+/**
+ * What a project carries beyond its issues.
+ *
+ * Jira holds none of it. The description is written here, and the dates come
+ * from the contract, which Collibra keeps in Salesforce on pse__Proj__c.
+ */
+export interface ProjectOverview {
+  /** Empty until somebody writes it. */
+  description: string;
+  /** ISO date. Null when no contract names one. */
+  start: string | null;
+  /** ISO date. Null when no contract names one. */
+  end: string | null;
+}
+
+/**
+ * One person's assignment on a project, and the hours they have booked.
+ *
+ * Certinia PSA holds these on pse__Assignment__c. `assigned` is
+ * pse__Scheduled_Hours__c, and the booked hours are the billable and
+ * non-billable submitted hours added together.
+ */
+export interface ProjectAssignment {
+  /** Resource_Name__c. */
+  resource: string;
+  /** Hours the assignment allows. */
+  assigned: number;
+  /** Hours booked before the weeks below, so the totals reach back further. */
+  usedEarlier: number;
+  /** Hours booked in each week, oldest first. */
+  used: number[];
+}
+
+/** One day's standing count, for the open and closed lines on a chart. */
+export interface ProjectActivity {
+  /** ISO date. */
+  date: string;
+  open: number;
+  closed: number;
+}
+
+export interface CustomField {
+  /** Stable across a rename, because an issue's value is filed under it. */
+  id: string;
+  name: string;
+  /** A new issue cannot be filed until this one is filled in. */
+  required: boolean;
+}
+
 export interface Issue {
   /** The Jira key, such as MP-142. */
   key: string;
@@ -165,6 +236,7 @@ export interface Issue {
   /** What the issue is, at length. Empty until somebody writes it. */
   description: string;
   status: IssueStatus;
+  kind: IssueKind;
   priority: IssuePriority;
   /** The project name the sidebar lists. */
   project: string;
@@ -179,6 +251,8 @@ export interface Issue {
   updated: string;
   /** The sprint it sits in. Null while it sits in the backlog. */
   sprintId: string | null;
+  /** What the project's custom fields hold, by field id. Absent is empty. */
+  fields: Record<string, string>;
   /**
    * The keys this issue blocks.
    *
@@ -187,7 +261,7 @@ export interface Issue {
    * puts the truth at the inward end.
    */
   blocks: string[];
-  /** The key of the issue it hangs under, on a sub-task. */
+  /** The key of the issue it hangs under. Absent on an epic. */
   parent?: string;
 }
 

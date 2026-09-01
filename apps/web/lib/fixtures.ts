@@ -7,9 +7,13 @@ import type {
   ChatAnswer,
   Conversation,
   Fact,
+  CustomField,
   Issue,
   Meeting,
   NeedsYouItem,
+  ProjectActivity,
+  ProjectAssignment,
+  ProjectOverview,
   Provenance,
   Source,
   SourceChunk,
@@ -615,14 +619,16 @@ export const ISSUES: Issue[] = [
     description:
       "Legal asked for seven years of lineage records. The platform budget covers three. Nigel proposed three years hot and four archived, with the archive cost going in the next budget round.",
     status: "in-progress",
+    kind: "epic",
     priority: "urgent",
     project: "Collibra",
     space: "collibra",
-    labels: ["Blocked"],
+    labels: ["Blocked", "bhp-meridian"],
     assignee: "Shane Dolley",
     start: "2026-08-18",
     due: "2026-08-28",
     updated: "2026-08-25",
+    fields: { customer: "BHP", engagement: "Meridian" },
     blocks: ["PSAPAC-2598"],
     sprintId: "sprint-41",
   },
@@ -631,14 +637,16 @@ export const ISSUES: Issue[] = [
     title: "Rebuild the Modify Data Utility form on the new method",
     description: "",
     status: "in-progress",
+    kind: "story",
     priority: "high",
     project: "Collibra",
     space: "collibra",
-    labels: ["Improvement"],
+    labels: ["Improvement", "bhp-meridian"],
     assignee: "Priya Raman",
     start: "2026-08-19",
     due: null,
     updated: "2026-08-25",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -647,14 +655,16 @@ export const ISSUES: Issue[] = [
     title: "Restrict the Data Utility group picker to the Snowflake community",
     description: "",
     status: "todo",
+    kind: "subtask",
     priority: "medium",
     project: "Collibra",
     space: "collibra",
-    labels: ["Improvement"],
+    labels: ["Improvement", "bhp-meridian"],
     assignee: "Priya Raman",
     start: null,
     due: "2026-08-29",
     updated: "2026-08-24",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
     parent: "PSAPAC-2611",
@@ -664,14 +674,16 @@ export const ISSUES: Issue[] = [
     title: "Filter obsolete data concepts out of the search list",
     description: "",
     status: "todo",
+    kind: "subtask",
     priority: "low",
     project: "Collibra",
     space: "collibra",
-    labels: [],
+    labels: ["transport-for-nsw"],
     assignee: "Priya Raman",
     start: null,
     due: null,
     updated: "2026-08-21",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
     parent: "PSAPAC-2611",
@@ -681,14 +693,16 @@ export const ISSUES: Issue[] = [
     title: "Sydney Water: hand the lineage runbook to the platform team",
     description: "",
     status: "in-review",
+    kind: "story",
     priority: "medium",
     project: "Collibra",
     space: "collibra",
-    labels: ["Documentation"],
+    labels: ["Documentation", "sydney-water"],
     assignee: "Shane Dolley",
     start: "2026-08-20",
     due: "2026-08-26",
     updated: "2026-08-24",
+    fields: { customer: "Sydney Water", engagement: "Lineage uplift" },
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -697,14 +711,16 @@ export const ISSUES: Issue[] = [
     title: "Close out the Transport for NSW invoice query",
     description: "",
     status: "done",
+    kind: "story",
     priority: "high",
     project: "Collibra",
     space: "collibra",
-    labels: [],
+    labels: ["transport-for-nsw"],
     assignee: "Shane Dolley",
     start: null,
     due: null,
     updated: "2026-08-20",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -714,6 +730,7 @@ export const ISSUES: Issue[] = [
     description:
       "Sent 22 August. The regional director returns on the 27th, so nothing moves before then.",
     status: "in-progress",
+    kind: "story",
     priority: "urgent",
     project: "Koinon Engineering",
     space: "koinon",
@@ -722,6 +739,7 @@ export const ISSUES: Issue[] = [
     start: "2026-08-18",
     due: "2026-08-27",
     updated: "2026-08-25",
+    fields: {},
     blocks: ["MP-146"],
     sprintId: "sprint-41",
   },
@@ -730,6 +748,7 @@ export const ISSUES: Issue[] = [
     title: "Move the nabium transcript worker onto the new queue",
     description: "",
     status: "todo",
+    kind: "story",
     priority: "high",
     project: "Koinon Engineering",
     space: "koinon",
@@ -738,6 +757,7 @@ export const ISSUES: Issue[] = [
     start: null,
     due: null,
     updated: "2026-08-23",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -746,6 +766,7 @@ export const ISSUES: Issue[] = [
     title: "Add the staleness sweep to the nightly schedule",
     description: "",
     status: "todo",
+    kind: "story",
     priority: "medium",
     project: "Koinon Engineering",
     space: "koinon",
@@ -754,6 +775,7 @@ export const ISSUES: Issue[] = [
     start: null,
     due: "2026-08-29",
     updated: "2026-08-22",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -762,6 +784,7 @@ export const ISSUES: Issue[] = [
     title: "Marinucci: the RCTI PDF prints the wrong ABN",
     description: "",
     status: "done",
+    kind: "story",
     priority: "urgent",
     project: "Koinon Engineering",
     space: "koinon",
@@ -770,6 +793,7 @@ export const ISSUES: Issue[] = [
     start: null,
     due: null,
     updated: "2026-08-19",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -778,6 +802,7 @@ export const ISSUES: Issue[] = [
     title: "Rebuild the Talentblocks booking export",
     description: "",
     status: "cancelled",
+    kind: "story",
     priority: "low",
     project: "Koinon Engineering",
     space: "koinon",
@@ -786,6 +811,7 @@ export const ISSUES: Issue[] = [
     start: null,
     due: null,
     updated: "2026-08-18",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -794,6 +820,7 @@ export const ISSUES: Issue[] = [
     title: "Renew the practising certificate before it lapses",
     description: "",
     status: "todo",
+    kind: "story",
     priority: "high",
     project: "Personal",
     space: "personal",
@@ -802,6 +829,7 @@ export const ISSUES: Issue[] = [
     start: null,
     due: "2026-08-31",
     updated: "2026-08-24",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -810,6 +838,7 @@ export const ISSUES: Issue[] = [
     title: "Book the Sydney trip for the September on-site",
     description: "",
     status: "backlog",
+    kind: "story",
     priority: "none",
     project: "Personal",
     space: "personal",
@@ -818,6 +847,7 @@ export const ISSUES: Issue[] = [
     start: null,
     due: null,
     updated: "2026-08-15",
+    fields: {},
     blocks: [],
     sprintId: "sprint-41",
   },
@@ -829,6 +859,7 @@ export const ISSUES: Issue[] = [
     description:
       "Read-only is the whole point. The token must not carry write scope, because the policy table denies every write to a customer system.",
     status: "todo",
+    kind: "story",
     priority: "high",
     project: "Koinon Engineering",
     space: "koinon",
@@ -837,6 +868,7 @@ export const ISSUES: Issue[] = [
     start: "2026-09-01",
     due: null,
     updated: "2026-08-25",
+    fields: {},
     blocks: [],
     sprintId: "sprint-42",
   },
@@ -845,14 +877,16 @@ export const ISSUES: Issue[] = [
     title: "Draft the BHP Meridian handover pack",
     description: "",
     status: "backlog",
+    kind: "story",
     priority: "medium",
     project: "Collibra",
     space: "collibra",
-    labels: ["Documentation"],
+    labels: ["Documentation", "bhp-meridian"],
     assignee: "Shane Dolley",
     start: null,
     due: "2026-09-11",
     updated: "2026-08-24",
+    fields: {},
     blocks: [],
     sprintId: "sprint-42",
   },
@@ -861,6 +895,7 @@ export const ISSUES: Issue[] = [
     title: "Move the family photo archive off the old drive",
     description: "",
     status: "backlog",
+    kind: "story",
     priority: "low",
     project: "Personal",
     space: "personal",
@@ -869,6 +904,7 @@ export const ISSUES: Issue[] = [
     start: null,
     due: null,
     updated: "2026-08-12",
+    fields: {},
     blocks: [],
     sprintId: "sprint-42",
   },
@@ -879,6 +915,7 @@ export const ISSUES: Issue[] = [
     title: "Ship the appearance preferences page",
     description: "",
     status: "done",
+    kind: "epic",
     priority: "medium",
     project: "Koinon Engineering",
     space: "koinon",
@@ -887,6 +924,7 @@ export const ISSUES: Issue[] = [
     start: null,
     due: null,
     updated: "2026-08-14",
+    fields: {},
     blocks: [],
     sprintId: "sprint-40",
   },
@@ -895,14 +933,16 @@ export const ISSUES: Issue[] = [
     title: "Retire the old lineage import script",
     description: "",
     status: "done",
+    kind: "story",
     priority: "low",
     project: "Collibra",
     space: "collibra",
-    labels: [],
+    labels: ["sydney-water"],
     assignee: "Priya Raman",
     start: null,
     due: null,
     updated: "2026-08-13",
+    fields: {},
     blocks: [],
     sprintId: "sprint-40",
   },
@@ -911,6 +951,7 @@ export const ISSUES: Issue[] = [
     title: "Lodge the quarterly BAS",
     description: "",
     status: "done",
+    kind: "story",
     priority: "urgent",
     project: "Personal",
     space: "personal",
@@ -919,7 +960,149 @@ export const ISSUES: Issue[] = [
     start: "2026-08-10",
     due: "2026-08-14",
     updated: "2026-08-14",
+    fields: {},
     blocks: [],
     sprintId: "sprint-40",
   },
 ];
+
+// ── Custom fields ──
+//
+// What the site offers, and what each project has taken from it.
+//
+// The catalogue stands in for a scan of /rest/api/3/field, which is where the
+// real list comes from once the connection lands. Collibra's two are real:
+// see the Jira section of the repository's CLAUDE.md.
+
+/** Every custom field the site offers, whatever project uses it. */
+export const JIRA_FIELDS: { id: string; name: string }[] = [
+  { id: "acceptance-criteria", name: "Acceptance Criteria" },
+  { id: "account", name: "Account" },
+  { id: "billable", name: "Billable" },
+  { id: "customer", name: "Customer" },
+  { id: "delivery-date", name: "Delivery Date" },
+  { id: "engagement", name: "Engagement" },
+  { id: "environment", name: "Environment" },
+  { id: "epic-link", name: "Epic Link" },
+  { id: "root-cause", name: "Root Cause" },
+  { id: "severity", name: "Severity" },
+  { id: "team", name: "Team" },
+];
+
+/** When the catalogue above was last read. A scan moves it. */
+export const FIELDS_SCANNED_AT = "2026-08-24";
+
+
+// ── Projects ──
+// Keyed by the address the project is reached at, so a page holding a route
+// key can read them without a second lookup.
+
+export const PROJECT_OVERVIEW: Record<string, ProjectOverview> = {
+  "bhp-meridian": {
+    description:
+      "A resident enterprise architect on the Meridian programme. Retention, lineage and the archive tier, renewed each year.",
+    start: "2026-06-08",
+    end: "2027-06-07",
+  },
+  "sydney-water": {
+    description:
+      "Lineage uplift. Hand the runbook to the platform team, then retire the import scripts it replaces.",
+    start: "2026-03-02",
+    end: "2026-11-27",
+  },
+  "transport-for-nsw": {
+    description: "",
+    start: "2026-07-01",
+    end: null,
+  },
+};
+
+/**
+ * The open and closed counts, week by week.
+ *
+ * ponytail: shaped by hand. The fixtures are one snapshot and carry no
+ * history, so a count on any day but today cannot be read from them. Jira's
+ * changelog replaces this whole map.
+ */
+function weekly(open: number[], closed: number[]): ProjectActivity[] {
+  return open.map((count, week) => {
+    const day = new Date(TODAY);
+    day.setDate(day.getDate() - 7 * (open.length - 1 - week));
+    return {
+      date: day.toISOString().slice(0, 10),
+      open: count,
+      closed: closed[week],
+    };
+  });
+}
+
+export const PROJECT_ACTIVITY: Record<string, ProjectActivity[]> = {
+  "bhp-meridian": weekly([2, 5, 6, 4, 7, 6, 4], [0, 1, 2, 5, 5, 7, 9]),
+  "sydney-water": weekly([4, 3, 5, 3, 2, 2, 1], [1, 3, 3, 6, 8, 8, 9]),
+  "transport-for-nsw": weekly([1, 2, 3, 3, 2, 2, 2], [0, 0, 1, 2, 4, 4, 5]),
+  collibra: weekly([7, 10, 12, 9, 11, 9, 8], [1, 4, 6, 13, 17, 19, 23]),
+  "koinon-engineering": weekly([5, 6, 8, 7, 9, 8, 7], [0, 2, 3, 5, 6, 9, 11]),
+  personal: weekly([2, 3, 3, 4, 5, 4, 4], [0, 1, 1, 2, 2, 4, 5]),
+};
+
+/**
+ * Who is assigned to a project, and what they have booked.
+ *
+ * ponytail: shaped by hand, on the same seven weeks the activity chart uses,
+ * so the two read against each other. Certinia PSA replaces the whole map.
+ * Only Collibra runs projects on hours, so only its engagements appear.
+ */
+export const PROJECT_HOURS: Record<string, ProjectAssignment[]> = {
+  "bhp-meridian": [
+    {
+      resource: "Shane Dolley",
+      assigned: 1200,
+      usedEarlier: 260,
+      used: [32, 30, 28, 34, 26, 30, 24],
+    },
+    {
+      resource: "Priya Raman",
+      assigned: 400,
+      usedEarlier: 70,
+      used: [8, 12, 10, 6, 14, 10, 8],
+    },
+  ],
+  "sydney-water": [
+    {
+      resource: "Shane Dolley",
+      assigned: 320,
+      usedEarlier: 180,
+      used: [10, 8, 12, 6, 9, 7, 5],
+    },
+    {
+      resource: "Priya Raman",
+      assigned: 160,
+      usedEarlier: 96,
+      used: [4, 6, 4, 8, 5, 3, 2],
+    },
+  ],
+  "transport-for-nsw": [
+    {
+      resource: "Shane Dolley",
+      assigned: 120,
+      usedEarlier: 22,
+      used: [6, 4, 8, 5, 6, 4, 3],
+    },
+  ],
+};
+
+/** The Monday of each week the hours above are booked against, oldest first. */
+export const HOURS_WEEKS: string[] = Array.from({ length: 7 }, (_, week) => {
+  const day = new Date(TODAY);
+  day.setDate(day.getDate() - 7 * (6 - week));
+  return day.toISOString().slice(0, 10);
+});
+
+export const PROJECT_FIELDS: Record<string, CustomField[]> = {
+  Collibra: [
+    { id: "customer", name: "Customer", required: true },
+    { id: "engagement", name: "Engagement", required: false },
+  ],
+  "Koinon Engineering": [],
+  Personal: [],
+};

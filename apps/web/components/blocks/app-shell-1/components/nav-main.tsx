@@ -4,7 +4,7 @@
 // the links are real routes through next/link, and the active item comes from
 // the current path rather than a flag in the data.
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Badge } from "@/components/reui/badge"
@@ -38,26 +38,94 @@ import { ChevronRightIcon } from "lucide-react"
 
 function NavSubItem({ child }: { child: NavChild }) {
   const pathname = usePathname()
+  // A row that holds pages of its own opens them rather than going anywhere.
+  // The pages are where the reader is headed, and one of them is always the
+  // one the row would have led to.
+  const [open, setOpen] = useState(() =>
+    (child.children ?? []).some((page) => pathname === page.href)
+  )
+
+  if (!child.children) {
+    return (
+      <SidebarMenuSubItem>
+        <SidebarMenuSubButton
+          render={<Link href={child.href} />}
+          isActive={pathname === child.href}
+          title={child.label}
+        >
+          <span>{child.label}</span>
+        </SidebarMenuSubButton>
+      </SidebarMenuSubItem>
+    )
+  }
+
   return (
     <SidebarMenuSubItem>
       <SidebarMenuSubButton
-        render={<Link href={child.href} />}
-        isActive={pathname === child.href}
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        aria-controls={`subnav-${child.id}`}
+        isActive={child.children.some((page) => pathname === page.href)}
+        title={child.label}
       >
-        <span>{child.label}</span>
+        <span className="min-w-0 truncate">{child.label}</span>
+        <ChevronRightIcon
+          className={cn(
+            "ml-auto size-3.5 shrink-0 opacity-60 transition-transform duration-200",
+            open && "rotate-90",
+            child.action && "mr-5"
+          )}
+          aria-hidden="true"
+        />
       </SidebarMenuSubButton>
+
+      {child.action}
+
+      {open && <NavSubMenu id={child.id} items={child.children} />}
     </SidebarMenuSubItem>
   )
 }
 
+// Each level insets from both edges, but only the left one draws the tree, and
+// the right one costs a name 24px a level. Drop it.
 function NavSubMenu({ id, items }: { id: string; items: NavChild[] }) {
   return (
-    <SidebarMenuSub id={`subnav-${id}`}>
-      {items.map((child) => (
-        <NavSubItem key={child.id} child={child} />
-      ))}
+    <SidebarMenuSub id={`subnav-${id}`} className="mr-0 pr-0">
+      {items.length === 0 ? (
+        <SidebarMenuSubItem>
+          <span className="text-muted-foreground flex h-7 items-center px-2 text-xs">
+            None yet
+          </span>
+        </SidebarMenuSubItem>
+      ) : (
+        items.map((child) => <NavSubItem key={child.id} child={child} />)
+      )}
     </SidebarMenuSub>
   )
+}
+
+// The rail has no room to nest, so every level flattens into one list. A row
+// that holds others becomes a heading above them, indented by its depth.
+function railRows(rows: NavChild[], depth = 0): ReactNode[] {
+  return rows.flatMap((row) => {
+    const indent = { paddingLeft: 8 + depth * 12 }
+    return row.children
+      ? [
+          <DropdownMenuLabel key={row.id} style={indent}>
+            {row.label}
+          </DropdownMenuLabel>,
+          ...railRows(row.children, depth + 1),
+        ]
+      : [
+          <DropdownMenuItem
+            key={row.id}
+            render={<Link href={row.href} />}
+            style={indent}
+          >
+            {row.label}
+          </DropdownMenuItem>,
+        ]
+  })
 }
 
 // Collapsed (icon) rail: the inline submenu would push the next item down, so
@@ -90,11 +158,7 @@ function CollapsedNavItem({
         >
           <DropdownMenuGroup>
             <DropdownMenuLabel>{item.label}</DropdownMenuLabel>
-            {item.children.map((child) => (
-              <DropdownMenuItem key={child.id} render={<Link href={child.href} />}>
-                {child.label}
-              </DropdownMenuItem>
-            ))}
+            {railRows(item.children)}
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -200,9 +264,15 @@ export function NavGroup({
       <SidebarGroupContent>
         <SidebarMenu className="gap-1!">
           {items.map((item) => {
+            // Any depth, because a project's pages sit two levels down and
+            // the group above them still has to read as the active one.
+            const holds = (rows: NavChild[]): boolean =>
+              rows.some(
+                (row) => row.href === pathname || holds(row.children ?? [])
+              )
             const isActive = item.href
               ? pathname === item.href
-              : (item.children ?? []).some((c) => c.href === pathname)
+              : holds(item.children ?? [])
             const withActive = { ...item, isActive }
             return item.children ? (
               <CollapsibleNavItem
