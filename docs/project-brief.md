@@ -902,11 +902,15 @@ should be judged on that rather than on whether 17 rows arrived.
    and Postgres has to replace.
 4. **Turn inline tasks into rows.** The `- [ ]` items with their due, start and
    done signifiers attach to the fact they sit on, never to a standalone list.
-5. **Create the tables the two `index.md` tables need, and migrate nothing.**
+5. **Create the tables the two `index.md` tables need, and migrate two rows.**
    The open questions and the Decisions table are workflow rather than prose, so
-   `questions` and `rejections` exist in the schema. Both tables on `index.md`
-   carry headers and no rows as of 24 August 2026, so there is nothing to move.
-   A later brainstorm rescopes the parser that would read them.
+   `questions` and `rejections` exist in the schema. This step read "migrate
+   nothing" until 2 September 2026, because both tables held headers and no rows
+   on 24 August. The Questions table now holds two rows, and Shane answered both
+   before the freeze: one names Nigel Nisbett's role, and one records that BHP
+   bought nothing after the Deasy Labs demo. A question closes by writing the
+   answer into the fact, so the parser has to carry the answer across rather
+   than the question alone.
 6. **Write the four gates as code.** Each gate gets its own test. This is the
    part that must stop being a prompt instruction.
 7. **Port `check.py`.** The staleness sweep and the advisory checks: orphans,
