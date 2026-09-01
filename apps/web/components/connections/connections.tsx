@@ -308,7 +308,9 @@ function AddConnection() {
           <button
             type="button"
             aria-label="Add a connection"
-            className="border-border/70 text-muted-foreground hover:border-border hover:text-foreground focus-visible:ring-ring flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-4 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            // Narrower than a card. It holds a plus and two lines, so the
+            // width a real connection needs would be mostly empty.
+            className="border-border/70 text-muted-foreground hover:border-border hover:text-foreground focus-visible:ring-ring flex min-h-28 w-full max-w-64 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-4 text-center transition-colors focus-visible:ring-2 focus-visible:outline-none"
           />
         }
       >
