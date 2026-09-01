@@ -36,10 +36,9 @@ import { formatStamp } from "@/lib/format";
 import { useForcedStatus } from "@/lib/forced-state";
 import { PageError, PageLoading } from "@/components/page-status";
 import { Skeleton } from "@/components/ui/skeleton";
+import { auditRows, type OutcomeFilter } from "@/lib/audit-view";
 import { inSpace, useSpace } from "@/lib/space-context";
 import { SPACE_LABELS, type AuditEntry, type AuditOutcome } from "@/lib/types";
-
-type OutcomeFilter = AuditOutcome | "all";
 
 function OutcomeBadge({ outcome }: { outcome: AuditOutcome }) {
   return outcome === "allowed" ? (
@@ -70,19 +69,12 @@ function AuditLog() {
   const [outcome, setOutcome] = useState<OutcomeFilter>("all");
   const [selected, setSelected] = useState<AuditEntry | null>(null);
 
-  const rows = useMemo(() => {
-    if (status === "empty") return [];
-    const bySpace = inSpace(AUDIT, space);
-    const filtered =
-      outcome === "all"
-        ? bySpace
-        : bySpace.filter((entry) => entry.outcome === outcome);
-    // Newest first. The fixtures are written in narrative order, and a log
-    // that is not in time order is not a log.
-    return [...filtered].sort(
-      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
-    );
-  }, [space, outcome, status]);
+  // The outcome filter and the newest-first order live in lib/audit-view.ts,
+  // so scripts/check-audit.ts can prove them. See KPA-43.
+  const rows = useMemo(
+    () => (status === "empty" ? [] : auditRows(inSpace(AUDIT, space), outcome)),
+    [space, outcome, status]
+  );
 
   const columns = useMemo<ColumnDef<DataGridFeatures, AuditEntry>[]>(
     () => [
