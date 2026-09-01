@@ -6,7 +6,7 @@ not yet answered.
 **Jira project:** KPA, `koinon.atlassian.net`. Empty as of 23 August 2026. It
 becomes the source of work once this brief settles.
 
-**Last updated:** 1 September 2026
+**Last updated:** 1 September 2026, for the interface built under KPA-35
 
 ---
 
@@ -50,7 +50,8 @@ current knowledge until it causes a mistake in front of a customer.
 
 ## What it does
 
-Four jobs, all confirmed.
+Five jobs. The first four were confirmed on 23 August 2026. The fifth arrived
+through the interface, which is recorded under *Running the work* below.
 
 **Triage and draft mail.** File by customer and project across every account,
 flag what needs a human, draft replies in Shane's voice ready to edit and send.
@@ -66,6 +67,45 @@ that open.
 **Chase and remind.** Track what Shane owes people and what people owe him,
 notice when a promised reply never came, and prompt before a deadline lands
 rather than after.
+
+**Run the work.** Hold the workspaces, projects, sprints and issues Shane
+delivers against, across both Jira sites, and let him work them from here rather
+than from two browser tabs.
+
+### Running the work
+
+The fifth job was not in the brief on 23 August 2026. It arrived between
+27 August and 1 September, when the interface grew a project and issue tracker
+beside the assistant. This section records it, because the code shipped ahead of
+the brief and the brief is meant to lead.
+
+**What the interface now carries.** A workspace and project tree in the
+navigation. A sprint view. An issue board with grouping, filtering, ordering,
+inline editing, a bulk bar and a create dialog. An issue detail page. A
+connections screen for every external account. Per-workspace custom fields, and
+per-project labels and contract dates.
+
+**Why it belongs here.** The assistant chases what Shane owes people. Most of
+what he owes people is issues on two Jira boards. An assistant that reports on
+work it cannot see reports on half his day.
+
+**What it costs.** Three decisions already carry the weight, and each is an ADR.
+The tracker owns the issue text and KPA caches it, so no second master exists.
+The editor is TipTap, because ProseMirror sits one rename from Jira's ADF. The
+cache refreshes by polling on a schedule and pushes to the browser over SSE,
+because Jira refuses a webhook to an API token.
+
+**Two halves, one seam.** The assistant half and the tracker half share almost
+nothing. No issue points at a fact, and no fact points at an issue. They meet in
+two places only: the space filter cuts both, and the sidebar renders the memory's
+counts beside the tracker's navigation. That split runs all the way down to the
+data, and *Two stores, not one* under *Architecture* says what it means.
+
+**One integration this adds.** The project screens read contract dates and
+booked hours from Salesforce, where Certinia PSA holds them. The catalogue lists
+no Salesforce card yet, so two screens depend on a system the application cannot
+reach. *Every connection the product offers* under *Accounts* puts it in scope
+with the other eight.
 
 ### The screen he opens
 
@@ -147,6 +187,62 @@ anybody approved it.
 | Gmail | Read and draft | Drafts queue for Shane. Sending is never automatic. |
 | Calendar | Read and write | It links meetings to engagements, spots conflicts, holds time, and can accept invitations. |
 | Drive | Read and write | It creates, edits and reorganises documents on direction. It never deletes. Google's own revision history is the recovery mechanism, which is what keeps the destructive-edit rule intact. |
+
+### Every connection the product offers
+
+Nine providers, and all nine are in scope. Seven sit in the catalogue at
+`apps/web/lib/providers.ts` today. Two are missing, and two screens already
+depend on one of them.
+
+| Provider | How it signs in | What it serves | State |
+|---|---|---|---|
+| Google | OAuth | Gmail, Calendar, Meet, Drive, Keep | In the catalogue. Three accounts already authorised |
+| Microsoft | OAuth | Outlook, Teams, To Do, SharePoint, OneDrive | In the catalogue. See the note below |
+| Zoom | OAuth | Meetings, recordings, transcripts | In the catalogue |
+| Jira | OAuth 3LO, or a site with an email and an API token | Issues, sprints and boards, one site per connection | In the catalogue. Two sites |
+| Linear | OAuth, or an API key | Issues and cycles | In the catalogue. No screen reads it yet |
+| OpenRouter | API key | The metered inference path | In the catalogue |
+| Claude | Subscription, or an API key | The subscription inference path | In the catalogue |
+| Salesforce | OAuth | Contract dates, a project search, and Certinia PSA | Missing. Two screens depend on it |
+| Voyage AI | API key | Embeddings, `voyage-4` at 1024 | Missing. The decisions name it and the screen does not offer it |
+
+**Certinia PSA needs no connection of its own.** It is a managed package inside
+Salesforce, which is why every object it owns carries the `pse__` prefix. One
+Salesforce grant reaches `pse__Proj__c`, `pse__Assignment__c` and
+`pse__Scheduled_Hours__c` alike.
+
+**Nabium is not a connection.** It reaches KPA through a read-only database role
+and a push over the LAN, which *Decisions settled* records. No screen configures
+it, and none should.
+
+**Microsoft reopens a settled decision.** *Microsoft, Teams and customer
+tenants* below says Graph access to a customer tenant is unobtainable and that
+KPA will not pursue it. The connections screen offers Microsoft anyway. Either
+the card serves a tenant Shane owns rather than a customer's, or the decision
+changes. *Open.*
+
+**No credential reaches the browser.** The screen collects one and the server
+holds it. Today the screen collects one and drops it, which is honest about
+storing nothing and useless for connecting.
+
+**Every credential expires, so the store holds the date.** An OAuth grant
+carries a refresh token the provider revokes at will, and an API key carries a
+term the vendor sets. Atlassian now issues API tokens with an expiry, so the
+Jira card's claim that "a token is a password that never expires" is wrong and
+the copy needs correcting. Each credential row therefore holds five things
+beside the secret: the provider, the date it was issued, the date it expires,
+the date it was last verified, and what that verification said.
+
+**An expiring credential is a Needs you item.** The product already owns the
+right place to put it. A grant that lapses next week belongs on the briefing,
+beside everything else waiting on Shane, rather than on a settings screen he
+opens twice a year. A credential that has already lapsed belongs there too, and
+so does every job that failed because of it.
+
+**An unknown expiry is a date the product goes and finds.** Where a vendor
+publishes one, the verification reads it. Where no vendor publishes one, the
+row holds the term the owner typed, because a credential nobody can date is a
+credential nobody renews.
 
 ### Microsoft, Teams and customer tenants
 
@@ -418,6 +514,61 @@ The markdown system's structure survives the move to Postgres.
 rather than removing a row. Asking what was true in March stays a plain query,
 and decay stays visible.
 
+### Two stores, not one
+
+The data divides in two, and the division is the most useful thing to know
+before anybody designs a table. **The memory holds what the assistant knows.
+The application data holds what the product needs to run.** They are different
+in every way that matters.
+
+| | The memory | The application data |
+|---|---|---|
+| Holds | Sources, facts, edges, entities, the review queue, the audit log, the policy rules | The account, connections, workspaces, projects, sprints, the issue cache, custom fields, preferences |
+| Written by | Ingestion and agents, then confirmed by Shane | Shane, and a poller mirroring Jira |
+| Deletes | Never. It retires and supersedes | Ordinarily. A removed connection is gone |
+| Who owns the truth | KPA. A fact is its own | The tracker. ADR-0007 keeps the text there and caches it here |
+| Shape | A graph with time on every node | Plain rows |
+| Today | Ten tables in `migrations/001_core_schema.sql` | No tables. Browser storage and fixtures |
+
+**They meet in two places, and neither is a data dependency.** The `space`
+filter cuts both, and the sidebar renders the memory's counts beside the
+tracker's navigation. No issue points at a fact, and no fact points at an issue.
+Either store could sit in its own database, or its own service, without
+disturbing the other. One Postgres instance still suits the hardware, so this is
+a schema boundary rather than a deployment one.
+
+### What each store still needs
+
+**The memory was built for the vault, not for the screens.**
+`migrations/001_core_schema.sql` models markdown notes, because slice one had to
+migrate them. The interface models what Shane reads. Four differences need a
+decision.
+
+1. **The fact states disagree.** `fact_status` holds `draft`, `stable`, and
+   `deprecated`. The interface runs on six: `candidate`, `proposed`, `verified`,
+   `stale`, `retired`, and `rejected`. Every review control rests on the six,
+   and the review queue is the product's core loop. *Open.*
+2. **`sources` holds four columns:** `path`, `body`, `recorded_at`, and
+   `owner_id`. The source drawer shows a kind, a title, a date, an author, and a
+   space. None of the five exists.
+3. **A citation names a chunk, an edge names a source.** The drawer highlights
+   the exact passage a fact came from, and nothing records which chunk that was.
+4. **The policy table and the audit table are missing.** This document calls the
+   policy layer load bearing and the audit log the safety net. The interface
+   ships a screen for each, and the migration creates neither.
+
+Six things the interface shows have nowhere to live: needs-you items, meetings,
+chat answers, conversations, audit entries, and citations.
+
+**The application data has no schema at all.** Every issue, sprint, workspace,
+project, custom field and connection sits in `apps/web/lib/fixtures.ts` or in
+`localStorage`. Eleven browser keys hold state that belongs on a server, and one
+of them holds the account. Nothing survives a second device, and nothing
+survives a cleared browser.
+
+**The `space` enum already carries a fourth value.** The database offers
+`shared`, and the interface knows three. Whichever wins, the other changes.
+
 ### What sets `valid_to`
 
 **Only a source or a human. Time alone never does.**
@@ -682,6 +833,40 @@ This document and the ADRs beside it are the source those stories derive from. I
 the two disagree, the brief is wrong and gets fixed, rather than the story being
 rewritten to match the code.
 
+### The slices
+
+Seven slices reach a working application. The first two are built. The order
+runs down the page, and each slice states what it unblocks.
+
+| Slice | What it delivers | State |
+|---|---|---|
+| 1. Migrate the memory | The memory model, proved on 17 facts | In progress. KPA-1 |
+| 2. Draw the interface | Every screen, on fixtures | In progress. KPA-35 |
+| 3. Finish the memory schema | The tables and columns the screens need, on top of slice one | Not started |
+| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | Not started |
+| 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | Not started |
+| 6. Fill the stores | Ingestion into the memory, and a Jira poller into the cache | Not started |
+| 7. Join the halves | Replace every fixture with a real read and a real write | Not started |
+
+**Slices three and four are separate on purpose.** *Two stores, not one* says
+why. One extends a schema that exists and settles four disagreements with the
+interface. The other creates a schema from nothing, for data no table has ever
+held. They share no row, they can run in either order, and one person can build
+them in parallel with no merge conflict worth the name.
+
+**Slice five comes before slice six, and the order is load bearing.** Nothing
+ingests a mailbox it cannot reach. The connections screen already draws the
+shape, and it stores no credential.
+
+**Slice seven carries the integration risk the others defer.** Take one region
+end to end before the rest. Needs you reads and writes nothing, so it proves the
+whole path with the least to undo.
+
+Two capabilities sit outside this order, because each is a product in itself:
+the agent that acts within policy and writes the audit log, and the retrieval
+path that answers a question with citations. Both need slice three underneath
+them, and neither has a slice yet. *Open.*
+
 ### Slice one: migrate the memory
 
 Move the 17 facts and 32 sources out of the Obsidian vault into Postgres, with
@@ -751,3 +936,8 @@ push over the LAN, rather than inventing a second mechanism.
    later.
 3. Push notification: agreed in principle, deferred. The channel is undecided,
    and an iMessage integration already exists.
+4. Which fact-state vocabulary wins, the database's three or the interface's
+   six? See *What each store still needs*. The review queue rests on the six.
+5. Does the Microsoft card serve a tenant Shane owns? *Every connection the
+   product offers* names the contradiction: the catalogue offers Microsoft and
+   the brief rules out customer-tenant Graph access.
