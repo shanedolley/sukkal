@@ -4,7 +4,14 @@
 //
 // Two ways in. OAuth sends you to Atlassian and brings back a grant, so no
 // secret passes through this screen. An API token is the fallback for a site
-// where OAuth is not set up, and it is the reason for the warning below.
+// where OAuth is not set up. Atlassian expires one, which the warning below
+// says, so a connection made this way stops working on a date somebody has to
+// track.
+//
+// This screen holds its own three fields, and lib/providers.ts now asks for a
+// fourth: the date the token runs out. The two disagree, and the answer is not
+// to write the field twice. KPA-105 connects a Jira site by token or by OAuth,
+// and it is the story that makes this screen read the catalogue instead.
 //
 // The token is never stored here. A secret in localStorage is readable by
 // anything that runs on the page and travels with the browser profile, so
@@ -225,9 +232,10 @@ export function JiraConnection() {
           <div className="flex flex-col gap-1 text-xs">
             <p className="font-medium">Prefer OAuth where the site allows it.</p>
             <p className="text-muted-foreground">
-              A token is a password that never expires. This screen keeps it
-              only until the connection is made, and the worker holds it after
-              that. It is never written to the browser.
+              Atlassian expires an API token, so the connection stops working
+              on a date you have to track. This screen keeps the token only
+              until the connection is made, and the worker holds it after that.
+              It is never written to the browser.
             </p>
           </div>
         </div>

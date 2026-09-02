@@ -1,15 +1,18 @@
 // The providers the assistant can reach, and what each one asks for.
 //
 // A provider that covers several products asks which of them the assistant may
-// reach. Google carries five, Microsoft carries five, and the rest carry one
-// thing each, so their service list is empty.
+// reach. Google carries five, Microsoft carries five, Salesforce carries three,
+// and the rest carry one thing each, so their service list is empty.
 //
 // A method names the fields it asks for, and the dialog draws them. One that
 // signs you in carries the address to open; one that takes a key carries the
 // box to type it into. No secret is stored anywhere: see lib/connections.ts.
 //
 // This file holds data and two pure functions, so scripts/check-connections.ts
-// can run it under plain node.
+// can run it under plain node. Every runtime import here names its file
+// extension for the same reason.
+
+import { EMBEDDING } from "../../../src/embedding.ts";
 
 export type ProviderId =
   | "google"
@@ -17,8 +20,10 @@ export type ProviderId =
   | "zoom"
   | "jira"
   | "linear"
+  | "salesforce"
   | "openrouter"
-  | "claude";
+  | "claude"
+  | "voyage";
 
 export interface Service {
   id: string;
@@ -32,9 +37,10 @@ export interface Field {
   placeholder: string;
   /**
    * A secret goes in a password box and is written nowhere. A url is opened
-   * in a tab, so it is checked before the browser is sent to it.
+   * in a tab, so it is checked before the browser is sent to it. A date takes
+   * the browser's own date box, which spells the format out for the reader.
    */
-  kind?: "secret" | "url";
+  kind?: "secret" | "url" | "date";
 }
 
 /** A way in. Two of them means the provider offers a real choice. */
@@ -138,7 +144,11 @@ export const PROVIDERS: Provider[] = [
       {
         id: "token",
         label: "API token",
-        hint: "The fallback for a site where OAuth is not set up. A token is a password that never expires.",
+        // Atlassian now sets a term on every token it issues, so the date it
+        // runs out is asked for here. A credential nobody can date is a
+        // credential nobody renews, and the briefing is where a lapsing one
+        // belongs.
+        hint: "The fallback for a site where OAuth is not set up. Atlassian expires an API token, so type the date it runs out and the briefing will raise it before it does.",
         fields: [
           SITE,
           {
@@ -151,6 +161,12 @@ export const PROVIDERS: Provider[] = [
             label: "API token",
             placeholder: "Paste the token",
             kind: "secret",
+          },
+          {
+            id: "expires",
+            label: "Expires",
+            placeholder: "YYYY-MM-DD",
+            kind: "date",
           },
         ],
       },
@@ -168,6 +184,21 @@ export const PROVIDERS: Provider[] = [
         "Linear makes the key under Settings, then API, then Personal API keys."
       ),
     ],
+  },
+  {
+    id: "salesforce",
+    name: "Salesforce",
+    blurb: "Contract dates, the project search, and Certinia PSA.",
+    // Certinia PSA is a service here rather than a tenth provider. It is a
+    // managed package inside Salesforce, which is why every object it owns
+    // carries the pse__ prefix, and one grant reaches pse__Proj__c,
+    // pse__Assignment__c and pse__Scheduled_Hours__c alike.
+    services: [
+      { id: "contracts", label: "Contracts" },
+      { id: "projects", label: "Projects" },
+      { id: "certinia", label: "Certinia PSA" },
+    ],
+    methods: [oauth("https://login.salesforce.com/")],
   },
   {
     id: "openrouter",
@@ -196,6 +227,21 @@ export const PROVIDERS: Provider[] = [
       apiKey(
         "sk-ant-...",
         "The Anthropic console makes the key, and bills the usage to the account that owns it."
+      ),
+    ],
+  },
+  {
+    id: "voyage",
+    name: "Voyage AI",
+    // src/embedding.ts pins the model and the width, because a pgvector
+    // column declares one width and changing either value is a migration.
+    // The screen reads it rather than naming them again.
+    blurb: `Embeddings, ${EMBEDDING.model} at ${EMBEDDING.dimension}.`,
+    services: [],
+    methods: [
+      apiKey(
+        "pa-...",
+        `The Voyage dashboard makes the key. The assistant embeds with ${EMBEDDING.model} at ${EMBEDDING.dimension}, which src/embedding.ts pins.`
       ),
     ],
   },

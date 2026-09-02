@@ -231,7 +231,11 @@ function ConnectionForm({
             <Label htmlFor={id}>{field.label}</Label>
             <Input
               id={id}
-              type={secret ? "password" : "text"}
+              // A date takes the browser's own box, which spells the format
+              // out and rejects a day that does not exist.
+              type={
+                secret ? "password" : field.kind === "date" ? "date" : "text"
+              }
               value={values[field.id] ?? ""}
               onChange={(event) =>
                 setValues((current) => ({

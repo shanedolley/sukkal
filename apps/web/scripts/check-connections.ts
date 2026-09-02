@@ -7,6 +7,7 @@
 
 import assert from "node:assert/strict";
 
+import { EMBEDDING } from "../../../src/embedding.ts";
 import { asUrl, PROVIDERS, signInTarget, web } from "../lib/providers.ts";
 
 // 1. Only the two web protocols reach the browser.
@@ -85,6 +86,54 @@ for (const entry of PROVIDERS) {
   }
 }
 
+// 6. The nine the brief names, and no tenth. Certinia PSA is a managed
+//    package inside Salesforce, so one grant reaches it and it sits in the
+//    service list rather than in the catalogue.
+assert.equal(PROVIDERS.length, 9, "the brief names nine providers");
+const salesforce = PROVIDERS.find((entry) => entry.id === "salesforce")!;
+assert.ok(salesforce, "Salesforce is missing");
+assert.ok(
+  salesforce.services.some((service) => service.label === "Certinia PSA"),
+  "Certinia PSA is not a Salesforce service"
+);
+assert.ok(
+  !PROVIDERS.some((entry) => entry.name.toLowerCase().includes("certinia")),
+  "Certinia is a Salesforce service, not a provider of its own"
+);
+
+// 7. Voyage names the model and the width src/embedding.ts pins, so a
+//    migration that changes either one fails here rather than leaving the
+//    screen quoting the old pair.
+const voyage = PROVIDERS.find((entry) => entry.id === "voyage")!;
+assert.ok(voyage, "Voyage AI is missing");
+assert.equal(voyage.methods.length, 1, "Voyage offers one way in");
+const voyageKey = voyage.methods[0];
+assert.equal(voyageKey.id, "key", "Voyage takes an API key");
+for (const copy of [voyage.blurb, voyageKey.hint]) {
+  assert.ok(copy.includes(EMBEDDING.model), `${copy} does not name the model`);
+  assert.ok(
+    copy.includes(String(EMBEDDING.dimension)),
+    `${copy} does not name the width`
+  );
+}
+
+// 8. Atlassian expires an API token, so the copy says so and the form asks
+//    for the date. A credential nobody can date is a credential nobody
+//    renews.
+assert.ok(
+  !/never expires/i.test(jiraToken.hint),
+  "the Jira token hint still calls the token a password that never expires"
+);
+assert.ok(
+  /expire/i.test(jiraToken.hint),
+  "the Jira token hint does not say the token expires"
+);
+assert.ok(
+  (jiraToken.fields ?? []).some((field) => field.kind === "date"),
+  "the Jira token form does not ask when the token runs out"
+);
+
 console.log(
-  "connections OK: only web addresses open, a key opens nothing, and every method asks for something"
+  "connections OK: nine providers, only web addresses open, a key opens nothing, " +
+    `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, and the Jira token is dated`
 );
