@@ -4,6 +4,7 @@ import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
 import { connect } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
+import { act, type Action } from '../src/policy/act.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
@@ -237,6 +238,195 @@ describe('needs_you', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
         ...QUESTION, kind: 'denied-action', title: 'Calendar hold refused', auditId,
       });
       assert.ok(id);
+    });
+  });
+
+  // Everything above inserts its own rows, so it proves the table. Everything
+  // below drives `src/policy/act.ts`, the only writer a `denied-action` row
+  // has, so it proves the raise. KPA-83.
+  describe('a denial the policy refused', () => {
+    /** An action an absolute rule denies. ADR-0005 names sending mail first,
+     *  and it is the refusal Shane most needs to hear about. */
+    const SEND: Action = {
+      action: 'mail.send',
+      target: 'thread/18f2c9',
+      space: 'collibra',
+      intent: 'Reply to Priya about the archive tier.',
+      before: 'The reply sat in drafts, unsent.',
+      reverse: 'Nothing to reverse. The action did not run.',
+    };
+
+    /** An effect a denial must never reach. It fails the test by running. */
+    const never = async (): Promise<string> => {
+      throw new Error('the effect ran on a denial');
+    };
+
+    interface Raised {
+      id: string;
+      title: string;
+      detail: string;
+      space: string;
+      entity: string | null;
+      audit_id: string | null;
+      raised_for: string | null;
+      closed_at: Date | null;
+      rule: string | null;
+    }
+
+    /** Every denied-action row, oldest first, carrying the rule its audit
+     *  entry holds. The join is the screen's, because nothing copies the
+     *  rule onto the row. */
+    async function raised(): Promise<Raised[]> {
+      const rows = await client.query<Raised>(
+        `SELECT n.id, n.title, n.detail, n.space::text AS space, n.entity,
+                n.audit_id, n.raised_for, n.closed_at, a.rule
+           FROM needs_you n
+           LEFT JOIN audit a ON a.id = n.audit_id
+          WHERE n.kind = 'denied-action'
+          ORDER BY n.id`,
+      );
+      return rows.rows;
+    }
+
+    test('opens one item, naming the audit entry that refused it', async () => {
+      const done = await act(client, SEND, never);
+      assert.equal(done.outcome, 'denied');
+
+      const items = await raised();
+      assert.equal(items.length, 1, 'one denial opened no item, or opened two');
+      assert.equal(items[0]!.audit_id, done.audit);
+      assert.equal(items[0]!.space, 'collibra');
+      assert.equal(items[0]!.closed_at, null, 'the item opened closed');
+
+      // ADR-0015: a denial is one whole row, because the effect never ran.
+      const entry = await client.query<{ outcome: string; attempt: string | null; rule: string }>(
+        'SELECT outcome::text AS outcome, attempt, rule FROM audit WHERE id = $1',
+        [items[0]!.audit_id],
+      );
+      assert.equal(entry.rows[0]!.outcome, 'denied');
+      assert.equal(entry.rows[0]!.attempt, null, 'the denial closed an attempt that never happened');
+      assert.equal(entry.rows[0]!.rule, 'mail.send.never-unprompted');
+    });
+
+    test('names no entity and no staleness, because it has neither', async () => {
+      await act(client, SEND, never);
+      const items = await raised();
+
+      assert.equal(items[0]!.entity, null, 'migration 010 dropped NOT NULL for this row');
+      assert.equal(items[0]!.raised_for, null, 'raised_for belongs to a deadline and to nothing else');
+    });
+
+    test('the detail names what was attempted, and the rule stays on the audit entry', async () => {
+      await act(client, SEND, never);
+      const items = await raised();
+
+      assert.match(items[0]!.detail, /mail\.send/, 'the detail names no action');
+      assert.match(items[0]!.detail, /thread\/18f2c9/, 'the detail names no target');
+      assert.ok(items[0]!.detail.includes(SEND.intent), 'the detail says nothing about the intent');
+      assert.match(items[0]!.detail, /Nothing ran/);
+      assert.equal(items[0]!.rule, 'mail.send.never-unprompted', 'the join found no rule');
+
+      const copy = await client.query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'needs_you'
+            AND column_name = 'rule'`,
+      );
+      assert.equal(copy.rows.length, 0, 'needs_you grew a second copy of the rule');
+    });
+
+    test('the same denial repeating opens no second item, and logs both attempts', async () => {
+      const first = await act(client, SEND, never);
+      const second = await act(client, SEND, never);
+
+      assert.notEqual(first.audit, second.audit, 'the repeat wrote no audit row of its own');
+      const items = await raised();
+      assert.equal(items.length, 1, 'the repeat opened a second item');
+      assert.equal(items[0]!.audit_id, first.audit, 'the item moved to the later entry');
+    });
+
+    test('a different attempt of the same action opens its own item', async () => {
+      await act(client, SEND, never);
+      await act(
+        client,
+        { ...SEND, target: 'thread/9d10ab', intent: 'Reply to Marcus about the migration window.' },
+        never,
+      );
+
+      assert.equal((await raised()).length, 2, 'a second target reused the first item');
+    });
+
+    test('closing the item keeps it, and lets the next denial raise a fresh one', async () => {
+      const first = await act(client, SEND, never);
+      await client.query('UPDATE needs_you SET closed_at = now() WHERE audit_id = $1', [first.audit]);
+
+      const second = await act(client, SEND, never);
+      const items = await raised();
+
+      assert.equal(items.length, 2, 'a closed item silenced the next denial, or replaced itself');
+      assert.ok(items[0]!.closed_at, 'closing recorded no time');
+      assert.equal(items[0]!.audit_id, first.audit, 'closing deleted the item rather than keeping it');
+      assert.equal(items[1]!.closed_at, null);
+      assert.equal(items[1]!.audit_id, second.audit);
+    });
+
+    test('an action no rule describes raises too, citing the default rule', async () => {
+      // The allowlist is deliberate. An action nobody listed is an action
+      // nobody judged, which waits on Shane rather than on a repair.
+      const done = await act(client, { ...SEND, action: 'calendar.cancel' }, never);
+
+      assert.equal(done.rule, 'deny-by-default');
+      const items = await raised();
+      assert.equal(items.length, 1, 'an unjudged action reached nobody');
+      assert.equal(items[0]!.rule, 'deny-by-default');
+    });
+
+    test('a denial from a policy table that will not load raises nothing', async () => {
+      // One malformed row denies every action, ADR-0021, and the engine cites
+      // deny-by-default for a rule that judged nothing. Repairing the table is
+      // the fix, so an item here would name a rule that never fired.
+      await client.query("UPDATE policies SET governs = '' WHERE key = 'fact.verify.never-by-agent'");
+      try {
+        const done = await act(client, { ...SEND, action: 'mail.label' }, never);
+
+        assert.equal(done.outcome, 'denied');
+        assert.equal(done.rule, 'deny-by-default');
+        assert.match(done.reason, /did not load/);
+        assert.deepEqual(await raised(), [], 'a table nobody could read opened a briefing item');
+      } finally {
+        await client.query(
+          `UPDATE policies SET governs = 'Marking a fact verified'
+            WHERE key = 'fact.verify.never-by-agent'`,
+        );
+      }
+    });
+
+    test('an allowed action raises nothing', async () => {
+      const done = await act(client, { ...SEND, action: 'mail.label' }, async () => 'Labelled it.');
+
+      assert.equal(done.outcome, 'allowed');
+      assert.deepEqual(await raised(), [], 'an allowance reached the briefing');
+    });
+
+    test('the briefing read returns it, with the rule joined', async () => {
+      // `openItems` in apps/web/lib/needs-you.ts, statement for statement,
+      // with `spacesFor('collibra')` written out. The insert alone proves
+      // nothing about whether the row clears that read's two filters.
+      await act(client, SEND, never);
+
+      const shown = await client.query<{ kind: string; entity: string | null; rule: string | null }>(
+        `SELECT n.kind::text AS kind, n.entity, a.rule
+           FROM needs_you n
+           LEFT JOIN audit a ON a.id = n.audit_id
+          WHERE n.closed_at IS NULL
+            AND n.space = ANY($1::space[])
+          ORDER BY n.raised_at DESC`,
+        [['collibra', 'shared']],
+      );
+
+      assert.equal(shown.rows.length, 1, 'the briefing read found no item');
+      assert.equal(shown.rows[0]!.kind, 'denied-action');
+      assert.equal(shown.rows[0]!.rule, 'mail.send.never-unprompted');
+      assert.equal(shown.rows[0]!.entity, null);
     });
   });
 

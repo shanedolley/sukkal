@@ -200,11 +200,14 @@ just the denials and newest first, come from one index.
 
 ## The needs-you queue
 
-The sweep in `src/memory/sweep.ts` is the only writer this table has. It opens
-a `deadline` row per stale fact, and it closes one whose fact has stopped being
-stale. Nothing else in the codebase closes a row: ADR-0017's re-confirm write
-moves `stale_after` and leaves the item open, and `apps/web/lib/needs-you.ts`
-reads only the open ones.
+Three writers fill this table and one of them closes a row. The sweep in
+`src/memory/sweep.ts` opens a `deadline` row per stale fact, and it is the only
+thing that closes one, when the fact has stopped being stale. `raiseFailure` in
+`src/worker/nightly.ts` opens a `question` row when the nightly run breaks.
+`src/policy/act.ts` opens a `denied-action` row when the policy refuses an
+action Shane has to decide about. Nothing else closes a row: ADR-0017's
+re-confirm write moves `stale_after` and leaves the item open, and
+`apps/web/lib/needs-you.ts` reads only the open ones.
 
 `raised_for` records the `stale_after` a `deadline` row was raised for, and
 the sweep opens nothing for a staleness a row already names, open or closed.
@@ -219,6 +222,22 @@ but `deadline` holds null here, and
 Migration 015 replaced a thirty day snooze with this column. The snooze made a
 fact reviewed more often than monthly wait out the difference before it could
 raise again.
+
+A `denied-action` row guards on the open items alone, which is the sweep's
+`NOT EXISTS` shape over a different question. It matches the audit entry the
+row names, on the same action and the same intent in the same space, so one
+refusal repeating raises one item while the log still records every attempt.
+Closing the item settles that refusal, and the next attempt opens a fresh one.
+`raised_for` stays null here, as it does on every kind but `deadline`.
+
+`audit` carries no target column, so two attempts on different targets that
+share one intent string collapse to one item. The log still records both.
+Narrow the guard when a target column arrives.
+
+A denial the policy table failed to load raises nothing. `deny-by-default`
+covers four failures, and only one of them, an action no rule describes,
+judged the action. The other three ask an operator to repair the table, and an
+item raised on one would name a rule that never fired. ADR-0021.
 
 Four kinds wait on Shane: a draft to send, a question to answer, an action the
 policy refused, and a deadline coming. The screen reads them as one list in

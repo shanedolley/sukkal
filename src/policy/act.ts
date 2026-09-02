@@ -19,11 +19,18 @@
  * roll the attempt row back with it and leave the log silent about the worst
  * case it has. Each `INSERT` below runs on its own implicit transaction.
  *
+ * **A denial Shane has to decide about also reaches the briefing.** ADR-0005
+ * asks for that in as many words: the log surfaces on the screen he opens
+ * rather than sitting in a table nobody reads, because the markdown system
+ * left its findings in a log for three days. So such a denial opens a
+ * `needs_you` row of kind `denied-action`, and `needsADecision` below says
+ * which denials those are.
+ *
  * `engine.ts` returns a verdict and writes nothing, so there is one path from
  * a decision to a row rather than two.
  */
 import type { ClientBase } from 'pg';
-import { decide, type Proposal } from './engine.ts';
+import { decide, DENY_BY_DEFAULT, FORBIDDEN, PERMITTED, type Proposal } from './engine.ts';
 
 /**
  * Permission to make one outbound call, which only `act` mints.
@@ -127,11 +134,84 @@ async function record(
 }
 
 /**
+ * Whether a denial waits on Shane, or only on the policy table being repaired.
+ *
+ * A named rule denies an action Shane's own policy judged, and he is the one
+ * who can do it by hand instead. That denial reaches the briefing.
+ *
+ * `deny-by-default` covers four failures and ADR-0021 names them: an empty
+ * table, a database error, a malformed row, and an action no rule describes.
+ * Only the last judged the action. The other three say the engine could not
+ * read its own rules, so they ask an operator for a repair rather than Shane
+ * for a decision, and an item raised on one would name a rule that never
+ * fired. Restoring the table is the fix ADR-0021 gives, and a failure that
+ * loud already shows on every action rather than on this one.
+ *
+ * So the test reads the allowlist in this process and never the table.
+ * `PERMITTED` and `FORBIDDEN` are code, so they answer whoever asks, and a
+ * database that refused to load cannot change the answer. An action neither
+ * set names is an action nobody has judged, which is the decision this raises.
+ */
+function needsADecision(action: string, rule: string | null): boolean {
+  return rule !== DENY_BY_DEFAULT || !(PERMITTED.has(action) || FORBIDDEN.has(action));
+}
+
+/**
+ * Opens one `needs_you` row for a denial, unless one already stands open.
+ *
+ * The guard is the `NOT EXISTS` shape `src/memory/sweep.ts` uses, over a
+ * different question. The sweep matches `raised_for`, the date one staleness
+ * fell due, and it reads closed rows as well as open ones. A denial has
+ * neither a date nor a fact, so this matches the attempt through the audit
+ * entry the row names: the same action, in the same space, meaning the same
+ * thing. It reads the open rows alone, because closing an item settles that
+ * denial and the next attempt deserves a fresh one.
+ *
+ * The repeat still writes its own audit row. The log records every attempt
+ * and the briefing carries one item, which is the split ADR-0005 asks for.
+ *
+ * `raised_for` stays null, as `needs_you_raised_for_is_a_deadline` requires of
+ * every kind but `deadline`. So does `entity`: nothing resolves one yet and a
+ * refused send names no fact to read one from, which is why migration 010
+ * dropped the `NOT NULL`.
+ *
+ * Nothing copies the rule here. `audit_id` names the entry that refused it and
+ * `apps/web/lib/needs-you.ts` joins that entry for `a.rule`, so one answer
+ * lives in one place.
+ *
+ * A statement the database refuses throws, and the denial row already stands.
+ * That order is the safe one: the log keeps the denial, and a briefing this
+ * cannot write fails aloud rather than losing the item in silence.
+ */
+async function raise(client: ClientBase, action: Action, audit: string): Promise<void> {
+  await client.query(
+    `INSERT INTO needs_you (kind, title, detail, space, audit_id)
+       SELECT 'denied-action', $1, $2, $3::space, $4
+        WHERE NOT EXISTS (
+          SELECT 1
+            FROM needs_you n
+            JOIN audit a ON a.id = n.audit_id
+           WHERE n.kind = 'denied-action' AND n.closed_at IS NULL
+             AND n.space = $3::space AND a.action = $5 AND a.intent = $6
+        )`,
+    [
+      `Refused: ${action.action}`,
+      `Attempted ${action.action} on ${action.target}. ${action.intent} Nothing ran.`,
+      action.space,
+      audit,
+      action.action,
+      action.intent,
+    ],
+  );
+}
+
+/**
  * Decides, records, and only then acts.
  *
- * Read the two paths. A denial writes one row and returns without touching
- * `effect`. An allowance writes the attempt row, runs `effect`, and writes the
- * outcome row whether the call returned or threw.
+ * Read the two paths. A denial writes one row, raises the briefing item that
+ * row earns, and returns without touching `effect`. An allowance writes the
+ * attempt row, runs `effect`, and writes the outcome row whether the call
+ * returned or threw.
  *
  * It throws before writing anything when a field is empty, and throws when the
  * database refuses a row. Both leave the action undone, which is the direction
@@ -155,6 +235,9 @@ export async function act(
       reverse: NOTHING_RAN,
       attempt: null,
     });
+    if (needsADecision(action.action, verdict.rule)) {
+      await raise(client, action, audit);
+    }
     return { outcome: 'denied', rule: verdict.rule, reason: verdict.reason, audit, result };
   }
 
