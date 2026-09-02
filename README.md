@@ -18,6 +18,7 @@ Cloudflare Access.
 | `docs/runbooks/` | how to operate the server, and where the secrets live |
 | `migrations/` | one `.sql` file per migration, applied in filename order |
 | `src/db/` | the connection module and the migration runner |
+| `src/worker/` | the worker process, and the jobs pg-boss runs in it |
 | `test/` | the suite, and its fixtures |
 
 **Read the brief first.** It carries the architecture, the sequence diagrams, the
@@ -46,6 +47,7 @@ Real values live outside the repository, so no commit can carry one.
 |---|---|
 | `npm run migrate` | Applies every migration not yet recorded |
 | `npm run migrate down` | Reverses every migration, newest first, and leaves the database empty |
+| `npm run worker` | Runs the worker. `docs/runbooks/worker.md` says what it does |
 | `npm test` | Runs the suite against `DATABASE_URL_TEST` |
 | `npm run lint` | Lints `src` and `test`. A warning fails the run |
 | `npm run build` | Checks types. It emits nothing, because Node runs the TypeScript |

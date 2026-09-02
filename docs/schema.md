@@ -1,7 +1,8 @@
 # The schema
 
 Seventeen tables and eight enums. `migrations/001_core_schema.sql` created the
-first ten, and migrations 003 to 009 changed what follows. The vault's own
+first ten, and migrations 003 to 010 changed what follows. Migration 011 adds
+no table: it creates the schema the job queue lives in. The vault's own
 `CLAUDE.md` is the authority for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
@@ -176,6 +177,24 @@ reason for a failure that has not happened.
 
 ADR-0013 records why nabium sends the payload rather than a trigger, and why a
 webhook is acceptable here where ADR-0008 refused one for Jira.
+
+`src/worker/deliveries.ts` reads the backlog and ends each row.
+`docs/runbooks/worker.md` says how to see what failed, and how to make the
+worker try a delivery again.
+
+## The queue lives in its own schema
+
+Migration 011 creates the schema `pgboss` and nothing inside it. pg-boss owns
+every table there: it creates them the first time the worker starts, and it
+migrates them between its own versions.
+
+The worker is built with `createSchema: false`, so the schema has one owner.
+A worker started against a database nobody migrated stops with a missing
+schema rather than installing one no ledger records, which is the answer the
+migration runner already gives when it finds a database it did not create.
+
+Reversing migration 011 drops the schema and every queued job with it. That is
+deliberate, and it happens only on the way to an empty database.
 
 ## The entity a fact concerns
 

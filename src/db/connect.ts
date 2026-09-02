@@ -37,10 +37,9 @@ const ENCRYPTED = new Set(['require', 'verify-ca', 'verify-full', 'no-verify']);
 export const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 
 /**
- * Opens a client against the connection string in `variable`.
+ * Reads `variable` and returns the connection string this driver accepts.
  *
- * The caller connects and ends it. Two translations happen here and nowhere
- * else.
+ * Two translations happen here and nowhere else.
  *
  * The first refuses a connection string that does not ask for encryption.
  * SCRAM protects the password exchange and leaves the content in the clear,
@@ -52,8 +51,12 @@ export const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
  * `require` as "encrypt, do not verify", and `psql` therefore connects. This
  * driver reads the same word as "encrypt and verify", and fails. Translating
  * here leaves one environment file readable by both.
+ *
+ * `connect` below is the ordinary caller. The worker needs the string itself,
+ * because pg-boss opens its own pool from one, and it has to open that pool
+ * against the same checks every other connection passes.
  */
-export function connect(variable = 'DATABASE_URL'): pg.Client {
+export function connectionString(variable = 'DATABASE_URL'): string {
   const value = process.env[variable];
   if (!value) {
     throw new Error(
@@ -77,5 +80,11 @@ export function connect(variable = 'DATABASE_URL'): pg.Client {
     url.searchParams.set('sslmode', 'no-verify');
   }
 
-  return new pg.Client({ connectionString: url.toString() });
+  return url.toString();
+}
+
+/** Opens a client against the connection string in `variable`. The caller
+ *  connects and ends it. */
+export function connect(variable = 'DATABASE_URL'): pg.Client {
+  return new pg.Client({ connectionString: connectionString(variable) });
 }

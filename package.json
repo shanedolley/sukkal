@@ -9,12 +9,14 @@
   },
   "scripts": {
     "migrate": "node --env-file-if-exists=$HOME/.config/kpa/env src/db/migrate.ts",
+    "worker": "node --env-file-if-exists=$HOME/.config/kpa/env src/worker/index.ts",
     "test": "node --env-file-if-exists=$HOME/.config/kpa/env --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "lint": "oxlint src test --deny-warnings",
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "pg-boss": "^12.29.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

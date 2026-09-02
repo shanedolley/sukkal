@@ -66,6 +66,7 @@ Shane and never Claude Code, and end with the `Claude-Session` line.
 | `npm run build` | `tsc --noEmit`. It checks types and emits nothing |
 | `npm test` | `node --test` over `test/**/*.test.ts` |
 | `npm run migrate` | Applies pending migrations. `npm run migrate down` reverses every one |
+| `npm run worker` | Runs the worker and its pg-boss queue. `docs/runbooks/worker.md` |
 | `./scripts/scan-history.sh` | Scans every commit for a credential. Run it before you push |
 
 Run the lint, the build and the tests before you report anything finished, and
@@ -135,6 +136,7 @@ src/memory/     The four gates, the inference seam, the state rule and the sweep
 src/migrate/    The vault reader, and what it turns notes into
 src/checks/     check.py ported: six problems that fail, four advisories that do not
 src/webhooks/   What an inbound delivery is authenticated and stored by
+src/worker/     The worker process, and the jobs pg-boss runs in it
 test/           The suite, and its fixtures under test/fixtures/
 docs/adr/       Decisions that were hard to reverse
 docs/runbooks/  Operating the server, and where the secrets live
