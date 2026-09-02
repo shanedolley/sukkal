@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
+// The constants the interface reads, imported rather than retyped: a
+// transcription here would agree with itself and prove nothing about the seed.
+import { WORKSPACES } from '../apps/web/lib/workspaces.ts';
 import { connect } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
@@ -9,20 +12,15 @@ const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
 
 interface Constants {
-  WORKSPACES: { id: string; name: string }[];
   WORKSPACE_FIELDS: Record<string, { id: string; name: string; required: boolean }[]>;
 }
 
-// The two constants the interface reads, imported rather than retyped: a
-// transcription here would agree with itself and prove nothing about the seed.
-//
-// Each specifier is a variable because `tsc` reads `apps/web` as CommonJS,
-// since `apps/web/package.json` names no `type`. A static import therefore
-// fails the root type check inside the imported file. Node resolves both
-// relative to this one and strips their types like any other.
-const TREE = '../apps/web/lib/workspaces.ts';
+// `fixtures.ts` alone stays behind a variable specifier. The root type check
+// sets `noUncheckedIndexedAccess` and `apps/web/tsconfig.json` does not, so six
+// indexed reads in that file type as `T | undefined` here and as `T` there, and
+// a static import fails the root type check on all six. Node resolves the
+// specifier relative to this file and strips its types like any other.
 const FIXTURES = '../apps/web/lib/fixtures.ts';
-const { WORKSPACES } = (await import(TREE)) as Constants;
 const { WORKSPACE_FIELDS } = (await import(FIXTURES)) as Constants;
 
 /** Every column, constraint and comment on the table, as text. */

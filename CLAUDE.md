@@ -188,6 +188,13 @@ Apply the migrations again before the check, or unset `DATABASE_URL_TEST`,
 which is what CI does and why its web job skips those reads. Cost this session
 a detour on 3 September 2026.
 
+**This shell has `noclobber` on, so `>` onto a file that exists fails.** The
+redirect writes nothing and the command after it runs on the stale file, which
+is how a run reported 360 tests when the true count was 407. It cost an agent
+a cycle on 3 September 2026 and cost this session one the same night. Use `>|`
+to overwrite deliberately, or write to a new path. It is the same family as the
+`tail` trap below: the command reports a number and the number is from before.
+
 **A test run piped into `tail` reports `tail`'s exit code, not the test's.**
 `node --test ... | tail -6` exits 0 on a run that failed. Read `# fail N` in
 the output rather than checking `$?`, or drop the pipe. Proved on 2 September
@@ -216,6 +223,26 @@ resolves either, and `node --experimental-strip-types` resolves only the
 first, so a check under `apps/web/scripts/` can run the real module rather
 than a copy of it. `allowImportingTsExtensions` in `apps/web/tsconfig.json` is
 what lets `tsc` accept it.
+
+**`apps/web` declares `"type": "module"`, so a test may import from it.**
+KPA-139 added the field on 3 September 2026. Node and `tsc` both read the
+package as ESM now, which ends two things: a file under `test/` reaches a
+constant in `apps/web/lib` through a plain static import, and `npm run check`
+runs its seventeen scripts in silence. Before, that import needed a variable
+specifier to dodge `TS1287`, which `tsc` reported in the imported file rather
+than the importing one, and fifteen of those scripts each printed
+`MODULE_TYPELESS_PACKAGE_JSON`. `test/workspaces.test.ts` shows the import.
+
+**The root type check judges every `apps/web` file a test imports, and it is
+stricter than the web tier's own.** Two settings differ, and each one bites.
+The root sets `moduleResolution: nodenext`, so a relative import inside a file
+it reaches names the `.ts` extension: `apps/web/lib/workspaces.ts` imports
+`./types.ts` for that reason, where the rest of the web tier omits it under
+`bundler`. The root also sets `noUncheckedIndexedAccess`, which
+`apps/web/tsconfig.json` leaves off, so six indexed reads in
+`apps/web/lib/fixtures.ts` fail the root check and that one file still needs a
+variable specifier. `test/workspace-fields.test.ts` imports it that way and
+says why.
 
 **A gate's prompt is a file, never a string in code.** `src/memory/prompts/`
 holds them, and the gate reads its file on every call, so a renamed prompt

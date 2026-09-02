@@ -22,7 +22,7 @@
 // seven is where the table replaces it. `test/workspaces.test.ts` compares the
 // two field by field, so a row added here and nowhere else fails the suite.
 
-import type { Issue, Space } from "./types";
+import type { Issue, Space } from "./types.ts";
 
 /** How to tell whether an issue belongs to a project. */
 export type ProjectMatch =

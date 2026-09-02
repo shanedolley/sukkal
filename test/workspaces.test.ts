@@ -2,33 +2,14 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
+// The tree the interface reads, imported rather than retyped: a transcription
+// of it here would agree with itself and prove nothing about the seed.
+import { type ProjectMatch, WORKSPACES } from '../apps/web/lib/workspaces.ts';
 import { connect } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
-
-/** How `apps/web/lib/workspaces.ts` says an issue is matched to a project. */
-type ProjectMatch = { by: 'label'; label: string } | { by: 'key'; prefix: string };
-
-interface Constant {
-  WORKSPACES: {
-    id: string;
-    name: string;
-    space: string;
-    projects: { id: string; name: string; match: ProjectMatch }[];
-  }[];
-}
-
-// The tree the interface reads, imported rather than retyped: a transcription
-// of it here would agree with itself and prove nothing about the seed.
-//
-// The specifier is a variable because `tsc` reads `apps/web` as CommonJS,
-// since `apps/web/package.json` names no `type`. A static import therefore
-// fails the root type check inside a file this story does not own. Node
-// resolves it relative to this one and strips its types like any other.
-const CONSTANT = '../apps/web/lib/workspaces.ts';
-const { WORKSPACES } = (await import(CONSTANT)) as Constant;
 
 /** Every column, constraint and comment on the two tables, as text. A rename
  *  of anything shows up here, which is what the down and up test compares. */
