@@ -6,7 +6,7 @@
  * configuration change: the existing vectors are the wrong width and the wrong
  * model's output, so they have to be rebuilt.
  *
- * `voyage-4` over `voyage-4-large`: the corpus is 17 facts and 32 sources, and
+ * `voyage-4` over `voyage-4-large`: the corpus is 19 facts and 32 sources, and
  * the larger model costs more for quality that corpus cannot show. Both take
  * 1024 by default, so moving up later changes the model name and not the
  * schema. Checked against Voyage's model list on 27 August 2026, where
