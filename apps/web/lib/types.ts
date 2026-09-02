@@ -144,7 +144,12 @@ export interface ChatAnswer {
   question: string;
   answer: string;
   citations: Citation[];
-  /** Every space the answer drew on. Two or more raises the crossing flag. */
+  /**
+   * Every space the answer drew on. Two or more raises the crossing flag,
+   * and `shared` is never one of the two. It is the space either side may
+   * cite, so citing it crosses nothing. `crosses` in lib/space.ts holds the
+   * rule, and ADR-0018 gives the reason.
+   */
   spaces: Space[];
   askedAt: string;
 }

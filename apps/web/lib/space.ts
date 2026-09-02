@@ -23,12 +23,35 @@ export function spacesFor(filter: SpaceFilter): Space[] {
     : [filter, "shared"];
 }
 
-/** Narrow any row that carries a space. */
+/**
+ * Narrow any row that carries a space.
+ *
+ * It reads `spacesFor`, so the browser keeps exactly what the same filter
+ * keeps in SQL. Written as its own comparison it dropped every `shared` row,
+ * and a fact in `shared` was then visible under no filter at all. ADR-0018.
+ *
+ * Only a caller over fixtures needs this. A caller over rows a query already
+ * narrowed must not call it. The second narrow buys nothing, and it is where
+ * this bug hid on every migrated screen until 2 September 2026.
+ */
 export function inSpace<T extends { space: Space }>(
   rows: T[],
   filter: SpaceFilter
 ): T[] {
-  return filter === "all" ? rows : rows.filter((row) => row.space === filter);
+  if (filter === "all") return rows;
+  const kept = spacesFor(filter);
+  return rows.filter((row) => kept.includes(row.space));
+}
+
+/**
+ * The spaces an answer crossed, each named once.
+ *
+ * `shared` is dropped. It is the space the wall does not divide, so citing it
+ * crosses nothing. The flag reads this list rather than `spaces`, so it never
+ * names a space that did not cross. ADR-0018.
+ */
+export function crossed(spaces: Space[]): Space[] {
+  return [...new Set(spaces)].filter((space) => space !== "shared");
 }
 
 /**
@@ -37,7 +60,11 @@ export function inSpace<T extends { space: Space }>(
  * The brief flags a crossing and never blocks it, so this decides a badge and
  * nothing else. It counts distinct spaces rather than entries, because an
  * answer that cites Collibra twice draws on one space.
+ *
+ * The brief also makes this flag the only guard the Collibra and Koinon wall
+ * has. A flag on an answer that crossed nothing costs the one signal that
+ * matters, which is why `shared` never raises it.
  */
 export function crosses(spaces: Space[]): boolean {
-  return new Set(spaces).size > 1;
+  return crossed(spaces).length > 1;
 }

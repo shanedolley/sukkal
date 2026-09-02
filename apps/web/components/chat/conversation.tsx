@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { tokensUsed } from "@/lib/context-window";
 import { CHAT_ANSWERS } from "@/lib/fixtures";
 import type { PageStatus } from "@/lib/forced-state";
-import { crosses } from "@/lib/space";
+import { crossed, crosses } from "@/lib/space";
 import { SPACE_LABELS, type ChatAnswer } from "@/lib/types";
 
 const SUGGESTIONS = CHAT_ANSWERS.map((a) => a.question);
@@ -44,7 +44,11 @@ export function answerFor(question: string, index: number): ChatAnswer {
 }
 
 function CrossingFlag({ answer }: { answer: ChatAnswer }) {
-  const names = answer.spaces.map((s) => SPACE_LABELS[s]).join(" and ");
+  // `crossed` and not `spaces`, so the flag names only what crossed. An answer
+  // citing Collibra, Koinon and a shared fact crossed two spaces, not three.
+  const names = crossed(answer.spaces)
+    .map((space) => SPACE_LABELS[space])
+    .join(" and ");
   return (
     <Alert variant="warning">
       <TriangleAlertIcon aria-hidden="true" />

@@ -160,6 +160,22 @@ export const SOURCES: Source[] = [
       },
     ],
   },
+  // The fourth space. It belongs to neither side, and either side may cite it,
+  // so it stands under every filter and raises no crossing flag. ADR-0018.
+  {
+    id: "src-drafting-preferences",
+    kind: "document",
+    title: "How I want email drafted",
+    date: "2026-07-02",
+    space: "shared",
+    author: "Shane Dolley",
+    chunks: [
+      {
+        id: "c1",
+        text: "Draft it, never send it. Keep it short, plain and direct, and sign off with my first name alone. This holds whichever hat I am wearing.",
+      },
+    ],
+  },
 ];
 
 export const FACTS: Fact[] = [
@@ -447,6 +463,28 @@ export const CHAT_ANSWERS: ChatAnswer[] = [
     ],
     spaces: ["koinon", "collibra"],
     askedAt: "2026-08-25T08:22:00+10:00",
+  },
+  // A Collibra answer that leans on a shared fact. It crosses nothing, so the
+  // flag stays down and the one signal that matters keeps its meaning.
+  {
+    id: "chat-shared",
+    question: "How should I reply to the Sydney Water kickoff notes?",
+    answer:
+      "Draft the reply rather than send it, keep it short and plain, and sign off with your first name alone. On the substance, the kickoff settled that the pilot covers the billing domain only and leaves asset management until the new year. How you draft email is a shared fact, so it holds whichever hat you are wearing.",
+    citations: [
+      {
+        sourceId: "src-sydney-water-kickoff",
+        chunkId: "c1",
+        label: "Sydney Water kickoff, 24 Aug",
+      },
+      {
+        sourceId: "src-drafting-preferences",
+        chunkId: "c1",
+        label: "How I want email drafted",
+      },
+    ],
+    spaces: ["collibra", "shared"],
+    askedAt: "2026-08-25T08:40:00+10:00",
   },
 ];
 

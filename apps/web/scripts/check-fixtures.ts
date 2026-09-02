@@ -18,6 +18,7 @@ import {
   SOURCES,
   SPRINTS,
 } from "../lib/fixtures.ts";
+import { crosses } from "../lib/space.ts";
 import type { FactState, Space } from "../lib/types.ts";
 import { spaceOf, workspaceNamed } from "../lib/workspaces.ts";
 
@@ -117,6 +118,16 @@ for (const [name, rows] of Object.entries(COLLECTIONS)) {
   }
 }
 
+// 5c. The fourth space carries a row, so the shared badge and the rule that
+//     shows a shared row under every filter have something to show. Only
+//     SOURCES is asked for one. `shared` holds how Shane works rather than
+//     whose work it is, so a meeting or an audit entry belongs to a side and
+//     a source of a preference does not. ADR-0018.
+assert.ok(
+  SOURCES.some((source) => source.space === "shared"),
+  "no fixture source is in the shared space, so the fourth badge and the shared filter rule are untested"
+);
+
 // 5b. A rejected fact records why. Without it a later run raises it again.
 for (const fact of FACTS) {
   if (fact.state === "rejected") {
@@ -147,8 +158,14 @@ assert.ok(
   "no chat answer draws on a single space"
 );
 assert.ok(
-  CHAT_ANSWERS.some((a) => a.spaces.length > 1),
+  CHAT_ANSWERS.some((a) => crosses(a.spaces)),
   "no chat answer crosses two spaces, so the crossing flag is untested"
+);
+// A shared citation is the case the flag must stay down for. Counting spaces
+// would call this answer a crossing, which is the defect ADR-0018 names.
+assert.ok(
+  CHAT_ANSWERS.some((a) => a.spaces.includes("shared") && !crosses(a.spaces)),
+  "no chat answer cites a shared fact beside its own space, so the exception is untested"
 );
 
 // 8. Exactly one sprint is in flight. Two, and the current sprint view has to

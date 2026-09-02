@@ -12,10 +12,13 @@ import { createLocalStore } from "./local-store";
 import type { SpaceFilter } from "./space";
 import { spaceOf } from "./workspaces";
 
-// inSpace and crosses live in lib/space.ts so a check can import them without
-// JSX. They are re-exported here, so no caller has to know that.
-export { crosses, inSpace, type SpaceFilter } from "./space";
+// inSpace, crossed and crosses live in lib/space.ts so a check can import them
+// without JSX. They are re-exported here, so no caller has to know that.
+export { crossed, crosses, inSpace, type SpaceFilter } from "./space";
 
+// The switcher offers three spaces and all, and never `shared`. Shared is not
+// a fourth silo. It is the space every filter keeps, so filtering to it alone
+// would mean nothing. ADR-0018.
 const VALID: string[] = ["all", "collibra", "koinon", "personal"];
 
 const store = createLocalStore<SpaceFilter>("kpa.space", "all", (value) =>

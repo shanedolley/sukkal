@@ -84,10 +84,11 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
     router.push(`/chat?q=${encodeURIComponent(asked)}`);
   }
 
-  // The palette searches what the memory holds, narrowed by the same space
-  // filter as everything else.
-  const matchingFacts = inSpace(facts, space).filter((f) =>
-    f.state === "proposed" || f.state === "stale" || f.state === "verified"
+  // The palette searches what the memory holds. Facts arrive narrowed by
+  // space already, in SQL, so they are not narrowed again here. Meetings and
+  // sources below are fixtures, narrowed nowhere else, so they are.
+  const matchingFacts = facts.filter(
+    (f) => f.state === "proposed" || f.state === "stale" || f.state === "verified"
   );
   // Already narrowed by space, in SQL. See lib/needs-you.ts.
   const { items: needsYou } = useNeedsYou();
