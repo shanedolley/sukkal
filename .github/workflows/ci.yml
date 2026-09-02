@@ -48,3 +48,50 @@ jobs:
       - run: npm run build
 
       - run: npm test
+
+  # The web tier. It runs no database: every screen reads fixtures, and the one
+  # route handler opens a connection at request time rather than at build time.
+  # So this job needs no service container, and it says nothing about whether
+  # that route works against a real database. test/webhooks.test.ts covers
+  # that in the job above.
+  web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Both packages, and the order matters. The webhook route imports
+      # src/db/connect.ts, which lives in the root package and resolves `pg`
+      # from the root's node_modules rather than from apps/web's. Installing
+      # apps/web alone builds everything except that route, and then fails on
+      # it with "Module not found: Can't resolve 'pg'". Proved by running this
+      # job's steps against a clean checkout before writing it down.
+      #
+      # This mirrors how the application deploys: kpa-web and kpa-worker run
+      # from one repository with both installed. KPA-68 removes the coupling by
+      # making apps/web a real workspace of the root, which is the version that
+      # cannot break this way.
+      - run: npm ci
+
+      - run: npm ci
+        working-directory: apps/web
+
+      # The twelve checks under apps/web/scripts. Each proves one rule the
+      # screens rest on, and each fails when that rule breaks.
+      - run: npm run check
+        working-directory: apps/web
+
+      # next build type-checks the whole app, which is what catches the route
+      # handler's cross-package import breaking. Nothing else would.
+      - run: npm run build
+        working-directory: apps/web
+
+      # `npm run lint` is deliberately absent. eslint reports 47 errors today,
+      # almost all react-hooks findings in the vendored ReUI and chart
+      # components, so adding it now would put the trunk red on the first push
+      # and teach everyone to ignore a red trunk. KPA-67 clears the backlog and
+      # adds the step.
