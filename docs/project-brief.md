@@ -578,17 +578,17 @@ decision.
 Six things the interface shows have nowhere to live: needs-you items, meetings,
 chat answers, conversations, audit entries, and citations.
 
-**The application data now has half a schema.** Six tables landed on
-3 September 2026: `connections` and `connection_credentials`, `workspaces` and
-`projects`, `workspace_fields`, and four columns on `users` holding the
-account. The issue cache and the sprints have no table yet, and every screen
-still reads `apps/web/lib/fixtures.ts`. Slice seven is where a table replaces a
-fixture.
+**The application data has a schema now, and no screen reads all of it.**
+Eight tables landed on 3 September 2026: `connections` and
+`connection_credentials`, `workspaces` and `projects`, `workspace_fields`,
+`issues` and `issue_blocks`, and four columns on `users` holding the account.
+Only the sprints have no table. The connections screen, the project settings
+and the custom fields read their rows; the issue board still reads
+`apps/web/lib/fixtures.ts`, and KPA-124 is where it stops.
 
 Nineteen browser keys held state, eighteen under `kpa` and one `theme` from
-next-themes. Eight belong on a server, and ADR-0022 names every one and says
-why the other eleven stay. The account and the four colour keys have moved.
-Four remain, and KPA-127 carries them.
+next-themes. Eight belonged on a server and all eight have moved. ADR-0022
+names every one and says why the other eleven stay.
 
 **The `space` enum keeps its fourth value, and the interface learns it.**
 ADR-0018 settled this on 2 September 2026. `shared` holds how Shane works
@@ -884,14 +884,14 @@ runs down the page, and each slice states what it unblocks.
 | 1. Migrate the memory | The memory model, proved on 19 facts | In progress. KPA-1, 16 of 20 |
 | 2. Draw the interface | Every screen, on fixtures | Done. KPA-35 |
 | 3. Finish the memory schema | The tables and columns the screens need, on top of slice one | Done. KPA-51 |
-| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | In progress. KPA-53, 7 of 11 |
+| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | In progress. KPA-53, 8 of 12 |
 | 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | In progress. KPA-54, 4 of 10 |
 | 6. Fill the stores | Ingestion into the memory, and a Jira poller into the cache | In progress. KPA-55, 3 of 14 |
-| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-52, 12 of 20 |
+| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-52, 13 of 20 |
 
 Two capabilities sat outside this order because each is a product in itself.
 Both have started. The agent that acts within policy has its engine and its
-audit trail, KPA-56 at 6 of 7. Retrieval has nothing yet, KPA-57 at 0 of 7. A
+audit trail, KPA-56 at 5 of 7. Retrieval has nothing yet, KPA-57 at 0 of 7. A
 third arrived that no slice named: the installation authenticating its own
 owner, KPA-75 at 1 of 5, which ADR-0009 created and ADR-0020 now carries.
 
