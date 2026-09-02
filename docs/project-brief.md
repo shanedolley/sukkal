@@ -391,7 +391,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Collibra and Koinon separation | A guideline, not a database constraint | Decided 23 August 2026. Retrieval filters by space and crossing answers get flagged. Nothing structurally prevents a leak. |
 | Remote access | Cloudflare Tunnel with Access in front, on Shane's box | Works on any device without installing a client. Traffic transits Cloudflare. Another installation reaches itself however its owner chooses, and the application no longer depends on the answer. ADR-0009. |
 | Ingestion depth | Six months | Covers current engagements at a bounded one-off cost. |
-| Embeddings | Voyage AI, `voyage-4` at 1024 dimensions | Anthropic's own recommendation. This row named `voyage-3` until 27 August 2026, when KPA-26 read Voyage's model list and found it listed as legacy. `voyage-4` over `voyage-4-large` because a corpus of 19 facts and 32 sources cannot show the larger model's quality. Both default to 1024, so moving up later changes a model name and not the schema. Adds a vendor and a key. |
+| Embeddings | Voyage AI, `voyage-4` at 1024 dimensions | Anthropic's own recommendation. This row named `voyage-3` until 27 August 2026, when KPA-26 read Voyage's model list and found it listed as legacy. `voyage-4` over `voyage-4-large` because a corpus of 19 facts and 32 sources cannot show the larger model's quality. Both default to 1024, so moving up later changes a model name and not the schema. Adds a vendor and a key, and the vendor is MongoDB: it acquired Voyage in February 2025, which the brief did not know when it chose them. The model and the width are still right for this corpus, and *Risks accepted* now names which company the material reaches. |
 | Time model | Facts carry `valid_from` and `valid_to` | Retirement becomes a date rather than a delete, so the system answers what was true in March and fact decay stays visible. |
 | Microsoft Graph | Not pursued | Customer-tenant consent is unobtainable. Nabium's desktop capture covers the same material. |
 | Application shape | Next.js for the web tier, a separate worker process for everything long-running | Agent runs and ingestion must never sit in a request handler. The split is load bearing. |
@@ -786,6 +786,13 @@ personal system on personal hardware and a third-party model vendor. Nabium
 carries an unsigned checklist covering exactly this, at
 `docs/employer-policy-checklist.md`. Shane has decided it is not a gate: he is
 the decision maker and accepts the exposure directly. Recorded, not chased.
+
+**Voyage AI belongs to MongoDB.** It acquired Voyage in February 2025, and has
+been folding those models into Atlas since. KPA depends on the standalone API
+and stores the vectors in its own Postgres, so a vendor whose direction is
+"embeddings inside our database" is one worth watching. `src/embedding.ts`
+holds the model and the width in one place, so a move costs a migration rather
+than a rewrite.
 
 **OpenRouter routes to whichever upstream wins the bid.** Retention guarantees
 vary by provider and the payload reaches a broker as well as a model vendor. For
