@@ -28,7 +28,7 @@ import {
   hasDataGridTableRightPinnedColumns,
 } from "@/components/reui/data-grid/data-grid-table"
 import { flexRender } from "@tanstack/react-table"
-import type { Column, Row, Table } from "@tanstack/react-table"
+import type { Column, Row } from "@tanstack/react-table"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import type {
   VirtualItem,
@@ -871,7 +871,7 @@ function DataGridTableVirtual<TData extends object>({
         {renderHeader && (
           <DataGridTableHead>
             {mergedHeaderGroups.map((headerGroup) => (
-              <DataGridTableHeadRow key={headerGroup.id} rowId={headerGroup.id}>
+              <DataGridTableHeadRow key={headerGroup.id}>
                 {headerGroup.headers
                   .filter((header) => header.column.getIsPinned() !== "end")
                   .map((header) => {

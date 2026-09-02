@@ -58,7 +58,6 @@ import type {
   Header,
   HeaderGroup,
   Row,
-  Table,
 } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
@@ -325,7 +324,7 @@ function DataGridTableDnd<TData extends object>({
               .map(
                 (headerGroup: HeaderGroup<DataGridFeatures, TData>, index) => {
                   return (
-                    <DataGridTableHeadRow key={index} rowId={headerGroup.id}>
+                    <DataGridTableHeadRow key={index}>
                       <SortableContext
                         items={table.state.columnOrder}
                         strategy={horizontalListSortingStrategy}

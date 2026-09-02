@@ -90,8 +90,5 @@ jobs:
       - run: npm run build
         working-directory: apps/web
 
-      # `npm run lint` is deliberately absent. eslint reports 47 errors today,
-      # almost all react-hooks findings in the vendored ReUI and chart
-      # components, so adding it now would put the trunk red on the first push
-      # and teach everyone to ignore a red trunk. KPA-67 clears the backlog and
-      # adds the step.
+      - run: npm run lint
+        working-directory: apps/web

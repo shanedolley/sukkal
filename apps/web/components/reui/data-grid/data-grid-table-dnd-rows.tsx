@@ -59,12 +59,11 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
   type SortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { flexRender } from "@tanstack/react-table"
-import type { Cell, HeaderGroup, Row, Table } from "@tanstack/react-table"
+import type { Cell, HeaderGroup, Row } from "@tanstack/react-table"
 import { createPortal } from "react-dom"
 
 import { cn } from "@/lib/utils"
@@ -608,7 +607,7 @@ function DataGridTableDndRows<TData extends object>({
               .map(
                 (headerGroup: HeaderGroup<DataGridFeatures, TData>, index) => {
                   return (
-                    <DataGridTableHeadRow key={index} rowId={headerGroup.id}>
+                    <DataGridTableHeadRow key={index}>
                       {headerGroup.headers.map((header, index) => {
                         const { column } = header
 
