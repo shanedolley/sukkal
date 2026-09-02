@@ -315,6 +315,13 @@ code: `listConnections` names its columns and reports `hasSecret`, and
 `secretFor` is the only function in this repository that returns a plaintext
 secret.
 
+`apps/web/app/(app)/api/connections/route.ts` is the only route over these two
+tables, and it imports `addConnection`, `listConnections`, `removeConnection`
+and `setCredential`. It does not import `secretFor`, and
+`test/connections-read.test.ts` reads every file under
+`apps/web/app/(app)/api/` to hold that. A secret travels one way: the dialog
+posts it, `setCredential` seals it, and no read carries it back.
+
 **Nothing is unique on provider alone.** Shane holds a Microsoft account at BHP
 and another at Sydney Water. `UNIQUE (provider, name)` is what separates them,
 and adding one provider twice is the normal case.
@@ -503,9 +510,12 @@ and PostgreSQL refuses it. A default cannot name another column, so `id` cannot
 be one, and a constant default breaks every project matched by a key prefix,
 because `projects_match_one_way` allows one rule per row. Migration 018 answers
 the same question a second way: it requires the rule at insert, and the seed
-gives every label-matched project a `match_label` equal to its `id`. `fallback`
-in `apps/web/lib/project-settings.ts` still guesses that, and KPA-127 is where
-it reads the row instead.
+gives every label-matched project a `match_label` equal to its `id`. `readProjects`
+in `apps/web/lib/tree.ts` applies the same rule to a row whose `match_label` is
+null, so the browser's guess became the server's. The settings form still
+offers a label box on every project, and `writeProject` drops what it holds on
+a project matched by its key prefix, because `projects_match_one_way` would
+refuse the row.
 
 ## A workspace's custom fields
 
@@ -536,13 +546,21 @@ SELECT id FROM workspace_fields
 ```
 
 An absent key and a blank string both count as unfilled, which is what the
-browser's `.trim()` means. KPA-127 is where the interface asks this instead.
+browser's `.trim()` means. The interface still filters the list in
+`missingFields`, and it now filters a list it read from this table. The query
+above is the same rule, and it is what a caller with no browser will ask.
 
 **The seed is the fixture, and its two Jira ids are real.**
 `WORKSPACE_FIELDS` in `apps/web/lib/fixtures.ts` gives Collibra two fields and
 the other two workspaces none, and migration 018 seeded its tree on the same
 reasoning. The fixture carries no Jira id, so both were read from the Collibra
 site's own field list. A workspace with no row carries no fields.
+
+`apps/web/app/(app)/api/workspace-fields/route.ts` refuses a field whose
+`jiraId` is not `customfield_NNNNN`, so a catalogue entry with no tracker id
+cannot be saved. `JIRA_FIELDS` in `apps/web/lib/fixtures.ts` carries no tracker
+id on any of its eleven entries, so only the two seeded fields can be edited
+today. The scan that fills the catalogue is the worker's.
 
 The reference removes the fields when the workspace goes, where `projects` has
 no `ON DELETE` clause at all. A project is work in its own right, so a

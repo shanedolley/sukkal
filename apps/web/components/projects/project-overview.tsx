@@ -48,8 +48,9 @@ function Fact({ term, value }: { term: string; value: string | null }) {
 export function ProjectOverview({ projectKey }: { projectKey: string }) {
   const overview = PROJECT_OVERVIEW[projectKey];
   const activity = PROJECT_ACTIVITY[projectKey] ?? [];
-  // The dates come from the settings tab, which starts them off from the
-  // fixture and lets a person write over them.
+  // The dates come from the project's row. Migration 020 seeded none, so a
+  // project reads "Not set" until the settings tab writes them or Salesforce
+  // sends them.
   const { start, end } = useProjectSetting(projectKey);
 
   // The chart reads a Date, and the fixtures store the day as text.

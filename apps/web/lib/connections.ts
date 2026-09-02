@@ -8,18 +8,23 @@
 // the identity of it. Adding the same provider twice is the normal case here,
 // not a mistake to guard against.
 //
-// A secret is never stored. localStorage is readable by anything that runs on
-// the page and travels with the browser profile, so a key written here would
-// be a key given away. The saved list holds names and choices only, and the
-// worker takes the credential when it exists.
+// THE SECRET GOES THROUGH THIS MODULE AND IS HELD BY NONE OF IT. `add` puts
+// the typed key in the request body, and nothing keeps it afterwards: no
+// state, no storage, and no field on what comes back. `listConnections` in
+// `src/connections/store.ts` names its columns, so the read cannot carry a
+// secret out, and `hasSecret` is how far it goes toward one.
 //
-// ponytail: the third JSON-in-localStorage store, after lib/project-fields.ts
-// and lib/project-settings.ts. A shared helper in lib/local-store.ts is now
-// due, and this file is the one that should move to it first.
+// The list was a `localStorage` store until KPA-127, and its own header
+// admitted the problem: a key written to this browser is a key given away, so
+// the screen collected a credential and dropped it. ADR-0022 sends the whole
+// record to the server rather than leaving a connection with two masters.
 
-import { createLocalStore } from "./local-store";
+import { createRemoteStore, send } from "./remote-store";
 import type { ProviderId } from "./providers";
 
+const URL = "/api/connections";
+
+/** A connection as this screen may see it. The secret is not in it. */
 export interface Connection {
   id: string;
   provider: ProviderId;
@@ -29,43 +34,39 @@ export interface Connection {
   method: string;
   /** Service ids. Empty when the provider carries one thing. */
   services: string[];
+  /** Whether a sealed secret is stored against it. */
+  hasSecret: boolean;
+  /** Calendar dates, as 'YYYY-MM-DD' text. Null when the provider names none. */
+  issuedOn: string | null;
+  expiresOn: string | null;
+  verifiedOn: string | null;
+  verdict: string | null;
 }
 
-function parse(value: string): Connection[] {
-  try {
-    const read: unknown = JSON.parse(value);
-    return Array.isArray(read) ? (read as Connection[]) : [];
-  } catch {
-    return [];
-  }
+/** What the dialog collected. The secret is passed on and never kept. */
+export interface NewConnection {
+  provider: ProviderId;
+  name: string;
+  method: string;
+  services: string[];
+  /** The key that was typed, when the method asked for one. */
+  secret?: string;
+  /** The date the provider's key runs out, when the form asked for it. */
+  expiresOn?: string | null;
 }
 
-const KEY_NAME = "kpa.connections";
+const store = createRemoteStore<Connection[]>(URL, []);
 
-const store = createLocalStore<string>(KEY_NAME, "[]", (value) => {
-  try {
-    return Array.isArray(JSON.parse(value));
-  } catch {
-    return false;
-  }
-});
-
-/** Every connection, in the order they were added. */
+/** Every connection, in the order the server returns them. */
 export function useConnections(): Connection[] {
-  return parse(store.useValue());
+  return store.useValue();
 }
 
-function current(): Connection[] {
-  if (typeof window === "undefined") return [];
-  return parse(window.localStorage.getItem(KEY_NAME) ?? "[]");
+/** Adds one account, with its key when the method took one. */
+export function addConnection(connection: NewConnection): void {
+  void send(store, URL, "POST", connection);
 }
 
-/** Add one account. The id is unique, because two accounts share a name. */
-export function addConnection(connection: Omit<Connection, "id">) {
-  const id = `${connection.provider}-${Date.now().toString(36)}`;
-  store.set(JSON.stringify([...current(), { ...connection, id }]));
-}
-
-export function removeConnection(id: string) {
-  store.set(JSON.stringify(current().filter((entry) => entry.id !== id)));
+export function removeConnection(id: string): void {
+  void send(store, `${URL}?id=${encodeURIComponent(id)}`, "DELETE");
 }

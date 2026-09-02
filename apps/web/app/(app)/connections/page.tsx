@@ -3,9 +3,10 @@
 // Connections. Every account the assistant reaches, and one card that adds
 // another.
 //
-// The list is per browser, the same as Preferences, because nothing on the
-// server holds it yet. What it records is which accounts exist and what each
-// one covers. Authorising them is the worker's job.
+// The list is on the server, and so is the key each account is reached with,
+// sealed under the connection's own id. KPA-127 moved both there. What this
+// screen records is which accounts exist, what each one covers, and whether a
+// key is stored against it. Using that key is the worker's job.
 
 import { ConnectionsGrid } from "@/components/connections/connections";
 
@@ -24,9 +25,10 @@ export default function ConnectionsPage() {
       <ConnectionsGrid />
 
       <p className="text-muted-foreground text-xs leading-relaxed">
-        Nothing here reaches a provider yet. The list lives in this browser and
-        names the accounts the worker will authorise, so no key or token is
-        asked for on this screen.
+        A key typed here is sent to the server and sealed there. No screen
+        reads one back, and this browser keeps no copy. The worker is what
+        reaches the provider with it, and it does not run yet, so a card says
+        whether a key is stored rather than whether the account works.
       </p>
     </div>
   );

@@ -188,6 +188,15 @@ Apply the migrations again before the check, or unset `DATABASE_URL_TEST`,
 which is what CI does and why its web job skips those reads. Cost this session
 a detour on 3 September 2026.
 
+**A form seeded from a store now needs re-seeding.** `useState(saved)` reads
+the store once, and a store backed by `fetch` answers after the first render,
+so the form keeps the fallback for good.
+`apps/web/components/projects/project-detail-settings.tsx` sets the draft
+during the render when the row it was seeded from changes, which is React's own
+answer to a prop that changes. Every screen that moves off `localStorage` meets
+this, and nothing fails: the form simply shows the wrong value. Found on
+3 September 2026 in KPA-127.
+
 **This shell has `noclobber` on, so `>` onto a file that exists fails.** The
 redirect writes nothing and the command after it runs on the stale file, which
 is how a run reported 360 tests when the true count was 407. It cost an agent

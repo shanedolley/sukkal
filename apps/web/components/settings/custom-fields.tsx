@@ -9,6 +9,15 @@
 // A field is picked from what the site offers rather than typed. A typed name
 // is a name that agrees with Jira only by luck, and the day it does not, the
 // value is written to a field that does not exist.
+//
+// The list is a row in `workspace_fields` since KPA-127, filed under
+// `workspaces.id`, so a rename of the workspace moves nothing.
+//
+// ponytail: JIRA_FIELDS carries a slug per field and no tracker id, and
+// migration 021 requires the tracker id on every row rather than deriving one
+// from the name. So a field added from the catalogue is shown and refused by
+// the route. The scan that fills the catalogue is the worker's, and KPA-105 is
+// where it lands.
 
 import { useState } from "react";
 import {
@@ -44,7 +53,11 @@ import {
 } from "@/components/ui/popover";
 import { FIELDS_SCANNED_AT, JIRA_FIELDS } from "@/lib/fixtures";
 import { formatShortDay } from "@/lib/format";
-import { setWorkspaceFields, useWorkspaceFields } from "@/lib/workspace-fields";
+import {
+  setWorkspaceFields,
+  useWorkspaceFields,
+  type WorkspaceField,
+} from "@/lib/workspace-fields";
 import type { CustomField } from "@/lib/types";
 
 /**
@@ -180,7 +193,7 @@ export function CustomFields({ project }: { project: string }) {
     running: false,
   });
 
-  const write = (next: CustomField[]) => setWorkspaceFields(project, next);
+  const write = (next: WorkspaceField[]) => setWorkspaceFields(project, next);
 
   function rescan() {
     setScan((current) => ({ ...current, running: true }));
@@ -232,7 +245,9 @@ export function CustomFields({ project }: { project: string }) {
 
         <AddField
           taken={fields.map((field) => field.id)}
-          onAdd={(field) => write([...fields, { ...field, required: false }])}
+          onAdd={(field) =>
+            write([...fields, { ...field, jiraId: "", required: false }])
+          }
         />
       </div>
 

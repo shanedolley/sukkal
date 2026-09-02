@@ -8,12 +8,20 @@
 //
 // The method decides the second pane. One that signs you in opens the
 // provider's page in a new tab. One that takes a key draws the boxes it asks
-// for, and the key goes into component state and no further.
+// for.
+//
+// THE KEY LEAVES THIS SCREEN AND NOTHING KEEPS IT. It sits in form state
+// while it is typed, goes to /api/connections in the request body, and is
+// sealed there under the connection's own id. This browser writes no copy of
+// it, and no read brings one back: the card knows only whether a secret is
+// stored. KPA-127 moved the whole record onto the server, for the reason
+// ADR-0022 gives.
 //
 // ponytail: the sign-in opens the provider's own page rather than an OAuth
 // grant, because a grant needs a client id and a redirect the worker has not
-// registered. Nothing verifies the key either, so every card reads "Not
-// connected". Wire both to the worker when it lands. The Jira card in
+// registered. Nothing has asked a provider whether a stored key works either,
+// so a card reads "Key stored" rather than "Connected". Wire both to the
+// worker when it lands. The Jira card in
 // components/settings/jira-connection.tsx shows the shape they take.
 
 import { useId, useState } from "react";
@@ -41,6 +49,7 @@ import {
   removeConnection,
   useConnections,
   type Connection,
+  type NewConnection,
 } from "@/lib/connections";
 import {
   PROVIDERS,
@@ -125,13 +134,14 @@ function ConnectionForm({
 }: {
   chosen: Provider;
   onBack: () => void;
-  onAdd: (connection: Omit<Connection, "id">) => void;
+  onAdd: (connection: NewConnection) => void;
 }) {
   const nameId = useId();
   const [name, setName] = useState("");
   const [method, setMethod] = useState(chosen.methods[0].id);
-  // Keyed by field id. A secret sits here and goes no further: the dialog
-  // drops the whole object when it closes.
+  // Keyed by field id. A secret sits here while it is typed, goes to the
+  // route on submit, and is dropped with the whole object when the dialog
+  // closes. Nothing writes it to this browser.
   const [values, setValues] = useState<Record<string, string>>({});
   // Every service on, because an account is usually added for all of them.
   const [services, setServices] = useState<string[]>(
@@ -168,7 +178,19 @@ function ConnectionForm({
     const target = signInTarget(chosenMethod, values);
     // noopener, or the page opened gets a handle on this one.
     if (target) window.open(target, "_blank", "noopener,noreferrer");
-    onAdd({ provider: chosen.id, name: name.trim(), method, services });
+    // The method names which box holds the key and which holds its expiry, so
+    // neither is found by its id. A method that asks for neither sends
+    // neither.
+    const key = fields.find((field) => field.kind === "secret");
+    const expiry = fields.find((field) => field.kind === "date");
+    onAdd({
+      provider: chosen.id,
+      name: name.trim(),
+      method,
+      services,
+      secret: key ? value(key.id) : undefined,
+      expiresOn: expiry ? (value(expiry.id) || null) : null,
+    });
   }
 
   return (
@@ -249,8 +271,8 @@ function ConnectionForm({
             />
             {secret && (
               <p className="text-muted-foreground text-xs">
-                The key is never written to the browser. This screen holds it
-                until the worker exists to take it.
+                The key goes to the server and is sealed there. This browser
+                keeps no copy of it, and no screen reads it back.
               </p>
             )}
           </div>
@@ -330,7 +352,7 @@ function AddConnection() {
           </DialogTitle>
           <DialogDescription>
             {chosen
-              ? "The card is added either way. Signing in opens the provider in a new tab, and a key is held by this screen alone until the worker exists to take it."
+              ? "The card is added either way. Signing in opens the provider in a new tab, and a key typed here goes to the server and is sealed there."
               : "Pick the provider. The same one can be added as often as you hold accounts on it."}
           </DialogDescription>
         </DialogHeader>
@@ -385,8 +407,12 @@ function ConnectionCard({ connection }: { connection: Connection }) {
             {entry.services.find((service) => service.id === id)?.label ?? id}
           </Badge>
         ))}
-        <Badge size="sm" variant="warning-light" className="ml-auto">
-          Not connected
+        <Badge
+          size="sm"
+          variant={connection.hasSecret ? "outline" : "warning-light"}
+          className="ml-auto"
+        >
+          {connection.hasSecret ? "Key stored" : "Not connected"}
         </Badge>
       </CardContent>
     </Card>

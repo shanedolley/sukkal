@@ -50,6 +50,17 @@ export function ProjectDetailSettings({
 }) {
   const saved = useProjectSetting(projectKey);
   const [draft, setDraft] = useState<ProjectSetting>(saved);
+  // The row arrives from the server, so the first render holds the fallback
+  // and the answer lands after it. Seeding the form once would leave it
+  // showing the fallback for good, so the draft follows the row it was seeded
+  // from. React's own answer to a prop that changes, set during the render
+  // rather than in an effect. A read slower than the typing costs the first
+  // few characters, which is the trade a form over a network read makes.
+  const [seed, setSeed] = useState(saved);
+  if (seed !== saved) {
+    setSeed(saved);
+    setDraft(saved);
+  }
   // Read once, when the form mounts. A page left open over midnight should
   // not change what "next month" means halfway through typing it.
   const [today] = useState(realToday);
@@ -175,7 +186,7 @@ export function ProjectDetailSettings({
         </Button>
         {done && (
           <span className="text-muted-foreground text-xs" role="status">
-            Saved in this browser. Nothing reaches Jira or Salesforce yet.
+            Saved. Nothing reaches Jira or Salesforce yet.
           </span>
         )}
       </div>

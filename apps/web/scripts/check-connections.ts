@@ -6,8 +6,17 @@
 // dialog reads it rather than asking a question per provider.
 
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 
+import { KEY_VARIABLE } from "../../../src/connections/crypto.ts";
+import {
+  addConnection,
+  listConnections,
+  removeConnection,
+  setCredential,
+} from "../../../src/connections/store.ts";
 import { EMBEDDING } from "../../../src/embedding.ts";
+import { db } from "../lib/db.ts";
 import { asUrl, PROVIDERS, signInTarget, web } from "../lib/providers.ts";
 
 // 1. Only the two web protocols reach the browser.
@@ -137,3 +146,116 @@ console.log(
   "connections OK: nine providers, only web addresses open, a key opens nothing, " +
     `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, and the Jira token is dated`
 );
+
+// ══ The same claims, against the rows ═══════════════════════════════════════
+
+// KPA-127 moved the list off the browser, so the catalogue above is no longer
+// the whole answer: a stored connection names a provider and a method, and a
+// stored credential is what the screen must never read back. Three claims run
+// here, and each one is silent when it breaks.
+//
+// The read narrows. `listConnections` names its columns, so its answer holds
+// the ten fields below and no secret.
+//
+// The plaintext is nowhere in the answer. Searching the serialised read for
+// the secret itself catches a column carrying it under another name, which
+// asserting the absence of `ciphertext` would not.
+//
+// Every stored row names a provider this build offers. A row naming a tenth
+// provider draws no card at all, because `ConnectionCard` returns null.
+//
+// This half skips when `DATABASE_URL_TEST` is unset, which is how CI runs it
+// and how it runs beside a box that is switched off:
+//
+//   DATABASE_URL_TEST=postgresql://you@localhost:5432/kpa_dev_b \
+//     node --experimental-strip-types scripts/check-connections.ts
+
+const url = process.env["DATABASE_URL_TEST"];
+if (!url) {
+  console.log("connection rows SKIPPED: DATABASE_URL_TEST is unset");
+  process.exit(0);
+}
+
+// `lib/db.ts` is the one place the web tier opens a pool, and the one place the
+// date parser is set on this package's copy of the driver.
+process.env["DATABASE_URL"] = url;
+
+// A key made here and thrown away, so this runs on a box that holds none. No
+// key ever enters this repository: docs/runbooks/secrets.md says why.
+const heldKey = process.env[KEY_VARIABLE];
+process.env[KEY_VARIABLE] = randomBytes(32).toString("base64");
+
+const pool = db();
+const client = await pool.connect();
+const SECRET = "sk-or-v1-a-key-shaped-string";
+
+/** The ten fields a screen may see. The sealed bytes are not among them. */
+const SEEN = [
+  "expiresOn",
+  "hasSecret",
+  "id",
+  "issuedOn",
+  "method",
+  "name",
+  "provider",
+  "services",
+  "verdict",
+  "verifiedOn",
+];
+
+let added: string | null = null;
+try {
+  // 9. A connection made and a key sealed against it, which is the round trip
+  //    the dialog now makes.
+  added = await addConnection(client, {
+    provider: "openrouter",
+    name: "check-connections",
+    method: "key",
+  });
+  await setCredential(client, added, SECRET, { expiresOn: "2027-01-31" });
+
+  const list = await listConnections(client);
+  const made = list.find((one) => one.id === added);
+  assert.ok(made, "the connection did not come back");
+  assert.deepEqual(
+    Object.keys(made).sort(),
+    SEEN,
+    "listConnections answers with a key nobody asked for",
+  );
+  assert.equal(made.hasSecret, true, "a stored key read as no key");
+  // A calendar date comes back as text, not as a Date at local midnight.
+  assert.equal(made.expiresOn, "2027-01-31");
+
+  // 10. The whole answer, searched for the secret itself.
+  assert.ok(
+    !JSON.stringify(list).includes(SECRET),
+    "the read carried the plaintext",
+  );
+
+  // 11. Every stored row draws a card, which needs a provider and a method
+  //     this build offers.
+  for (const one of list) {
+    const entry = PROVIDERS.find((provider) => provider.id === one.provider);
+    assert.ok(entry, `connection ${one.id} names provider ${one.provider}`);
+    assert.ok(
+      entry.methods.some((method) => method.id === one.method),
+      `${one.provider} offers no method ${one.method}`,
+    );
+    for (const service of one.services) {
+      assert.ok(
+        entry.services.some((offered) => offered.id === service),
+        `${one.provider} offers no service ${service}`,
+      );
+    }
+  }
+
+  console.log(
+    `connection rows OK: ${list.length} read, ten fields each, and no secret among them`,
+  );
+} finally {
+  if (added) await removeConnection(client, added);
+  client.release();
+  await pool.end();
+  if (heldKey === undefined) delete process.env[KEY_VARIABLE];
+  else process.env[KEY_VARIABLE] = heldKey;
+}

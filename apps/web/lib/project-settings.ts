@@ -8,89 +8,66 @@
 // the contract sets.
 //
 // The settings tab writes this, the overview reads the dates and the issue
-// board reads the label, so it lives in none of the three. It goes to
-// localStorage for the reason the custom fields do: a setting that resets on
-// every navigation reads as a fault.
+// board reads the label, so it lives in none of the three.
 //
-// THE ROW HOLDS ALL FOUR NOW. `projects` carries the label from migration 018,
+// THE ROW HOLDS ALL FOUR. `projects` carries the label from migration 018,
 // and the description, both contract dates and the source of each date from
-// migration 020. A poller reads the row and cannot read this store, so a date
-// typed here reaches nothing. KPA-127 is where the store reads the row.
+// migration 020. A poller reads the row and could not read a browser, so
+// KPA-127 moved this store onto the table. ADR-0022 gives the reason: a
+// contract date arrives from Salesforce through Certinia, and data the
+// product fetched from another system is not a preference one browser holds.
 //
-// ponytail: the second store of this shape, after lib/project-fields.ts. A
-// third one earns a shared keyed-record helper in lib/local-store.ts.
+// THE FIXTURE NO LONGER SUPPLIES A DATE. The row is the answer, and migration
+// 020 seeded none, so a project shows "Not set" until somebody types the dates
+// or Salesforce sends them. `PROJECT_OVERVIEW` still carries the description,
+// which the overview reads from the fixture directly.
 
-import { createLocalStore } from "./local-store";
-import { PROJECT_OVERVIEW } from "./fixtures";
+import { createRemoteStore, send } from "./remote-store";
+import type { ProjectSetting } from "./tree";
 
-export interface ProjectSetting {
-  /** The Jira label an issue must carry to belong to this project. */
-  label: string;
-  /** ISO date. Null when no contract names one. */
-  start: string | null;
-  /** ISO date. Null when no contract names one. */
-  end: string | null;
-}
+export type { ProjectSetting };
+
+const URL = "/api/projects";
 
 type Saved = Record<string, ProjectSetting>;
 
-function parse(value: string): Saved {
-  try {
-    const read: unknown = JSON.parse(value);
-    return read && typeof read === "object" ? (read as Saved) : {};
-  } catch {
-    return {};
-  }
-}
-
-const store = createLocalStore<string>("kpa.project.settings", "{}", (value) => {
-  try {
-    const read: unknown = JSON.parse(value);
-    return read !== null && typeof read === "object";
-  } catch {
-    return false;
-  }
-});
+const store = createRemoteStore<Saved>(URL, {});
 
 /**
  * What a project starts with.
  *
- * The address the project is reached at is also the label its issues carry,
- * which is what makes a project findable before anyone has been near this
- * form. The stored row agrees: `match_label` equals `id` on every seeded
- * project a label matches.
+ * The address a project is reached at is also the label its issues carry,
+ * which is what makes it findable before anybody has been near this form.
+ * `readProjects` applies the same rule to a row whose `match_label` is null,
+ * so this covers a key the table does not hold at all.
  *
- * This guess belongs in the database and cannot go there. A column default
- * naming `id` is refused, and a constant one breaks every project matched by
- * a key prefix, because `projects_match_one_way` allows one rule per row.
- * Migration 018 answers the same question by requiring the rule at insert.
+ * Each one is made once and kept. The read lands after the first render, so a
+ * caller that seeds a form from this compares what it has against what it is
+ * given, and a fresh object per render would never look the same twice.
  */
+const fallbacks = new Map<string, ProjectSetting>();
+
 function fallback(key: string): ProjectSetting {
-  const overview = PROJECT_OVERVIEW[key];
-  return {
-    label: key,
-    start: overview?.start ?? null,
-    end: overview?.end ?? null,
-  };
+  let held = fallbacks.get(key);
+  if (!held) {
+    held = { label: key, start: null, end: null };
+    fallbacks.set(key, held);
+  }
+  return held;
 }
 
-/** Every project that has been given settings, by key. */
+/** Every project that has settings, by key. */
 export function useProjectSettings(): Saved {
-  return parse(store.useValue());
+  return store.useValue();
 }
 
 /** One project's settings, saved or as they started. */
 export function useProjectSetting(key: string): ProjectSetting {
-  const saved = parse(store.useValue());
-  return saved[key] ?? fallback(key);
+  return store.useValue()[key] ?? fallback(key);
 }
 
 /** Replace one project's settings. The others are left where they are. */
-export function setProjectSetting(key: string, setting: ProjectSetting) {
-  const saved = parse(
-    typeof window === "undefined"
-      ? "{}"
-      : (window.localStorage.getItem("kpa.project.settings") ?? "{}")
-  );
-  store.set(JSON.stringify({ ...saved, [key]: setting }));
+export function setProjectSetting(key: string, setting: ProjectSetting): void {
+  store.put({ ...store.read(), [key]: setting });
+  void send(store, URL, "PUT", { id: key, setting });
 }
