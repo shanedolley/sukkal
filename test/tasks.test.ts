@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { parseTasks } from '../src/migrate/tasks.ts';
 import { vaultPath } from '../src/vault-mapping.ts';
+
+// The vault lives on Shane's Mac and nowhere else, so every suite that reads
+// it skips where it is absent. Without this the four tests below fail in CI,
+// which is where they failed on 2 September 2026.
+const vaultReason = existsSync(vaultPath()) ? false : `no vault at ${vaultPath()}. Set VAULT_PATH`;
 
 describe('parseTasks', () => {
   test('a plain task carries no dates', () => {
@@ -66,7 +72,7 @@ describe('parseTasks', () => {
   });
 });
 
-describe('parseTasks, against the frozen vault', () => {
+describe('parseTasks, against the frozen vault', { skip: vaultReason }, () => {
   const VAULT = vaultPath();
 
   /** The exact bytes of the line starting with `needle`, up to but not
