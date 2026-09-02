@@ -1,11 +1,12 @@
 # The schema
 
-Seventeen tables and eight enums. `migrations/001_core_schema.sql` created the
+Nineteen tables and eight enums. `migrations/001_core_schema.sql` created the
 first ten, and migrations 003 to 010 changed what follows. Migrations 011 to
 014 add no table: 011 creates the schema the job queue lives in, 012 seeds one
 policy row, 013 adds one column to `facts`, and 014 adds one column and one
-enum value to `audit`. The vault's own `CLAUDE.md` is the authority for every
-enum the vault writes.
+enum value to `audit`. Migration 016 adds the last two, which hold a
+connection and its sealed secret. The vault's own `CLAUDE.md` is the authority
+for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
 `valid_to`. And **a machine never marks its own work verified**, which is a
@@ -32,6 +33,8 @@ check constraint here rather than an instruction in a prompt.
 | `answers` | One question and its answer, read back in the order asked |
 | `citations` | The source and the passage an answer's chip opens |
 | `inbound_deliveries` | A webhook body, verbatim, waiting for a worker |
+| `connections` | One account on one provider. Provider, name, method, and the services it may be reached for |
+| `connection_credentials` | The sealed secret for one connection, with the dates the provider named and the last verdict |
 
 ## The enums
 
@@ -262,6 +265,40 @@ webhook is acceptable here where ADR-0008 refused one for Jira.
 `src/worker/deliveries.ts` reads the backlog and ends each row.
 `docs/runbooks/worker.md` says how to see what failed, and how to make the
 worker try a delivery again.
+
+## The connection and its credential
+
+`migrations/016_connections_and_credentials.sql` creates two tables where one
+would do, and the split is the security boundary. Every screen reads
+`connections`. No screen reads `connection_credentials`, and holding the bytes
+in their own table means `SELECT * FROM connections` returns no secret,
+whoever writes the query. `src/connections/store.ts` keeps the same split in
+code: `listConnections` names its columns and reports `hasSecret`, and
+`secretFor` is the only function in this repository that returns a plaintext
+secret.
+
+**Nothing is unique on provider alone.** Shane holds a Microsoft account at BHP
+and another at Sydney Water. `UNIQUE (provider, name)` is what separates them,
+and adding one provider twice is the normal case.
+
+**The key is never in a column.** `src/connections/crypto.ts` seals the secret
+with AES-256-GCM before it reaches the database, under a 32-byte key read from
+`KPA_SECRET_KEY`. ADR-0020 set the precedent for taking the algorithm from
+node's own `crypto`: this repository has two dependencies, neither compiles,
+and a credential store is a poor reason to add a third. pgcrypto was the
+alternative, and it puts the key in the statement, which lands it in
+`pg_stat_statements` and in any query somebody logs.
+
+**Each row is sealed against its own connection id.** GCM refuses a ciphertext
+that has been altered, and the id goes in as additional data, so bytes moved
+from one row to another fail to open rather than pointing the Sydney Water key
+at the BHP account.
+
+`issued_on` and `expires_on` are calendar dates and come back as `YYYY-MM-DD`
+text, which is what `src/db/connect.ts` tells the driver. Both are null on an
+OAuth grant. `verified_on` and `verdict` are null together, and a check
+constraint enforces the pair: a verdict with no date says nothing about now.
+Retyping a secret clears both, because a new secret has never been tried.
 
 ## The column KPA-94 has not created yet
 

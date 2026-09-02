@@ -68,9 +68,10 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
     // questions is absent on purpose. ADR-0012 folded it into needs_you, so a
     // question is one of that queue's four kinds rather than a table of its own.
     assert.deepEqual(tables.rows.map((row) => row.relname), [
-      'answers', 'audit', 'citations', 'conversations', 'edges', 'entities',
-      'facts', 'inbound_deliveries', 'meetings', 'needs_you', 'nodes',
-      'policies', 'rejections', 'source_chunks', 'sources', 'tasks', 'users',
+      'answers', 'audit', 'citations', 'connection_credentials', 'connections',
+      'conversations', 'edges', 'entities', 'facts', 'inbound_deliveries',
+      'meetings', 'needs_you', 'nodes', 'policies', 'rejections',
+      'source_chunks', 'sources', 'tasks', 'users',
     ]);
   });
 
