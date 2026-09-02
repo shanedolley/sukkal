@@ -114,15 +114,26 @@ Nothing approves an action before it runs, so these two tables carry that
 weight alone. ADR-0005 says why a table rather than a paragraph in a prompt.
 
 `policies` holds one row per rule: what it governs, what it allows or denies,
-and whether it is on. `absolute` marks the two rules Shane may not turn off.
-The migration seeds the four the brief names.
+and whether it is on. `absolute` marks a rule Shane may not turn off, and
+`src/policy/engine.ts` denies on an absolute rule whether `enabled` is true or
+false. Migration 005 seeds the four rules the brief names. Migration 012 adds
+`deny-by-default`, which is the engine's own behaviour rather than a fifth rule
+about what KPA may do. ADR-0021.
 
-| Key | Absolute |
-|---|---|
-| `mail.send.never-unprompted` | yes |
-| `never-delete-or-destructively-edit` | yes |
-| `fact.verify.never-by-agent` | no |
-| `space.collibra-koinon-separation` | no |
+| Key | Absolute | Seeded by |
+|---|---|---|
+| `mail.send.never-unprompted` | yes | 005 |
+| `never-delete-or-destructively-edit` | yes | 005 |
+| `fact.verify.never-by-agent` | no | 005 |
+| `space.collibra-koinon-separation` | no | 005 |
+| `deny-by-default` | yes | 012 |
+
+`deny-by-default` exists because two failures name no other rule: an action the
+engine's allowlist does not describe, and any action proposed while the table
+is empty, unreadable or malformed. Both must deny, and
+`audit_denial_names_a_rule` refuses a denial that names no rule. So the engine
+either names a rule that did not fire, returns a denial the log cannot record,
+or names this one.
 
 `audit` holds one row per attempt. Every row carries the four fields the brief
 requires: `intent`, `before`, `result`, and `reverse`. A denial names the rule
@@ -197,6 +208,22 @@ webhook is acceptable here where ADR-0008 refused one for Jira.
 `src/worker/deliveries.ts` reads the backlog and ends each row.
 `docs/runbooks/worker.md` says how to see what failed, and how to make the
 worker try a delivery again.
+
+## The column KPA-94 has not created yet
+
+`src/auth/password.ts` hashes and verifies a password, and nothing stores one.
+KPA-94 creates the account row, and the column that holds this module's output
+is `text`, never `varchar(n)`.
+
+An encoded hash is 88 characters at today's cost:
+
+```
+$scrypt$ln=17,r=8,p=1$<22 chars of base64>$<43 chars of base64>
+```
+
+The length changes whenever the cost, the salt or the key size changes, and
+ADR-0020 records that raising the cost is expected. A width chosen from today's
+88 characters would refuse a hash the same code wrote a year later.
 
 ## The queue lives in its own schema
 

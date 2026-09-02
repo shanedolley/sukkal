@@ -49,6 +49,7 @@ function row(over: Partial<FactRow> = {}): FactRow {
     generated_by: "agent:claude-opus-5",
     source_id: null,
     chunk_id: null,
+    rejection_reason: null,
     ...over,
   };
 }
@@ -160,6 +161,25 @@ assert.equal(
   toFact(row(), TODAY).provenance,
   undefined,
   "a fact with no derived_from edge invented a source"
+);
+
+// ── 3b. A rejected fact carries the reason it was rejected ──
+//
+// The row is kept and never deleted, so the reason is the only thing on the
+// card that says why it stopped counting. A fact nobody rejected must carry
+// none rather than an empty string, which renders as a "Rejected:" line with
+// nothing after it.
+
+assert.equal(
+  toFact(row({ state: "rejected", rejection_reason: "The transcript says three years." }), TODAY)
+    .rejectionReason,
+  "The transcript says three years.",
+  "a rejected fact lost the reason it was rejected for"
+);
+assert.equal(
+  toFact(row(), TODAY).rejectionReason,
+  undefined,
+  "a fact nobody rejected carries a rejection reason"
 );
 
 // ── 4. A fact naming no entity is named, not left as undefined ──

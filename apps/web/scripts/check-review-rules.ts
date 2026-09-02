@@ -4,9 +4,25 @@
 // which is where the brief actually draws its lines. Each of the three below
 // is a rule from docs/project-brief.md, and each is easy to break by accident
 // in a way no build error would catch.
+//
+// KPA-122 added a second half. The rules above hold in the browser, and the
+// browser is not where a fact lives. So the same three rules are proved again
+// against a real database, because the two can drift apart in silence: the
+// screen showing a move the store did not take is the failure the story's last
+// acceptance criterion names, and nothing on screen would say so.
+//
+// **The database half skips when `DATABASE_URL_TEST` is unset**, which is how
+// continuous integration runs `npm run check` in `apps/web`. It follows the
+// pattern `test/read-vault.test.ts` uses for the vault: build a reason, and
+// skip on it, so a suite green here is green there for the same reasons.
+//
+//   DATABASE_URL_TEST=postgresql://you@localhost:5432/kpa_dev_a \
+//     node --experimental-strip-types scripts/check-review-rules.ts
 
 import assert from "node:assert/strict";
 
+import { db } from "../lib/db.ts";
+import { readFacts, VERIFIER, writeMove } from "../lib/facts.ts";
 import { applyMove, movesFor, ReviewError } from "../lib/review-state.ts";
 import type { Fact, FactState } from "../lib/types.ts";
 
@@ -112,3 +128,283 @@ throws(
 );
 
 console.log("review rules OK: nothing deleted, reasons required, sweep never retires");
+
+// ══ The same three rules, against the store ═════════════════════════════════
+
+const url = process.env["DATABASE_URL_TEST"];
+if (!url) {
+  console.log("review writes SKIPPED: DATABASE_URL_TEST is unset");
+  process.exit(0);
+}
+
+// `lib/db.ts` is the one place the web tier opens a pool, and the one place
+// the date parser is set on this package's copy of the driver. Pointing it at
+// the test database is what lets this check use it rather than open a second
+// pool and set that parser a second time.
+process.env["DATABASE_URL"] = url;
+const pool = db();
+
+/** Today, held still. Every state below is derived from a date. */
+const TODAY = "2026-09-02";
+
+/** Rows this check made, removed at the end whatever happens. */
+const made: string[] = [];
+
+/** One fact, in whatever state the assertion needs. Both statements in one
+ *  transaction, because the node registry checks its side at commit. */
+async function seed(over: {
+  path: string;
+  state?: "candidate" | "proposed" | "rejected";
+  generated?: string | null;
+  validFrom?: string;
+  staleAfter?: string | null;
+  verified?: string | null;
+}): Promise<string> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const node = await client.query<{ id: string }>(
+      "INSERT INTO nodes (kind) VALUES ('fact') RETURNING id",
+    );
+    const id = node.rows[0]!.id;
+    await client.query(
+      `INSERT INTO facts (id, path, type, title, description, space, state,
+                          generated, valid_from, stale_after, verified, verified_by)
+       VALUES ($1, $2, 'reference', $2, $3, 'shared', $4, $5, $6, $7, $8,
+               CASE WHEN $8::date IS NULL THEN NULL ELSE 'human:1' END)`,
+      [
+        id,
+        over.path,
+        `The claim on ${over.path}.`,
+        over.state ?? "proposed",
+        over.generated === undefined ? "2026-01-01" : over.generated,
+        over.validFrom ?? "2026-01-01",
+        over.staleAfter ?? null,
+        over.verified ?? null,
+      ],
+    );
+    await client.query("COMMIT");
+    made.push(id);
+    return id;
+  } catch (cause) {
+    await client.query("ROLLBACK");
+    throw cause;
+  } finally {
+    client.release();
+  }
+}
+
+/** One fact's columns, read raw. The state is derived, so the columns behind
+ *  it are what an assertion has to look at. */
+async function stored(id: string) {
+  const found = await pool.query<{
+    state: string;
+    verified: string | null;
+    verified_by: string | null;
+    stale_after: string | null;
+    valid_to: string | null;
+  }>(
+    `SELECT state, verified, verified_by, stale_after, valid_to
+       FROM facts WHERE id = $1`,
+    [id],
+  );
+  return found.rows[0]!;
+}
+
+async function rejectionsFor(id: string) {
+  const found = await pool.query<{ candidate: string; reason: string; raised: string }>(
+    "SELECT candidate, reason, raised FROM rejections WHERE subject_id = $1",
+    [id],
+  );
+  return found.rows;
+}
+
+try {
+  const where = await pool.query<{ name: string }>("SELECT current_database() AS name");
+  assert.notEqual(
+    where.rows[0]?.name,
+    "kpa",
+    "this check writes facts. It must run against kpa_dev, never kpa",
+  );
+
+  // ── Accept sets the verified date, and an agent can never be the verifier ──
+
+  {
+    const id = await seed({ path: "kpa-122/accepted.md" });
+    const moved = await writeMove(pool, id, "accept", TODAY, VERIFIER);
+
+    assert.equal(moved?.state, "verified", "accept did not verify the fact");
+    const row = await stored(id);
+    assert.equal(row.verified, TODAY, "accept did not set the verified date");
+    assert.equal(row.verified_by, "human:1", "accept did not record who verified it");
+    assert.equal(row.valid_to, null, "accept retired the fact");
+    assert.equal(row.state, "proposed", "accept overwrote the stored state");
+
+    // The second of two clicks. The first move takes the row out of the state
+    // this one requires, so the store writes nothing and says nothing moved.
+    assert.equal(
+      await writeMove(pool, id, "accept", "2026-09-03", VERIFIER),
+      null,
+      "a second accept wrote over the first",
+    );
+    assert.equal((await stored(id)).verified, TODAY, "a second accept moved the date");
+
+    // The constraint is the second line and it still holds. Proved by running
+    // the statement the code refuses, rather than by trusting that it would.
+    await assert.rejects(
+      pool.query("UPDATE facts SET verified_by = 'agent:claude-opus-5' WHERE id = $1", [id]),
+      /facts_machine_never_verifies/,
+      "the database let an agent verify a fact",
+    );
+  }
+
+  // ── The code refuses an agent verifier before any statement runs ──
+
+  {
+    // A pool that fails if it is touched at all, so the refusal is proved to
+    // happen before any statement rather than by the constraint afterwards.
+    const untouchable = {
+      connect: () => Promise.reject(new Error("the write reached the database")),
+      query: () => Promise.reject(new Error("the write reached the database")),
+    } as unknown as Parameters<typeof writeMove>[0];
+
+    await assert.rejects(
+      writeMove(untouchable, "1", "accept", TODAY, "agent:claude-opus-5"),
+      ReviewError,
+      "an agent verifier was left to the constraint rather than refused",
+    );
+  }
+
+  // ── Reject marks the fact, records the reason, and keeps the row ──
+
+  {
+    const id = await seed({ path: "kpa-122/rejected.md" });
+    const why = "The transcript says three years, not five.";
+    const moved = await writeMove(pool, id, "reject", TODAY, VERIFIER, why);
+
+    assert.equal(moved?.state, "rejected", "reject did not mark the fact");
+    assert.equal(moved?.rejectionReason, why, "the answer dropped the reason");
+
+    const row = await stored(id);
+    assert.equal(row.state, "rejected");
+    assert.equal(row.valid_to, null, "reject retired the fact instead of marking it");
+
+    // Nothing is deleted. The row is still readable, and the reason is on it.
+    const read = await readFacts(pool, "all", TODAY);
+    const still = read.find((fact) => fact.id === id);
+    assert.equal(still?.state, "rejected", "the rejected row left the read");
+    assert.equal(still?.rejectionReason, why, "the read lost the reason");
+
+    // The rejection names this fact's own node, which is KPA-122's decision.
+    const kept = await rejectionsFor(id);
+    assert.equal(kept.length, 1, "the rejection was not recorded against the fact");
+    assert.equal(kept[0]?.reason, why);
+    assert.equal(kept[0]?.candidate, "The claim on kpa-122/rejected.md.");
+    assert.equal(kept[0]?.raised, TODAY, "the rejection was raised on another day");
+
+    // A second reject writes no second row, so a later run reads one reason.
+    assert.equal(await writeMove(pool, id, "reject", TODAY, VERIFIER, why), null);
+    assert.equal((await rejectionsFor(id)).length, 1, "a second reject wrote a second reason");
+
+    // A verified fact offers no move, so the store refuses one. Without this
+    // the row would read verified on every screen and carry a rejection none
+    // of them could show, because the date beats the stored state.
+    const confirmed = await seed({ path: "kpa-122/already-verified.md", verified: "2026-08-01" });
+    assert.equal(
+      await writeMove(pool, confirmed, "reject", TODAY, VERIFIER, why),
+      null,
+      "a verified fact was rejected, which the screen never offers",
+    );
+    assert.equal((await rejectionsFor(confirmed)).length, 0, "the refused reject wrote a reason");
+
+    // A rejection with no reason is the failure the reason exists to prevent.
+    const blank = await seed({ path: "kpa-122/no-reason.md" });
+    await assert.rejects(
+      writeMove(pool, blank, "reject", TODAY, VERIFIER, "   "),
+      ReviewError,
+      "a rejection with a blank reason was written",
+    );
+    assert.equal((await stored(blank)).state, "proposed", "the blank rejection marked the fact");
+  }
+
+  // ── Re-confirm moves the review date by the fact's own interval ──
+  //
+  // ADR-0017. Generated on 1 January and first due on 15 June is 165 days, so
+  // re-confirming on 2 September falls due on 14 February. The number is the
+  // fact's own, not a horizon every fact shares, which is what keeps a batch
+  // confirmed in one afternoon from falling due in one afternoon.
+  //
+  // 165 rather than a round number on purpose. A ninety-day fixture is the
+  // one a fixed ninety-day horizon passes by accident, and it did: this check
+  // was written with one and stayed green against `stale_after = today + 90`.
+
+  {
+    const id = await seed({
+      path: "kpa-122/stale.md",
+      generated: "2026-01-01",
+      staleAfter: "2026-06-15",
+      verified: "2026-01-01",
+    });
+    const moved = await writeMove(pool, id, "reconfirm", TODAY, VERIFIER);
+
+    assert.equal(moved?.staleAfter, "2027-02-14", "re-confirm did not keep the fact's interval");
+    assert.equal(moved?.state, "verified", "the re-confirmed fact is still stale");
+
+    const row = await stored(id);
+    assert.equal(row.stale_after, "2027-02-14");
+    assert.equal(row.valid_to, null, "re-confirm retired the fact");
+    assert.equal(row.verified, "2026-01-01", "re-confirm set something other than the date");
+
+    // The row must not come back on the next read. This is the whole move.
+    const read = await readFacts(pool, "all", TODAY);
+    assert.equal(
+      read.find((fact) => fact.id === id)?.state,
+      "verified",
+      "the re-confirmed fact came straight back into the stale queue",
+    );
+
+    // A fact that is no longer stale offers no re-confirm, so the store
+    // refuses the second click the same way it refuses the second accept.
+    assert.equal(await writeMove(pool, id, "reconfirm", TODAY, VERIFIER), null);
+  }
+
+  // ── A fact with no review date never gets one ──
+  //
+  // ADR-0017 again: it never goes stale, so it never offers the move, and the
+  // arithmetic never sees a null to add a day to.
+
+  {
+    const id = await seed({ path: "kpa-122/no-review-date.md", verified: "2026-01-01" });
+    assert.equal(await writeMove(pool, id, "reconfirm", TODAY, VERIFIER), null);
+    assert.equal((await stored(id)).stale_after, null, "a fact with no review date was given one");
+  }
+
+  // ── A span that runs backwards still moves the date forward ──
+  //
+  // Nothing stops a row whose review date predates the day it was generated.
+  // Today plus a negative span is a date already past, and the row would leave
+  // the queue and be back in it on the next read. The floor is why it cannot.
+
+  {
+    const id = await seed({
+      path: "kpa-122/backwards.md",
+      generated: "2026-05-01",
+      staleAfter: "2026-04-01",
+      verified: "2026-01-01",
+    });
+    const moved = await writeMove(pool, id, "reconfirm", TODAY, VERIFIER);
+    assert.equal(moved?.staleAfter, "2026-09-03", "a backwards span moved the date into the past");
+    assert.equal(moved?.state, "verified", "the fact came straight back into the stale queue");
+  }
+
+  console.log("review writes OK: accept, reject and re-confirm land in the store");
+} finally {
+  // Rejections point at the fact's node, and the node registry checks that a
+  // fact node has its fact row, so the three go in this order.
+  if (made.length > 0) {
+    await pool.query("DELETE FROM rejections WHERE subject_id = ANY($1::bigint[])", [made]);
+    await pool.query("DELETE FROM facts WHERE id = ANY($1::bigint[])", [made]);
+    await pool.query("DELETE FROM nodes WHERE id = ANY($1::bigint[])", [made]);
+  }
+  await pool.end();
+}

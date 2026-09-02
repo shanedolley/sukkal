@@ -18,7 +18,7 @@ function Stale() {
   // The day comes back with the rows. A fact is on this page because a date
   // passed, so "days past review" has to count from the day that decided it,
   // not from a second opinion the browser forms.
-  const { facts, today, status: live, reconfirm } = useReview();
+  const { facts, today, status: live, reconfirm, failure } = useReview();
   const status = useForcedState() ?? live;
   // The read narrowed by space in SQL already, through spacesFor, and that
   // list carries `shared` with every space. Narrowing again here would drop
@@ -28,16 +28,29 @@ function Stale() {
   const stale = facts.filter(isStale);
 
   return (
-    <QueuePage
-      title="Stale facts"
-      lede="Each of these is past its review date. That makes it due for a second look, not wrong. Retiring one needs a contradicting source or a date from you, and neither happens here."
-      count={stale.length}
-      status={status}
-      emptyTitle="Nothing is going stale"
-      emptyDescription="Every fact is inside its review window."
-    >
-      <StaleFacts facts={stale} today={today} onReconfirm={reconfirm} />
-    </QueuePage>
+    <div className="flex flex-col gap-4">
+      {/* A write that failed put its row back. Without this the row simply
+          reappears, and a row that comes back with no explanation reads as the
+          queue losing the click. */}
+      {failure && (
+        <p
+          role="alert"
+          className="border-destructive/40 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm"
+        >
+          {failure} The fact is still where it was.
+        </p>
+      )}
+      <QueuePage
+        title="Stale facts"
+        lede="Each of these is past its review date. That makes it due for a second look, not wrong. Retiring one needs a contradicting source or a date from you, and neither happens here."
+        count={stale.length}
+        status={status}
+        emptyTitle="Nothing is going stale"
+        emptyDescription="Every fact is inside its review window."
+      >
+        <StaleFacts facts={stale} today={today} onReconfirm={reconfirm} />
+      </QueuePage>
+    </div>
   );
 }
 

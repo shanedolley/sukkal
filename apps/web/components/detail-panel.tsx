@@ -348,7 +348,7 @@ function SourceBody({
 }
 
 function FactBody({ fact }: { fact: Fact }) {
-  const { accept, reject, reconfirm } = useReview();
+  const { accept, reject, reconfirm, failure } = useReview();
   const [reason, setReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
   const moves = movesFor(fact);
@@ -460,6 +460,18 @@ function FactBody({ fact }: { fact: Fact }) {
                 </Button>
               )}
             </div>
+          )}
+
+          {/* A write that failed put the row back. Without this the fact
+              simply returns to the state it was in, and a row that comes back
+              with no explanation reads as the panel losing the click. */}
+          {failure && (
+            <p
+              role="alert"
+              className="border-destructive/40 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-xs"
+            >
+              {failure} The fact is still where it was.
+            </p>
           )}
         </section>
       )}

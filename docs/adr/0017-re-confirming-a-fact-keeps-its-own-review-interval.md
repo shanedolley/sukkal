@@ -50,6 +50,27 @@ Preserving them preserves the staggering for free.
 - The interval derives from `stale_after` minus `generated`, so it lives in the
   data rather than needing a column. A fact whose `generated` is null measures
   from `valid_from` instead.
+
+  **This consequence is wrong, and KPA-122 measured it on 2 September 2026.**
+  The data holds the interval once. The write moves `stale_after` and leaves
+  `generated` where it was, so the span grows on every re-confirmation after
+  the first. A fact carrying a 41 day interval is granted 41 days the first
+  time, correctly, and 281 days the second time, because the row now spans 281
+  days. Two more confirmations and a fact judged to hold for six weeks holds
+  for years. That is a memory quietly deciding to stop asking, which is the
+  failure this whole document exists to prevent.
+
+  The decision above stands. A fact keeps its own interval, and the sixteen
+  vault intervals stagger the queue for free. Only this derivation is wrong.
+  The interval is a judgement about the world, which is this document's own
+  argument, and a judgement deserves a column rather than a subtraction between
+  two dates that move. KPA-133 adds `facts.review_interval`, backfilled as
+  `stale_after - COALESCE(generated, valid_from)`, which is what this document
+  already says the interval is.
+
+  Until it lands, `apps/web/lib/facts.ts` carries the stated formula and a
+  `ponytail:` comment naming the ceiling. The first re-confirmation of any fact
+  is correct, and at these intervals the second is years away.
 - Shane can still change a horizon by editing the fact, which is where a
   judgement about the world belongs.
 - The staleness sweep needs no change. It reads dates and raises items, and

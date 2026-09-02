@@ -161,6 +161,12 @@ keeps the memory trustworthy.
 by default and the system flags any answer drawing across the two, but nothing in
 the database prevents it. See *Risks accepted*.
 
+These four say what KPA may do. `policies` holds a fifth row, `deny-by-default`,
+which says what the engine does when it cannot read them: an action no rule
+describes, and any action proposed while the table is empty or damaged, are
+refused and the refusal names that row. It is absolute, because a default Shane
+could switch off is a policy layer that fails open. ADR-0021.
+
 ## Accounts
 
 Three Google Workspace accounts, all already authorised through the `google` MCP
@@ -410,7 +416,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Backup | Copy nabium's runbook | `docs/runbooks/database-backup.md` already exists and already covers Postgres on this hardware. |
 | Employer policy checklist | Not a gate | Shane is the decision maker and has accepted the risk directly. Recorded, not chased. |
 | Mail triage rule | Carries forward unchanged | If a person composed the words it stays in the inbox, and the sending address proves nothing. The rule earned itself through use in `docs/mail-triage-method.md`. |
-| Identity | The installation owns its own account, created on the first boot | An installation somebody else runs has no Access in front of it and no WorkOS tenant behind it, so the application authenticates rather than assuming the network already did. Access and WorkOS stay in front of Shane's box as that deployment's own choice. Supersedes the WorkOS decision of 23 August 2026. ADR-0009. |
+| Identity | The installation owns its own account, created on the first boot | An installation somebody else runs has no Access in front of it and no WorkOS tenant behind it, so the application authenticates rather than assuming the network already did. Access and WorkOS stay in front of Shane's box as that deployment's own choice. Supersedes the WorkOS decision of 23 August 2026. ADR-0009, ADR-0020. |
 | Fact state | Store the review position, derive the rest | `facts` already carries `verified`, `stale_after` and `valid_to`, so a status column repeating them holds one truth twice and the two eventually disagree. `candidate`, `proposed` and `rejected` are stored. `verified`, `stale` and `retired` are read from the dates. Replaces `fact_status`, whose three values described a vault note's maturity and had no word for a fact waiting on Shane. ADR-0010. |
 | Audit shape | An attempt and its outcome are two rows | The columns are `NOT NULL` and the table is append only, so one row cannot be started and finished. A crash between the call and the record would otherwise leave no trace that anything was attempted. An orphaned attempt is the row worth having. ADR-0015. |
 | Inference path | The subscription for scheduled work, the metered API for chat | *Risks accepted* already separates them: a few scheduled jobs a day is ordinary use of a coding tool, and an always-on screen is not. Both sit behind the seam `src/memory/inference.ts` already provides. ADR-0016. |
@@ -833,7 +839,8 @@ LAN. Every layer has to hold, not just the tunnel.
 **Somebody else's installation has no tunnel in front of it.** The application
 is the only gate there, so its own login carries weight that Access used to
 carry on Shane's box. That is why the password rules are strict and why the
-reset path needs a command line escape hatch on the server. ADR-0009.
+reset path needs a command line escape hatch on the server. ADR-0009,
+and ADR-0020 for what a stored password costs to guess.
 
 **The Collibra OAuth grant is revocable.** It works because no administrator
 blocked it. A tenant policy change removes KPA's access to that mailbox without

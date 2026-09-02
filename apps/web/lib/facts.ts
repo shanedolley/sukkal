@@ -25,6 +25,7 @@
 import type { Pool } from "pg";
 
 import { factState } from "../../../src/memory/state.ts";
+import { ReviewError, type ReviewMove } from "./review-state.ts";
 import { spacesFor, type SpaceFilter } from "./space.ts";
 import type { Fact, Space } from "./types";
 
@@ -84,6 +85,8 @@ export interface FactRow {
   /** The source a `derived_from` edge points at, and the passage inside it. */
   source_id: string | null;
   chunk_id: string | null;
+  /** Why the fact was rejected, from the `rejections` row naming its node. */
+  rejection_reason: string | null;
 }
 
 /**
@@ -119,33 +122,22 @@ export function toFact(row: FactRow, today: string): Fact {
           },
         }
       : {}),
+    // Kept, never deleted: a rejected fact keeps its row and carries the
+    // reason beside it, so the card can say why rather than showing a fact
+    // that quietly stopped counting.
+    ...(row.rejection_reason ? { rejectionReason: row.rejection_reason } : {}),
   };
 }
 
-/**
- * Every fact in the chosen spaces, newest first.
- *
- * All six states come back, and each reader narrows to the one it shows. The
- * briefing, the two queue pages and the two sidebar counts read this one
- * answer, so their numbers cannot disagree.
- *
- * The lateral join takes one `derived_from` edge rather than joining plainly.
- * `edges_unique` is (from_id, to_id, kind), so nothing stops a fact deriving
- * from two sources, and a plain join would then show that fact twice.
- *
- * A rejection's reason is not read here. `rejections.subject_id` names the
- * node a rejection concerned, and which node a rejected fact records itself
- * against is KPA-122's decision, since KPA-122 is what writes it. Guessing
- * the join before the write exists is how a reason ends up read from the
- * wrong row.
- */
-export async function readFacts(
-  pool: Pool,
-  filter: SpaceFilter,
-  today: string,
-): Promise<Fact[]> {
-  const result = await pool.query<FactRow>(
-    `SELECT f.id,
+// ── The one projection every read of a fact uses ───────────────────────────
+//
+// The write below answers with the row it moved, and that row is rendered by
+// the same card the queue renders. So the two reads return the same columns
+// through the same mapper. A write that returned a narrower row would drop the
+// source link off the card the moment a fact moved, which is a change nothing
+// would fail on.
+
+const FACT_COLUMNS = `f.id,
             f.description,
             f.state,
             f.space,
@@ -156,8 +148,14 @@ export async function readFacts(
             f.verified,
             f.generated_by,
             e.to_id    AS source_id,
-            e.chunk_id
-       FROM facts f
+            e.chunk_id,
+            r.reason   AS rejection_reason`;
+
+// Two lateral joins rather than two plain ones. `edges_unique` is
+// (from_id, to_id, kind), so nothing stops a fact deriving from two sources,
+// and `rejections` has no unique key at all; a plain join would then show the
+// same fact twice.
+const FACT_JOINS = `
        LEFT JOIN LATERAL (
             SELECT to_id, chunk_id
               FROM edges
@@ -165,10 +163,198 @@ export async function readFacts(
              ORDER BY id
              LIMIT 1
        ) e ON true
+       LEFT JOIN LATERAL (
+            SELECT reason
+              FROM rejections
+             WHERE subject_id = f.id
+             ORDER BY id DESC
+             LIMIT 1
+       ) r ON true`;
+
+/**
+ * Every fact in the chosen spaces, newest first.
+ *
+ * All six states come back, and each reader narrows to the one it shows. The
+ * briefing, the two queue pages and the two sidebar counts read this one
+ * answer, so their numbers cannot disagree.
+ *
+ * The rejection's reason is read from the `rejections` row naming this fact's
+ * own node. KPA-122 decided that: see `writeMove` below for why the fact and
+ * not the source it came from.
+ */
+export async function readFacts(
+  pool: Pool,
+  filter: SpaceFilter,
+  today: string,
+): Promise<Fact[]> {
+  const result = await pool.query<FactRow>(
+    `SELECT ${FACT_COLUMNS}
+       FROM facts f${FACT_JOINS}
       WHERE f.space = ANY($1::space[])
       ORDER BY f.valid_from DESC, f.id DESC`,
     [spacesFor(filter)],
   );
 
   return result.rows.map((row) => toFact(row, today));
+}
+
+// ── Writing one review move ────────────────────────────────────────────────
+
+/**
+ * Who a move from this interface records as the verifier.
+ *
+ * KPA is single user and migration 001 wrote the one row, so `human:1` names
+ * it. The browser never supplies this. A verifier a request could name is a
+ * verifier a request could forge, and the one thing the policy will not have
+ * forged is who confirmed a fact.
+ */
+export const VERIFIER = "human:1";
+
+/**
+ * The three moves, as SQL.
+ *
+ * Every one of them is guarded by the same condition `movesFor` uses to offer
+ * the control, so the store refuses a move the screen would not have offered.
+ * That is what makes the second of two clicks a no-op: the first move takes
+ * the row out of the state the second one requires, so the second matches
+ * nothing and writes nothing.
+ *
+ * None of them sets `valid_to`. Only a source or a human retires a fact, and
+ * a queue that could retire one on a timer is the failure `src/memory/retire.ts`
+ * exists to prevent.
+ */
+function statement(
+  move: ReviewMove,
+  factId: string,
+  today: string,
+  verifiedBy: string,
+): [string, unknown[]] {
+  switch (move) {
+    // The row keeps its stored state: `verified` is what the state is derived
+    // from, and ADR-0010 keeps the two out of one column on purpose.
+    case "accept":
+      return [
+        `UPDATE facts SET verified = $2::date, verified_by = $3
+          WHERE id = $1
+            AND state IN ('candidate', 'proposed')
+            AND verified IS NULL
+            AND valid_to IS NULL
+          RETURNING id`,
+        [factId, today, verifiedBy],
+      ];
+    // `verified IS NULL` for the reason accept carries it. A fact with a
+    // verified date derives as verified or stale whatever `state` holds, so
+    // marking one rejected would leave a row reading verified on every screen
+    // and carrying a rejection nobody could see. `movesFor` offers a verified
+    // fact nothing, and this is that rule on the store's side of the wire.
+    case "reject":
+      return [
+        `UPDATE facts SET state = 'rejected'
+          WHERE id = $1
+            AND state IN ('candidate', 'proposed')
+            AND verified IS NULL
+            AND valid_to IS NULL
+          RETURNING id`,
+        [factId],
+      ];
+    // ADR-0017: today plus the span this fact already carried, from when it
+    // was generated to when it first fell due. A fact with no `stale_after` is
+    // never stale, so it never offers this move and the arithmetic never sees
+    // a null.
+    //
+    // GREATEST floors the span at a day. A row whose `stale_after` predates
+    // its `generated` carries a negative span, and today plus a negative span
+    // is a date already past: the row would leave the queue and be back in it
+    // on the next read, which is the one thing this move must never do.
+    case "reconfirm":
+      return [
+        `UPDATE facts
+            SET stale_after = $2::date
+              + GREATEST(stale_after - COALESCE(generated, valid_from), 1)
+          WHERE id = $1
+            AND valid_to IS NULL
+            AND verified IS NOT NULL
+            AND stale_after IS NOT NULL
+            AND stale_after < $2::date
+          RETURNING id`,
+        [factId, today],
+      ];
+  }
+}
+
+/**
+ * Apply one review move to one fact, and answer with the row as it now stands.
+ *
+ * `null` means the store made no move: the fact had already moved, or it was
+ * never in the state this move requires. The caller says so rather than
+ * showing a move that did not happen.
+ *
+ * **An agent may never verify.** The check is here, before any statement runs,
+ * rather than left to `facts_machine_never_verifies`. The constraint is the
+ * second line and it still holds; a rule the database enforces and the code
+ * only avoids is a rule that reads as an accident to the next person editing
+ * this function.
+ *
+ * A reject is two writes, so it runs in a transaction. Half a rejection is a
+ * fact marked rejected with no reason recorded, and the reason is the whole
+ * reason the row is kept.
+ *
+ * `rejections.subject_id` names **this fact's own node**. Migration 001 wrote
+ * that column for a candidate the gates turned away, which has no node and so
+ * points at the source it came from. This rejection is different: the
+ * candidate already became a fact, so the node the rejection concerns exists
+ * and is the fact itself. The source is the alternative and it fails twice.
+ * Nothing writes a `derived_from` edge yet, so most facts name no source for
+ * it to point at; and a source that produced four facts would carry four
+ * rejections with nothing saying which fact each one judged.
+ */
+export async function writeMove(
+  pool: Pool,
+  factId: string,
+  move: ReviewMove,
+  today: string,
+  verifiedBy: string,
+  reason?: string,
+): Promise<Fact | null> {
+  if (verifiedBy.startsWith("agent:")) {
+    throw new ReviewError(`an agent may never verify a fact: ${verifiedBy}`);
+  }
+  if (move === "reject" && !reason?.trim()) {
+    throw new ReviewError("a rejection must record a reason");
+  }
+
+  const [sql, params] = statement(move, factId, today, verifiedBy);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const moved = await client.query<{ id: string }>(sql, params);
+    if (moved.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    if (move === "reject") {
+      await client.query(
+        `INSERT INTO rejections (subject_id, candidate, reason, raised)
+         SELECT f.id, f.description, $2, $3::date FROM facts f WHERE f.id = $1`,
+        [factId, reason!.trim(), today],
+      );
+    }
+
+    // Read the row back through the same projection the queue reads, inside
+    // the transaction, so the answer carries what was just written.
+    const read = await client.query<FactRow>(
+      `SELECT ${FACT_COLUMNS} FROM facts f${FACT_JOINS} WHERE f.id = $1`,
+      [factId],
+    );
+    await client.query("COMMIT");
+
+    return toFact(read.rows[0]!, today);
+  } catch (cause) {
+    await client.query("ROLLBACK");
+    throw cause;
+  } finally {
+    client.release();
+  }
 }
