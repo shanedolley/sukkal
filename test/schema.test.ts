@@ -70,8 +70,8 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
     assert.deepEqual(tables.rows.map((row) => row.relname), [
       'answers', 'audit', 'citations', 'connection_credentials', 'connections',
       'conversations', 'edges', 'entities', 'facts', 'inbound_deliveries',
-      'meetings', 'needs_you', 'nodes', 'policies', 'rejections',
-      'source_chunks', 'sources', 'tasks', 'users',
+      'meetings', 'needs_you', 'nodes', 'policies', 'projects', 'rejections',
+      'source_chunks', 'sources', 'tasks', 'users', 'workspaces',
     ]);
   });
 

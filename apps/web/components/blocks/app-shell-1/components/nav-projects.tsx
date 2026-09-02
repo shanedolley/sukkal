@@ -214,8 +214,11 @@ function withPage(
 }
 
 export function NavProjects() {
-  // ponytail: the added rows hold in memory only. Read them from the Jira
-  // project list once that call exists.
+  // ponytail: the added rows hold in memory only.
+  // `migrations/018_workspaces_and_projects.sql` is the table they belong in,
+  // and slice seven is where this writes to it. A project needs a match rule
+  // there, so a row added here inserts with its slug as the Jira label, which
+  // is what every seeded Collibra project already carries.
   const [workspaces, setWorkspaces] = useState<NavChild[]>(WORKSPACES_NAV)
 
   function addWorkspace(row: NavChild) {

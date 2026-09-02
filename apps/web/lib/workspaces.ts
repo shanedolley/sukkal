@@ -16,6 +16,11 @@
 // belongs to. Koinon Engineering gives each project a Jira project of its
 // own, so the key prefix says it instead. The rule travels with the project,
 // rather than being guessed at by whoever asks.
+//
+// The tree also lives in `migrations/018_workspaces_and_projects.sql`, which
+// seeds these exact rows. Every screen still reads the constant, and slice
+// seven is where the table replaces it. `test/workspaces.test.ts` compares the
+// two field by field, so a row added here and nowhere else fails the suite.
 
 import type { Issue, Space } from "./types";
 
@@ -27,13 +32,17 @@ export type ProjectMatch =
   | { by: "key"; prefix: string };
 
 export interface Project {
-  /** The address it is reached at, and the key its settings are filed under. */
+  /** The address it is reached at, and the key its settings are filed under.
+   *  Derived from the name once, and never again: a rename changes `name`
+   *  alone, because deriving this a second time orphans the settings. */
   id: string;
   name: string;
   match: ProjectMatch;
 }
 
 export interface Workspace {
+  /** The stable key, on the same terms as a project's. KPA-97 files a custom
+   *  field under this rather than under the name. */
   id: string;
   /** What an issue carries in its workspace field. */
   name: string;

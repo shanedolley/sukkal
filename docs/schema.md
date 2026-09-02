@@ -1,12 +1,13 @@
 # The schema
 
-Nineteen tables and eight enums. `migrations/001_core_schema.sql` created the
-first ten, and migrations 003 to 010 changed what follows. Migrations 011 to
-014 and 017 add no table: 011 creates the schema the job queue lives in, 012
-seeds one policy row, 013 adds one column to `facts`, 014 adds one column and
-one enum value to `audit`, and 017 adds four columns to `users`. Migration 016
-adds the last two, which hold a connection and its sealed secret. The vault's
-own `CLAUDE.md` is the authority for every enum the vault writes.
+Twenty-one tables and eight enums. `migrations/001_core_schema.sql` created
+the first ten, and migrations 003 to 010 changed what follows. Migrations 011
+to 014 and 017 add no table: 011 creates the schema the job queue lives in,
+012 seeds one policy row, 013 adds one column to `facts`, 014 adds one column
+and one enum value to `audit`, and 017 adds four columns to `users`. Migration
+016 adds a connection and its sealed secret, and 018 adds the last two, which
+hold the workspace and project tree. The vault's own `CLAUDE.md` is the
+authority for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
 `valid_to`. And **a machine never marks its own work verified**, which is a
@@ -35,6 +36,8 @@ check constraint here rather than an instruction in a prompt.
 | `inbound_deliveries` | A webhook body, verbatim, waiting for a worker |
 | `connections` | One account on one provider. Provider, name, method, and the services it may be reached for |
 | `connection_credentials` | The sealed secret for one connection, with the dates the provider named and the last verdict |
+| `workspaces` | One Jira tracker and the space it belongs to. The id is stable, the name is not, and nothing files anything under the name |
+| `projects` | One piece of work inside a workspace, and the one rule that matches its issues: a Jira label, or a Jira key prefix |
 
 ## The enums
 
@@ -393,6 +396,51 @@ holds a name, an email, an assistant name and a created date, and no password.
 An account carried across would arrive without the one field that signs anybody
 in, so the wizard runs regardless. ADR-0022 records that as a consequence of
 ADR-0009 rather than a preference.
+
+## The workspace and project tree
+
+`migrations/018_workspaces_and_projects.sql` moves the tree out of
+`apps/web/lib/workspaces.ts`, a hand-written constant, and out of the React
+state the sidebar's plus button writes to and the next page load throws away.
+The migration seeds the three workspaces and the six projects that constant
+holds, as `005_policy_and_audit.sql` seeds the four policy rules.
+`test/workspaces.test.ts` compares the rows against the constant field by
+field, so the two cannot drift apart in silence. Every screen still reads the
+constant, and slice seven is where the table replaces it.
+
+**The identifier is the slug, and the name is a column beside it.** This
+settles the second question KPA-53 left open. The interface files a custom
+field under the workspace name today, so renaming `Koinon Engineering` orphans
+every field filed under it. `workspaces.id` holds `koinon-engineering`, which
+is already the route the sidebar reaches the row at and already what
+`isWorkspace` compares. `policies.key` is the precedent for a text primary key
+that means something, and a surrogate `bigint` would leave two identifiers to
+keep in step. What the choice costs is a rule no constraint can hold: the slug
+is derived from the name once, when the row is created, and never again.
+
+**A project matches one way, never neither and never both.** Collibra runs
+every engagement through one Jira project, so `match_label` says which
+engagement an issue belongs to. Koinon Engineering gives each project a Jira
+project of its own, so `match_key_prefix` says it instead. `ProjectMatch` in
+`apps/web/lib/workspaces.ts` is a union of the two, and
+`num_nonnulls(match_label, match_key_prefix) = 1` is that union written as a
+constraint. A prefix is upper case because a Jira key is, and a lower case one
+would match no issue and report nothing.
+
+**No workspace sits in `shared`.** The `space` enum has held four values since
+migration 001, and ADR-0018 gave the fourth to the interface, so `Space` and
+`SPACE_LABELS` know it now. It still names no world a Jira tracker belongs to.
+`shared` is the space the wall does not divide, and a workspace filed there
+would show its issues on both sides of the one wall the brief asks for. A
+workspace the plus button adds names no space at all, and the column defaults
+to `personal`, which is the answer `spaceOf` already gives for a workspace
+nobody has heard of.
+
+Both ids are slugs, in the shape `slug()` writes in `nav-projects.tsx`: lower
+case, digits, and single hyphens between them. The id is the route, so a space
+or a slash in it breaks the address and a check refuses both. A project id is
+unique across every workspace rather than within one, because `/projects/mp`
+carries no workspace in the path.
 
 ## The queue lives in its own schema
 
