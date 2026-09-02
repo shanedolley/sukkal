@@ -352,14 +352,25 @@ Anyone reading a clean gitleaks run as proof that no connection string was
 committed is reading it wrong. That is why the next two checks exist, and check
 3 catches exactly this case.
 
-**2. The credentials in use.** Reads each password from `~/.config/kpa/env` and
-greps the whole history for it. No false positives, and it answers the question
-that matters: is a key that works today in the history? It prints no value
-either way. `KPA_ENV_FILE` points the check at another file, which is how its
-own failure path is tested.
+**2. The credentials in use.** Reads every value in `~/.config/kpa/env` and
+greps the whole history for each one. No false positives, and it answers the
+question that matters: is a key that works today in the history? It prints no
+value either way. It names the variable that matched and the commits holding
+it, because a commit hash is not a secret and a scrub needs one. `KPA_ENV_FILE`
+points the check at another file, which is how its own failure path is tested.
 
-This check reads a password out of a connection string, so it covers the two
-database URLs and reaches none of the other five variables.
+A connection string is searched whole, and its password is searched alone. The
+check read only that password until KPA-137, so a leaked `KPA_SECRET_KEY`
+passed all three checks.
+
+**Four kinds of value are skipped**, and each rule drops a value that would
+fail every run rather than one that could leak. A `*_PATH` or `*_DIR` names a
+location on disk, and `VAULT_PATH` holds a path the repository names
+throughout. An empty value matches every commit. An all upper case value is a
+placeholder, the shape check 3 already clears. A value under 16 characters is
+shorter than anything this project issues: the database password is 32
+characters and `KPA_SECRET_KEY` is 44. Issue a longer secret rather than lower
+that number.
 
 **3. Connection strings carrying a password.** A pattern grep over every commit.
 A `${SHELL_VARIABLE}` or an all-caps `PASSWORD` placeholder passes. A literal
@@ -368,6 +379,14 @@ fails.
 Check 3 carries a `reviewed` list in the script, holding matches a person read
 and cleared. Add an entry only after reading the commit it comes from, and say
 why the match is not a credential.
+
+**What all three checks miss.** Check 2 searches for the values that file holds
+today. The Mac's file names five variables and omits `NABIUM_WEBHOOK_SECRET`,
+so nothing searches for that secret. A rotated key is the same case: the file
+holds the new value while the history holds the old one. Check 3 reads
+connection strings only, and gitleaks has no rule for a bare base64 key. Both
+were measured on 3 September 2026 against a fake 44-character key in a
+throwaway repository, which gitleaks read and cleared.
 
 ## If a key does reach the history
 
