@@ -48,9 +48,9 @@ describe('retirement', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () 
     );
     const id = node.rows[0]!.id;
     await client.query(
-      `INSERT INTO facts (id, path, type, title, description, space, status,
+      `INSERT INTO facts (id, path, type, title, description, space, state,
                           valid_from, stale_after)
-       VALUES ($1, $2, 'reference', $3, 'one line', 'shared', 'stable', $4, $5)`,
+       VALUES ($1, $2, 'reference', $3, 'one line', 'shared', 'proposed', $4, $5)`,
       [id, over.path, over.path, over.validFrom ?? '2026-01-01', over.staleAfter ?? null],
     );
     await client.query('COMMIT');

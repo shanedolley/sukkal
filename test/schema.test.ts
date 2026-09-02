@@ -66,7 +66,7 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
        ORDER BY c.relname
     `);
     assert.deepEqual(tables.rows.map((row) => row.relname), [
-      'edges', 'entities', 'facts', 'nodes', 'questions',
+      'audit', 'edges', 'entities', 'facts', 'nodes', 'policies', 'questions',
       'rejections', 'source_chunks', 'sources', 'tasks', 'users',
     ]);
   });
@@ -120,8 +120,8 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
       return created.rows[0]!.id;
     }
 
-    const FACT = `INSERT INTO facts (id, path, type, title, description, space, status)
-                  VALUES ($1, $2, 'system', 't', 'd', 'shared', 'stable')`;
+    const FACT = `INSERT INTO facts (id, path, type, title, description, space, state)
+                  VALUES ($1, $2, 'system', 't', 'd', 'shared', 'proposed')`;
 
     test('rejects a node whose kind disagrees with the table claiming it', async () => {
       await client.query('BEGIN');
@@ -186,9 +186,9 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
     );
     await assert.rejects(
       client.query(
-        `INSERT INTO facts (id, path, type, title, description, space, status,
+        `INSERT INTO facts (id, path, type, title, description, space, state,
                             verified, verified_by)
-         VALUES ($1, 'agent.md', 'system', 't', 'd', 'shared', 'stable',
+         VALUES ($1, 'agent.md', 'system', 't', 'd', 'shared', 'proposed',
                  '2026-08-27', 'agent:claude-opus-5')`,
         [created.rows[0]!.id],
       ),
@@ -204,8 +204,8 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
     );
     const id = created.rows[0]!.id;
     await client.query(
-      `INSERT INTO facts (id, path, type, title, description, space, status, valid_from)
-       VALUES ($1, 'retire.md', 'system', 't', 'd', 'shared', 'stable', '2026-01-01')`,
+      `INSERT INTO facts (id, path, type, title, description, space, state, valid_from)
+       VALUES ($1, 'retire.md', 'system', 't', 'd', 'shared', 'proposed', '2026-01-01')`,
       [id],
     );
     await client.query('UPDATE facts SET valid_to = $2 WHERE id = $1', [id, '2026-06-01']);

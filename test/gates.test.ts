@@ -38,7 +38,6 @@ function candidate(over: Partial<Candidate> = {}): Candidate {
     title: 'A candidate decision',
     description: 'one line',
     space: 'shared',
-    status: 'stable',
     text: 'Shane decided on 20 August 2026 that the runner refuses rather than guesses.',
     validFrom: '2026-08-20',
     ...over,
@@ -117,8 +116,8 @@ describe('the gates', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
     );
     const id = node.rows[0]!.id;
     await client.query(
-      `INSERT INTO facts (id, path, type, title, description, space, status, valid_from)
-       VALUES ($1, $2, 'decision', $3, 'one line', 'shared', 'stable', $4)`,
+      `INSERT INTO facts (id, path, type, title, description, space, state, valid_from)
+       VALUES ($1, $2, 'decision', $3, 'one line', 'shared', 'proposed', $4)`,
       [id, over.path, over.title, over.validFrom ?? '2026-01-01'],
     );
     await client.query('COMMIT');

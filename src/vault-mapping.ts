@@ -27,7 +27,10 @@ export const FRONTMATTER: Readonly<Record<string, string>> = {
   space: 'facts.space',
   tags: 'facts.tags',
   project: 'facts.project',
-  status: 'facts.status',
+  // facts.state replaced facts.status in KPA-59. draft/stable/deprecated do
+  // not translate onto candidate/proposed/rejected by name, so KPA-5 is the
+  // story that writes the translation, not this table.
+  status: 'facts.state, translated by KPA-5',
   generated: 'facts.generated',
   generated_by: 'facts.generated_by',
   verified: 'facts.verified',
@@ -43,11 +46,14 @@ export const FRONTMATTER: Readonly<Record<string, string>> = {
  *
  * The value is the Postgres type. A value in the vault that the type does not
  * list is a schema gap, and the test names both.
+ *
+ * `status` carries no entry. Checking one here means the vault's raw value is
+ * itself a label the named type accepts, and `stable` is not a `fact_state`
+ * label -- it needs KPA-5's translation first, not a membership test.
  */
 export const ENUMS: Readonly<Record<string, string>> = {
   type: 'fact_type',
   space: 'space',
-  status: 'fact_status',
 };
 
 /** The path to the Obsidian vault. Absent on a machine that is not Shane's. */

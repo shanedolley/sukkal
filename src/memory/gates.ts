@@ -23,7 +23,6 @@ export interface Candidate {
   title: string;
   description: string;
   space: string;
-  status: string;
   /** The claim itself, in prose. This is what gates 1 and 2 judge. */
   text: string;
   /** The date the fact becomes true. Defaults to today. */
@@ -192,7 +191,12 @@ export async function admit(
  * Writes the fact and retires what it replaces, in one transaction.
  *
  * Two answers must never both be live, so either both writes land or neither
- * does.
+ * does. `write` only runs after all four gates pass, and the brief's own
+ * state diagram has exactly one arrow out of that point: candidate to
+ * proposed. There is no second state a gate-written fact could take, so
+ * `state` is not a parameter here -- a caller cannot ask this function for
+ * the wrong one. It stays `proposed` until Shane reviews it; nothing here
+ * ever writes `verified`, which is his call alone.
  */
 async function write(client: ClientBase, candidate: Candidate): Promise<void> {
   await client.query('BEGIN');
@@ -204,10 +208,10 @@ async function write(client: ClientBase, candidate: Candidate): Promise<void> {
 
     const validFrom = candidate.validFrom ?? new Date().toISOString().slice(0, 10);
     await client.query(
-      `INSERT INTO facts (id, path, type, title, description, space, status, valid_from)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `INSERT INTO facts (id, path, type, title, description, space, state, valid_from)
+       VALUES ($1, $2, $3, $4, $5, $6, 'proposed', $7)`,
       [id, candidate.path, candidate.type, candidate.title, candidate.description,
-        candidate.space, candidate.status, validFrom],
+        candidate.space, validFrom],
     );
 
     for (const contradicted of candidate.contradicts ?? []) {
