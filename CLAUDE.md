@@ -63,6 +63,7 @@ Shane and never Claude Code, and end with the `Claude-Session` line.
 | Command | What it does |
 |---|---|
 | `npm run lint` | `oxlint` over `src` and `test`. A warning fails the run |
+| `npm run lint` in `apps/web` | The same `oxlint`, with the react, nextjs, jsx-a11y and import plugins on. `apps/web/.oxlintrc.json` carries every suppression and its reason |
 | `npm run build` | `tsc --noEmit`. It checks types and emits nothing |
 | `npm test` | `node --test` over `test/**/*.test.ts` |
 | `npm run migrate` | Applies pending migrations. `npm run migrate down` reverses every one |
@@ -155,6 +156,27 @@ instances with two type registries. `connect.ts` exports `keepDatesAsText` for
 that reason and `apps/web/lib/db.ts` calls it with its own registry. Without
 that call a source dated 19 August read as the 18th from Sydney, which is how
 this was found on 2 September 2026. KPA-68 leaves one copy and ends it.
+
+**oxlint is installed twice, and both copies name the same exact version.**
+The root and `apps/web` each pin `1.80.0` rather than a caret range, because
+`^1.80.0` resolves to 1.81.0 today and two versions is two rule sets. KPA-135
+asked for one linter across both packages, so bump both together. The plugin
+lists differ on purpose: `src/` and `test/` hold no JSX, so the root runs
+three plugins and the web tier runs seven. KPA-68 leaves one copy and ends
+this too.
+
+**Both packages run TypeScript 7.0.2, the native compiler.** `apps/web` ran
+5.9.3 until KPA-135. A cross-package import still names the `.ts` extension,
+and `allowImportingTsExtensions` is what lets 7.0.2 accept it: turn that
+option off and the native compiler reports `TS5097` on all ten imports.
+
+**`npm test` leaves the database with no tables, so an `apps/web` check run
+after it fails.** `npm run check` reads real rows when `DATABASE_URL_TEST` is
+set, and the suite ends on a `down()`, so the next check reports `42P01`,
+relation does not exist. That is the suite's own tidying rather than a defect.
+Apply the migrations again before the check, or unset `DATABASE_URL_TEST`,
+which is what CI does and why its web job skips those reads. Cost this session
+a detour on 3 September 2026.
 
 **A test run piped into `tail` reports `tail`'s exit code, not the test's.**
 `node --test ... | tail -6` exits 0 on a run that failed. Read `# fail N` in

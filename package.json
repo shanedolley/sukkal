@@ -11,7 +11,7 @@
     "migrate": "node --env-file-if-exists=$HOME/.config/kpa/env src/db/migrate.ts",
     "worker": "node --env-file-if-exists=$HOME/.config/kpa/env src/worker/index.ts",
     "test": "node --env-file-if-exists=$HOME/.config/kpa/env --test --test-concurrency=1 \"test/**/*.test.ts\"",
-    "lint": "oxlint src test --deny-warnings",
+    "lint": "oxlint src test --import-plugin --deny-warnings",
     "build": "tsc --noEmit"
   },
   "dependencies": {
@@ -21,7 +21,7 @@
   "devDependencies": {
     "@types/node": "^22.20.1",
     "@types/pg": "^8.23.1",
-    "oxlint": "^1.80.0",
+    "oxlint": "1.80.0",
     "typescript": "^7.0.2"
   }
 }

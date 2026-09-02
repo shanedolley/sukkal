@@ -1,0 +1,158 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+
+  // The four plugins eslint-config-next ran, plus the three oxlint turns on by
+  // default. Naming any plugin replaces the default set, so all seven appear.
+  "plugins": [
+    "unicorn",
+    "typescript",
+    "oxc",
+    "react",
+    "nextjs",
+    "jsx-a11y",
+    "import"
+  ],
+
+  // .gitignore already excludes .next, out, build and next-env.d.ts, and
+  // oxlint reads it, so this file repeats none of them.
+
+  "rules": {
+    // Two jsx-a11y rules eslint-config-next never ran. It ran six: alt-text,
+    // aria-props, aria-proptypes, aria-unsupported-elements,
+    // role-has-required-aria-props and role-supports-aria-props. Those stay
+    // on. The two below report 28 times, and each report asks for a change to
+    // the interface rather than a fix to a defect. KPA-135 leaves that review
+    // to a story of its own.
+
+    // Every role this rule reports is valid ARIA. It prefers a native tag,
+    // which means new markup in vendored shadcn and ReUI primitives:
+    // role="group" becomes fieldset, role="status" becomes output, role="list"
+    // becomes ul. Each swap changes what the browser renders and what the
+    // stylesheet matches.
+    "jsx-a11y/prefer-tag-over-role": "off",
+
+    // Ten deliberate focus placements: the first field of a dialog, the search
+    // box of a menu, each step of the setup wizard. Removing autoFocus moves
+    // the cursor on ten screens.
+    "jsx-a11y/no-autofocus": "off"
+  },
+
+  // Two eslint suppressions have no counterpart here and were dropped rather
+  // than carried. typescript/no-explicit-any sits in oxlint's pedantic
+  // category, which this configuration leaves off, so the seven chart files
+  // need nothing. no-unused-vars reports nothing in chart-context.tsx, because
+  // the second type parameter is already named with a leading underscore.
+
+  "overrides": [
+    {
+      // The ReUI app-shell block's client-mount flag. It holds the render back
+      // until hydration finishes, so the app never shows a server-guessed
+      // theme before it corrects to the real one. That is a one-time flip with
+      // no external store to subscribe to, unlike hooks/use-mobile.ts, so the
+      // fix applied there does not carry over. A rewrite of this vendored
+      // block risks a hydration mismatch, which is worse than the extra render
+      // the rule reports.
+      "files": ["components/blocks/app-shell-1/components/nav-user.tsx"],
+      "rules": {
+        "react/set-state-in-effect": "off"
+      }
+    },
+
+    {
+      // The Bklit chart registry. Its animation and scale-tracking hooks read
+      // and write refs during render by design, so a resize or a data update
+      // redraws a path in the same frame instead of one frame behind. Making
+      // that pattern effect-driven changes when a chart repaints, which is the
+      // rendering change this project forbids making to satisfy a linter.
+      "files": ["components/charts/**/*.ts", "components/charts/**/*.tsx"],
+      "rules": {
+        "react/refs": "off",
+        "react/set-state-in-effect": "off",
+        "react/exhaustive-deps": "off"
+      }
+    },
+
+    {
+      // The ReUI data-grid registry. Its table, scroll and virtualization
+      // internals read refs during render and set state from effects to keep a
+      // large, actively scrolled table in step with TanStack Table and
+      // TanStack Virtual, without re-rendering every row on every frame.
+      "files": [
+        "components/reui/data-grid/**/*.ts",
+        "components/reui/data-grid/**/*.tsx"
+      ],
+      "rules": {
+        "react/refs": "off",
+        "react/set-state-in-effect": "off",
+        "react/exhaustive-deps": "off",
+
+        // data-grid.tsx builds two memo keys with JSON.stringify, so an object
+        // prop re-triggers the memo when its contents change rather than its
+        // identity. The rule wants a dependency list of simple expressions,
+        // which this pattern cannot be without losing that check.
+        "react/use-memo": "off",
+
+        // data-grid-table-virtual.tsx calls TanStack Virtual's useVirtualizer,
+        // which returns functions the React Compiler cannot memoize safely.
+        // That is a property of the library, not of this code, so the compiler
+        // already skips memoizing here and the report only says so.
+        "react/incompatible-library": "off"
+      }
+    },
+
+    {
+      // Carried from an eslint-disable comment in the file itself, which named
+      // the rule as @next/next/no-before-interactive-script-outside-document.
+      // The rule targets the Pages Router, where beforeInteractive belonged in
+      // _document. In the App Router the root layout is the documented place
+      // for a script the whole site needs. The comment cannot move here as a
+      // comment: oxlint reports the strategy attribute and eslint reported the
+      // element, so a disable-next-line lands on the wrong line.
+      "files": ["components/appearance-bootstrap.tsx"],
+      "rules": {
+        "nextjs/no-before-interactive-script-outside-document": "off"
+      }
+    },
+
+    {
+      // The issue row carries a modifier-click, so a wide row is a wide target
+      // for shift and control. The checkbox at the left of the same row does
+      // the same pick and takes the keyboard, so the gesture these rules ask
+      // for already exists one element away.
+      "files": ["components/issues/issue-list.tsx"],
+      "rules": {
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off"
+      }
+    },
+
+    {
+      // The shadcn input-group addon forwards a click to the input it wraps,
+      // which is what a label does. The input inside it takes the keyboard.
+      "files": ["components/ui/input-group.tsx"],
+      "rules": {
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off"
+      }
+    },
+
+    {
+      // The field pill passes a bare button to Base UI's render prop, and the
+      // aria-label sits on the trigger that merges into it. The label reaches
+      // the button at run time, and static analysis cannot follow the merge.
+      "files": ["components/settings/custom-fields.tsx"],
+      "rules": {
+        "jsx-a11y/control-has-associated-label": "off"
+      }
+    },
+
+    {
+      // The shadcn label primitive forwards every prop, so each caller passes
+      // its own htmlFor. Nothing in this file can name a control.
+      "files": ["components/ui/label.tsx"],
+      "rules": {
+        "jsx-a11y/label-has-associated-control": "off"
+      }
+    }
+  ]
+}

@@ -50,6 +50,7 @@ Real values live outside the repository, so no commit can carry one.
 | `npm run worker` | Runs the worker. `docs/runbooks/worker.md` says what it does |
 | `npm test` | Runs the suite against `DATABASE_URL_TEST` |
 | `npm run lint` | Lints `src` and `test`. A warning fails the run |
+| `npm run lint` in `apps/web` | Lints the web tier with the same linter. A warning fails the run |
 | `npm run build` | Checks types. It emits nothing, because Node runs the TypeScript |
 
 Node 22.18 strips types as it loads a file, so this repository has no build

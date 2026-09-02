@@ -37,10 +37,9 @@ Object.keys(tokens).forEach(function(key){root.style.setProperty(key,tokens[key]
 
 export function AppearanceBootstrap() {
   return (
-    // The lint rule below targets the Pages Router, where beforeInteractive
-    // belonged in _document. In the App Router this is the documented place
-    // for it: a script the whole site needs, in the root layout.
-    // eslint-disable-next-line @next/next/no-before-interactive-script-outside-document
+    // beforeInteractive belonged in _document under the Pages Router. Under
+    // the App Router the root layout is the documented place for a script the
+    // whole site needs. .oxlintrc.json turns the rule off for this file.
     <Script
       id="kpa-appearance"
       strategy="beforeInteractive"
