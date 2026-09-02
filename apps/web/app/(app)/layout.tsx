@@ -13,6 +13,7 @@ import { AuditProvider } from "@/lib/audit-context";
 import { MeetingsProvider } from "@/lib/meetings-context";
 import { NeedsYouProvider } from "@/lib/needs-you-context";
 import { ReviewProvider } from "@/lib/review-context";
+import { SourcesProvider } from "@/lib/sources-context";
 import { SpaceProvider } from "@/lib/space-context";
 
 const CRUMBS: Record<string, string[]> = {
@@ -77,6 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <MeetingsProvider>
         <AuditProvider>
         <ReviewProvider>
+        <SourcesProvider>
           <DetailPanelProvider>
             <SearchProvider>
               <Shortcuts />
@@ -85,6 +87,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </AppShell>
             </SearchProvider>
           </DetailPanelProvider>
+        </SourcesProvider>
         </ReviewProvider>
         </AuditProvider>
         </MeetingsProvider>

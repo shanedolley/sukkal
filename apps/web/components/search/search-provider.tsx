@@ -10,6 +10,16 @@
 // Tab is the right key for that. It is the one key a text field does not
 // already use, it reads as "carry on with what I typed", and it leaves Enter
 // to mean what Enter means everywhere else in a list.
+//
+// KPA-132 put every group on the same read its screen uses. It reads four
+// providers and holds no state of its own, which is the point: the palette is
+// the one surface a reader trusts to find anything, so a row it lists has to
+// open the thing the row names.
+//
+// This box had listed fixtures while the drawer read the database, and every
+// source row therefore opened a panel saying the source was not in the
+// memory. A dead end costs more here than on a screen with a heading above
+// it, because the reader came here to find the thing rather than to browse.
 
 import {
   createContext,
@@ -39,11 +49,11 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
-import { MEETINGS, SOURCES } from "@/lib/fixtures";
+import { useMeetings } from "@/lib/meetings-context";
 import { useNeedsYou } from "@/lib/needs-you-context";
 import { formatDay } from "@/lib/format";
 import { useReview } from "@/lib/review-context";
-import { inSpace, useSpace } from "@/lib/space-context";
+import { useSources } from "@/lib/sources-context";
 
 interface SearchValue {
   open: () => void;
@@ -64,9 +74,16 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const router = useRouter();
-  const { space } = useSpace();
-  const { facts } = useReview();
   const { open: openPanel } = useDetailPanel();
+
+  // Four providers, four reads, none of them this box's own. The palette
+  // opens on a keystroke, so a fetch fired here is a fetch fired on every
+  // Cmd+K. The layout mounts all four, every screen behind it reads the same
+  // answers, and the palette therefore lists what those screens list.
+  const { items: needsYou } = useNeedsYou();
+  const { facts } = useReview();
+  const { meetings } = useMeetings();
+  const { sources } = useSources();
 
   const open = useCallback(() => setIsOpen(true), []);
   const toggle = useCallback(() => setIsOpen((current) => !current), []);
@@ -84,16 +101,16 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
     router.push(`/chat?q=${encodeURIComponent(asked)}`);
   }
 
-  // The palette searches what the memory holds. Facts arrive narrowed by
-  // space already, in SQL, so they are not narrowed again here. Meetings and
-  // sources below are fixtures, narrowed nowhere else, so they are.
+  // Every one of the four arrives narrowed by space already, in SQL, so none
+  // is narrowed again here. `spacesFor` carries `shared` with each space, and
+  // narrowing a second time in the browser drops exactly those rows. ADR-0018.
+  //
+  // The states are the fact's own, not the space. A retired or a rejected
+  // fact is one the memory no longer stands behind, and offering it here
+  // would put it back in front of the reader with nothing saying so.
   const matchingFacts = facts.filter(
     (f) => f.state === "proposed" || f.state === "stale" || f.state === "verified"
   );
-  // Already narrowed by space, in SQL. See lib/needs-you.ts.
-  const { items: needsYou } = useNeedsYou();
-  const meetings = inSpace(MEETINGS, space);
-  const sources = inSpace(SOURCES, space);
 
   return (
     <SearchContext value={value}>
@@ -151,85 +168,98 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
               </CommandGroup>
             )}
 
-            <CommandGroup heading="Needs you">
-              {needsYou.map((item) => (
-                <CommandItem
-                  key={item.id}
-                  value={`${item.title} ${item.detail} ${item.entity ?? ""}`}
-                  onSelect={() => {
-                    close();
-                    openPanel({ kind: "needsYou", itemId: item.id });
-                  }}
-                >
-                  <ScrollTextIcon aria-hidden="true" />
-                  <span className="truncate">{item.title}</span>
-                  {item.entity && (
+            {/* Each group is drawn only when it has a row. A heading over
+                nothing reads as a group whose rows the search hid, and a
+                reader then retypes a query that was never wrong. cmdk hides a
+                group whose rows the query filtered out; a group the memory
+                has no rows for at all is this guard's job. */}
+            {needsYou.length > 0 && (
+              <CommandGroup heading="Needs you">
+                {needsYou.map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    value={`${item.title} ${item.detail} ${item.entity ?? ""}`}
+                    onSelect={() => {
+                      close();
+                      openPanel({ kind: "needsYou", itemId: item.id });
+                    }}
+                  >
+                    <ScrollTextIcon aria-hidden="true" />
+                    <span className="truncate">{item.title}</span>
+                    {item.entity && (
+                      <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                        {item.entity}
+                      </span>
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {matchingFacts.length > 0 && (
+              <CommandGroup heading="Facts">
+                {matchingFacts.map((fact) => (
+                  <CommandItem
+                    key={fact.id}
+                    value={`${fact.statement} ${fact.entity ?? ""}`}
+                    onSelect={() => {
+                      close();
+                      openPanel({ kind: "fact", factId: fact.id });
+                    }}
+                  >
+                    <FileTextIcon aria-hidden="true" />
+                    <span className="truncate">{fact.statement}</span>
+                    {fact.entity && (
+                      <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                        {fact.entity}
+                      </span>
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {meetings.length > 0 && (
+              <CommandGroup heading="Meetings today">
+                {meetings.map((meeting) => (
+                  <CommandItem
+                    key={meeting.id}
+                    value={`${meeting.title} ${meeting.engagement}`}
+                    onSelect={() => {
+                      close();
+                      router.push("/meetings");
+                    }}
+                  >
+                    <CalendarIcon aria-hidden="true" />
+                    <span className="truncate">{meeting.title}</span>
                     <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                      {item.entity}
+                      {meeting.engagement}
                     </span>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
 
-            <CommandGroup heading="Facts">
-              {matchingFacts.map((fact) => (
-                <CommandItem
-                  key={fact.id}
-                  value={`${fact.statement} ${fact.entity ?? ""}`}
-                  onSelect={() => {
-                    close();
-                    openPanel({ kind: "fact", factId: fact.id });
-                  }}
-                >
-                  <FileTextIcon aria-hidden="true" />
-                  <span className="truncate">{fact.statement}</span>
-                  {fact.entity && (
+            {sources.length > 0 && (
+              <CommandGroup heading="Sources">
+                {sources.map((source) => (
+                  <CommandItem
+                    key={source.id}
+                    value={`${source.title} ${source.author}`}
+                    onSelect={() => {
+                      close();
+                      openPanel({ kind: "source", sourceId: source.id });
+                    }}
+                  >
+                    <MessagesSquareIcon aria-hidden="true" />
+                    <span className="truncate">{source.title}</span>
                     <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                      {fact.entity}
+                      {formatDay(source.date)}
                     </span>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-
-            <CommandGroup heading="Meetings today">
-              {meetings.map((meeting) => (
-                <CommandItem
-                  key={meeting.id}
-                  value={`${meeting.title} ${meeting.engagement}`}
-                  onSelect={() => {
-                    close();
-                    router.push("/meetings");
-                  }}
-                >
-                  <CalendarIcon aria-hidden="true" />
-                  <span className="truncate">{meeting.title}</span>
-                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                    {meeting.engagement}
-                  </span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-
-            <CommandGroup heading="Sources">
-              {sources.map((source) => (
-                <CommandItem
-                  key={source.id}
-                  value={`${source.title} ${source.author}`}
-                  onSelect={() => {
-                    close();
-                    openPanel({ kind: "source", sourceId: source.id });
-                  }}
-                >
-                  <MessagesSquareIcon aria-hidden="true" />
-                  <span className="truncate">{source.title}</span>
-                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                    {formatDay(source.date)}
-                  </span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
 
           {/* The hint appears once there is something to ask. An empty box has

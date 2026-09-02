@@ -156,6 +156,19 @@ that reason and `apps/web/lib/db.ts` calls it with its own registry. Without
 that call a source dated 19 August read as the 18th from Sydney, which is how
 this was found on 2 September 2026. KPA-68 leaves one copy and ends it.
 
+**A test run piped into `tail` reports `tail`'s exit code, not the test's.**
+`node --test ... | tail -6` exits 0 on a run that failed. Read `# fail N` in
+the output rather than checking `$?`, or drop the pipe. Proved on 2 September
+2026: the same failing run reports 0 piped and 1 unpiped. It hid a failing
+hook from an agent that trusted the code, and it would have hidden one from
+this session's own integration passes, which survived only because they read
+the count.
+
+**Pass `--test-concurrency=1` to a bare `node --test` over more than one
+file.** `npm test` carries the flag and a hand-written run does not. Two files
+against one database in parallel produced 31 cancelled tests and two migration
+errors that meant nothing.
+
 **A read that narrows in SQL is never narrowed again in the browser.**
 `spacesFor` in `apps/web/lib/space.ts` carries `shared` with every space, so
 the SQL returns it. `inSpace` keeps one space and discards the rest, so calling

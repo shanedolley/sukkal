@@ -1,9 +1,11 @@
 # The schema
 
 Seventeen tables and eight enums. `migrations/001_core_schema.sql` created the
-first ten, and migrations 003 to 010 changed what follows. Migration 011 adds
-no table: it creates the schema the job queue lives in. The vault's own
-`CLAUDE.md` is the authority for every enum the vault writes.
+first ten, and migrations 003 to 010 changed what follows. Migrations 011 to
+014 add no table: 011 creates the schema the job queue lives in, 012 seeds one
+policy row, 013 adds one column to `facts`, and 014 adds one column and one
+enum value to `audit`. The vault's own `CLAUDE.md` is the authority for every
+enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
 `valid_to`. And **a machine never marks its own work verified**, which is a
@@ -41,7 +43,7 @@ check constraint here rather than an instruction in a prompt.
 | `fact_state` | `candidate`, `proposed`, `rejected` |
 | `edge_kind` | `derived_from`, `links_to`, `supersedes` |
 | `source_kind` | `meeting`, `mail`, `document`, `chat` |
-| `audit_outcome` | `allowed`, `denied` |
+| `audit_outcome` | `allowed`, `denied`, `attempted` |
 | `needs_you_kind` | `draft`, `question`, `denied-action`, `deadline` |
 
 `edge_kind` is enumerated in one place so no call site invents a sixth.
@@ -72,6 +74,30 @@ date passes and a test has to hold that day still.
 
 Retirement settles the question first. A retired fact reads `retired` whatever
 `stale_after` says, because `valid_to` is the later and more deliberate word.
+
+## How long one confirmation lasts
+
+`facts.review_interval` holds it, in days, and migration 013 added it.
+Re-confirming a stale fact sets `stale_after` to today plus that number and
+changes the number itself not at all, so a fact judged to hold for 41 days
+holds for 41 days every time. A null means the fact has no review point and
+never goes stale, which is what a null `stale_after` means. A check constraint
+floors the column at one day, so no writer has to floor it.
+
+The interval used to be read back out of `stale_after` minus `generated`. The
+re-confirm write moves `stale_after`, so each confirmation measured the span
+the last one created: 41 days granted, then 285, then 571, then 1143. ADR-0017
+records the measurement and the amendment, and KPA-133 removed the derivation.
+
+The two columns divide one judgement. `stale_after` says when the next review
+falls, and `review_interval` says how long one confirmation lasts. So a hand
+edit to `stale_after` moves the next review and nothing else. Changing how long
+every later confirmation lasts means editing `review_interval`.
+
+Every writer of `stale_after` writes `review_interval` in the same statement.
+A row carrying a horizon and no interval goes stale and re-confirms to nothing,
+because nobody said how long a confirmation of it lasts and the store will not
+guess.
 
 This replaced `fact_status`, whose `draft`, `stable` and `deprecated` described
 how finished a vault note was. ADR-0010 says why, and it leaves the vault's
@@ -135,12 +161,28 @@ is empty, unreadable or malformed. Both must deny, and
 either names a rule that did not fire, returns a denial the log cannot record,
 or names this one.
 
-`audit` holds one row per attempt. Every row carries the four fields the brief
-requires: `intent`, `before`, `result`, and `reverse`. A denial names the rule
+`audit` holds one row per attempt and a second per outcome. Every row carries
+the four fields the brief requires: `intent`, `before`, `result`, and `reverse`. A denial names the rule
 by `rule`, a foreign key into `policies.key` rather than a copy of its prose,
 so a rule can be reworded without rewriting every entry that ever cited it.
 `audit_denial_names_a_rule` holds a denial to that promise, and lets an allowed
 entry name none.
+
+**An attempt and its outcome are two rows.** ADR-0015 decided that and
+migration 014 carries it. An allowed action writes an `attempted` row before
+the call and an `allowed` row after it, and `attempt` on the second names the
+first by its id. `attempt` is null on the attempt row itself and null on a
+denial, which is whole on its own because nothing ran, and
+`audit_only_an_outcome_names_an_attempt` holds it to that. A process that dies
+between the two leaves an attempt nothing closes, which says the one thing
+worth saying: something was tried and nobody knows how it ended.
+
+`audit_every_field_says_something` refuses an empty `intent`, `before`,
+`result` or `reverse`. NOT NULL lets an empty string through, and an attempt
+row is why that matters now: its `result` is written before the answer exists.
+
+`audit_attempt` indexes `attempt` where it is set, which is the one question
+both the pairing read and the orphan sweep ask.
 
 **Append only, and enforced.** This table is what catches a mistake after the
 fact, so two triggers guard it rather than a convention. `audit_append_only`
@@ -154,6 +196,18 @@ which belongs to role permissions once the worker owns a database user.
 just the denials and newest first, come from one index.
 
 ## The needs-you queue
+
+The sweep in `src/memory/sweep.ts` is the only writer this table has. It opens
+a `deadline` row per stale fact, and it closes one whose fact has stopped being
+stale. Nothing else in the codebase closes a row: ADR-0017's re-confirm write
+moves `stale_after` and leaves the item open, and `apps/web/lib/needs-you.ts`
+reads only the open ones.
+
+A closed `deadline` row keeps its fact quiet for `SNOOZE_DAYS`, 30 days.
+Closing an item without re-confirming the fact leaves the fact stale, and
+without the snooze the sweep opened the same item every night after. The snooze
+runs out and the fact comes back, because a fact nobody dealt with is still
+owed a review.
 
 Four kinds wait on Shane: a draft to send, a question to answer, an action the
 policy refused, and a deadline coming. The screen reads them as one list in
