@@ -80,7 +80,7 @@ jobs:
       - run: npm ci
         working-directory: apps/web
 
-      # The twelve checks under apps/web/scripts. Each proves one rule the
+      # The thirteen checks under apps/web/scripts. Each proves one rule the
       # screens rest on, and each fails when that rule breaks.
       - run: npm run check
         working-directory: apps/web

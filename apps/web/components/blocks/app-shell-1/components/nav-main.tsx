@@ -33,6 +33,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useNeedsYou } from "@/lib/needs-you-context"
 import { navMain, type NavChild, type NavItem } from "./data"
 import { ChevronRightIcon } from "lucide-react"
 
@@ -292,5 +293,11 @@ export function NavGroup({
 export function NavMain() {
   const { space } = useSpace()
   const { facts } = useReview()
-  return <NavGroup label="Assistant" items={navMain(space, facts)} />
+  const { items, status } = useNeedsYou()
+  return (
+    <NavGroup
+      label="Assistant"
+      items={navMain(space, facts, status === "ready" ? items.length : null)}
+    />
+  )
 }

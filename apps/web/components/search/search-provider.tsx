@@ -39,7 +39,8 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
-import { MEETINGS, NEEDS_YOU, SOURCES } from "@/lib/fixtures";
+import { MEETINGS, SOURCES } from "@/lib/fixtures";
+import { useNeedsYou } from "@/lib/needs-you-context";
 import { formatDay } from "@/lib/format";
 import { useReview } from "@/lib/review-context";
 import { inSpace, useSpace } from "@/lib/space-context";
@@ -88,7 +89,8 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   const matchingFacts = inSpace(facts, space).filter((f) =>
     f.state === "proposed" || f.state === "stale" || f.state === "verified"
   );
-  const needsYou = inSpace(NEEDS_YOU, space);
+  // Already narrowed by space, in SQL. See lib/needs-you.ts.
+  const { items: needsYou } = useNeedsYou();
   const meetings = inSpace(MEETINGS, space);
   const sources = inSpace(SOURCES, space);
 
@@ -152,7 +154,7 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
               {needsYou.map((item) => (
                 <CommandItem
                   key={item.id}
-                  value={`${item.title} ${item.detail} ${item.entity}`}
+                  value={`${item.title} ${item.detail} ${item.entity ?? ""}`}
                   onSelect={() => {
                     close();
                     openPanel({ kind: "needsYou", itemId: item.id });
@@ -160,9 +162,11 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
                 >
                   <ScrollTextIcon aria-hidden="true" />
                   <span className="truncate">{item.title}</span>
-                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                    {item.entity}
-                  </span>
+                  {item.entity && (
+                    <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                      {item.entity}
+                    </span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

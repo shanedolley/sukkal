@@ -1,8 +1,15 @@
 // The vocabulary comes from docs/project-brief.md. Production replaces the
 // data and keeps these shapes.
 
-/** The three spaces retrieval filters by. See "The policy" in the brief. */
-export type Space = "collibra" | "koinon" | "personal";
+/**
+ * The spaces retrieval filters by. See "The policy" in the brief.
+ *
+ * `shared` is not a fourth silo beside the other three. It is the space
+ * either side may cite: how Shane works whatever hat he wears. So the filter
+ * offers three, and narrowing to one of them shows that space and `shared`
+ * together. ADR-0018.
+ */
+export type Space = "collibra" | "koinon" | "personal" | "shared";
 
 /** The states in "A fact's life". Nothing is ever deleted.
  *  Rejected is terminal: the row stays and its reason is recorded, so a later
@@ -68,7 +75,12 @@ export interface NeedsYouItem {
   title: string;
   detail: string;
   space: Space;
-  entity: string;
+  /**
+   * The customer, engagement or person the item concerns. Null until
+   * something resolves one, which migration 010 made the column allow and
+   * ADR-0014 explains. A row with none renders without it.
+   */
+  entity: string | null;
   /** ISO date the item arrived. */
   raisedAt: string;
   /** Drafts open in Gmail. KPA never sends. */
@@ -295,6 +307,7 @@ export const SPACE_LABELS: Record<Space, string> = {
   collibra: "Collibra",
   koinon: "Koinon",
   personal: "Personal",
+  shared: "Shared",
 };
 
 export const FACT_STATE_LABELS: Record<FactState, string> = {

@@ -43,7 +43,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { findAudit, findNeedsYou, findSource } from "@/lib/fixtures";
+import { findAudit, findSource } from "@/lib/fixtures";
+import { useNeedsYou } from "@/lib/needs-you-context";
 import { formatDay, formatFullDay, formatStamp } from "@/lib/format";
 import { useReview } from "@/lib/review-context";
 import { movesFor } from "@/lib/review-state";
@@ -346,7 +347,7 @@ function NeedsYouBody({ item }: { item: NeedsYouItem }) {
 
       <dl className="grid grid-cols-2 gap-4">
         <Field label="Raised" value={formatStamp(item.raisedAt)} />
-        <Field label="Engagement" value={item.entity} />
+        <Field label="Engagement" value={item.entity ?? "Not yet resolved"} />
       </dl>
 
       {audit && (
@@ -393,6 +394,7 @@ export function DetailPanelProvider({
 }) {
   const [target, setTarget] = useState<DetailTarget | null>(null);
   const { facts } = useReview();
+  const { items: needsYou } = useNeedsYou();
 
   const open = useCallback((next: DetailTarget) => setTarget(next), []);
   const value = useMemo(() => ({ open }), [open]);
@@ -404,7 +406,9 @@ export function DetailPanelProvider({
       ? facts.find((f) => f.id === target.factId)
       : undefined;
   const item =
-    target?.kind === "needsYou" ? findNeedsYou(target.itemId) : undefined;
+    target?.kind === "needsYou"
+      ? needsYou.find((row) => row.id === target.itemId)
+      : undefined;
   const source =
     target?.kind === "source" ? findSource(target.sourceId) : undefined;
 
@@ -432,7 +436,9 @@ export function DetailPanelProvider({
         <Badge variant="outline" size="sm">
           {SPACE_LABELS[item.space]}
         </Badge>
-        <span className="text-muted-foreground text-xs">{item.entity}</span>
+        {item.entity && (
+          <span className="text-muted-foreground text-xs">{item.entity}</span>
+        )}
       </>
     );
   } else if (source) {

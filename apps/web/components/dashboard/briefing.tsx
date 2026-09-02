@@ -15,19 +15,26 @@ import { Region } from "@/components/dashboard/region";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatLongDay } from "@/lib/format";
-import { MEETINGS, NEEDS_YOU, TODAY } from "@/lib/fixtures";
-import { useForcedStatus, type PageStatus } from "@/lib/forced-state";
+import { MEETINGS, TODAY } from "@/lib/fixtures";
+import { useForcedState, type PageStatus } from "@/lib/forced-state";
 import { NeedsYou } from "@/components/dashboard/needs-you";
+import { useNeedsYou } from "@/lib/needs-you-context";
 import { useReview } from "@/lib/review-context";
 import { isProposed, isStale } from "@/lib/review-state";
 import { inSpace, useSpace } from "@/lib/space-context";
 
 export function Briefing() {
   const { space } = useSpace();
-  const status = useForcedStatus();
   const { facts } = useReview();
+  const { items: needsYou, status: live } = useNeedsYou();
 
-  const needsYou = inSpace(NEEDS_YOU, space);
+  // Needs you reads the database and reports what happened. The three queue
+  // cards still read fixtures, so nothing about them can fail, and ?state=
+  // remains the only way to see their other states.
+  const forced = useForcedState();
+  const needsStatus = forced ?? live;
+  const status = forced ?? "ready";
+
   const meetings = inSpace(MEETINGS, space);
   const proposed = inSpace(facts, space).filter(isProposed);
   const stale = inSpace(facts, space).filter(isStale);
@@ -48,7 +55,7 @@ export function Briefing() {
           <h1 className="text-xl font-semibold tracking-tight">
             {formatLongDay(TODAY)}
           </h1>
-          <p className="text-muted-foreground text-sm">{summary[status]}</p>
+          <p className="text-muted-foreground text-sm">{summary[needsStatus]}</p>
         </div>
         <Button
           render={<Link href="/chat" />}
@@ -99,7 +106,7 @@ export function Briefing() {
         id="needs-you"
         title="Needs you"
         count={needsYou.length}
-        status={status}
+        status={needsStatus}
         emptyTitle="Nothing is waiting on you"
         emptyDescription="Every decision has been made. New items arrive after the next mail poll."
       >

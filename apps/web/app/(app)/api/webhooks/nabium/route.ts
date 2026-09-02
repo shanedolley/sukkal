@@ -14,7 +14,7 @@
  * signature would then fail against bytes nabium never sent.
  */
 import { NextResponse } from 'next/server';
-import { connect } from '../../../../../../../src/db/connect';
+import { db } from '@/lib/db';
 import { receive, statusFor } from '../../../../../../../src/webhooks/receive';
 
 const SOURCE = 'nabium';
@@ -22,12 +22,10 @@ const SOURCE = 'nabium';
 export async function POST(request: Request): Promise<Response> {
   const body = await request.text();
 
-  // ponytail: one connection per request, opened and closed here. Nabium is
-  // one sender on a LAN, not public traffic, so a pool is not worth building
-  // yet. Move to one (or skip the connection when the secret is unset) if
-  // volume ever makes that untrue.
-  const client = connect('DATABASE_URL');
-  await client.connect();
+  // The pool, since KPA-117. This route opened and closed its own connection
+  // while it was the only reader, and sixteen screens have made that untrue.
+  // The pool checks out a client for the query and hands it back.
+  const client = await db().connect();
   try {
     const result = await receive(client, {
       source: SOURCE,
@@ -42,6 +40,6 @@ export async function POST(request: Request): Promise<Response> {
       ? NextResponse.json({ deliveryId: result.deliveryId, stored: result.stored }, { status })
       : NextResponse.json({ error: result.detail }, { status });
   } finally {
-    await client.end();
+    client.release();
   }
 }

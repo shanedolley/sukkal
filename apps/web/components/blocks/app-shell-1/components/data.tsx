@@ -19,7 +19,7 @@ import {
   EyeOffIcon,
 } from "lucide-react"
 
-import { AUDIT, CONVERSATIONS, MEETINGS, NEEDS_YOU } from "@/lib/fixtures"
+import { AUDIT, CONVERSATIONS, MEETINGS } from "@/lib/fixtures"
 import { inSpace, type SpaceFilter } from "@/lib/space-context"
 import { WORKSPACES } from "@/lib/workspaces"
 import type { Fact } from "@/lib/types"
@@ -131,9 +131,12 @@ export const SPACE_OPTIONS: SpaceOption[] = [
 export function navMain(
   space: SpaceFilter,
   facts: Fact[],
+  /** Open Needs you rows, or null while the read has not answered. The badge
+   *  stays off until it has: a confident number beside a spinner is worse
+   *  than no number. */
+  needsYou: number | null,
   known = true
 ): NavItem[] {
-  const needsYou = inSpace(NEEDS_YOU, space).length
   const proposed = inSpace(facts, space).filter(
     (f) => f.state === "proposed"
   ).length
@@ -149,7 +152,7 @@ export function navMain(
       label: "Briefing",
       href: "/dashboard",
       icon: <LayoutDashboardIcon aria-hidden="true" />,
-      badge: known && needsYou > 0 ? needsYou : undefined,
+      badge: needsYou !== null && needsYou > 0 ? needsYou : undefined,
     },
     {
       id: "review",

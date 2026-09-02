@@ -11,7 +11,13 @@ export type PageStatus = "ready" | "loading" | "error" | "empty";
 
 const STATUSES: PageStatus[] = ["ready", "loading", "error", "empty"];
 
-export function useForcedStatus(): PageStatus {
+/** The status the URL forces, or null when it forces none. A region that
+ *  reads a real backend uses its own status in that case. */
+export function useForcedState(): PageStatus | null {
   const forced = useSearchParams().get("state") as PageStatus | null;
-  return forced && STATUSES.includes(forced) ? forced : "ready";
+  return forced && STATUSES.includes(forced) ? forced : null;
+}
+
+export function useForcedStatus(): PageStatus {
+  return useForcedState() ?? "ready";
 }

@@ -6,7 +6,7 @@ not yet answered.
 **Jira project:** KPA, `koinon.atlassian.net`. Empty as of 23 August 2026. It
 becomes the source of work once this brief settles.
 
-**Last updated:** 1 September 2026, for the interface built under KPA-35
+**Last updated:** 2 September 2026, for the worker and the first real read
 
 ---
 
@@ -576,8 +576,14 @@ survives a cleared browser.
 **The `space` enum keeps its fourth value, and the interface learns it.**
 ADR-0018 settled this on 2 September 2026. `shared` holds how Shane works
 whatever hat he wears, and it is the space either side may cite, so it is the
-one space the wall does not divide. A shared citation therefore never counts as
-a crossing, which it does today.
+one space the wall does not divide.
+
+KPA-117 carried the half it needed. `Space` and `SPACE_LABELS` hold four
+values, and the Needs you read narrows in SQL to the chosen space and
+`shared` together. Two halves remain, and each needs a story. `crosses()`
+still counts `shared` as a crossing, which is the bug ADR-0018 names. And the
+screens still reading fixtures still filter in the browser, over three
+spaces.
 
 ### What sets `valid_to`
 
@@ -863,7 +869,7 @@ runs down the page, and each slice states what it unblocks.
 | 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | Not started |
 | 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | Not started |
 | 6. Fill the stores | Ingestion into the memory, and a Jira poller into the cache | Not started |
-| 7. Join the halves | Replace every fixture with a real read and a real write | Not started |
+| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-117 |
 
 **Slices three and four are separate on purpose.** *Two stores, not one* says
 why. One extends a schema that exists and settles four disagreements with the

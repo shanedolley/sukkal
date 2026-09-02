@@ -62,9 +62,11 @@ export function NeedsYou({ items }: { items: NeedsYouItem[] }) {
               <Badge variant="outline" size="sm">
                 {SPACE_LABELS[item.space]}
               </Badge>
-              <span className="text-muted-foreground text-xs">
-                {item.entity}
-              </span>
+              {item.entity && (
+                <span className="text-muted-foreground text-xs">
+                  {item.entity}
+                </span>
+              )}
             </div>
 
             {/* The title stretches over the card, so the whole row is the
