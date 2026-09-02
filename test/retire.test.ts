@@ -40,7 +40,13 @@ describe('retirement', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () 
 
   /** A live fact. Both statements in one transaction, per the node registry. */
   async function fact(
-    over: { path: string; validFrom?: string; staleAfter?: string | null },
+    over: {
+      path: string;
+      validFrom?: string;
+      staleAfter?: string | null;
+      /** Null leaves it unconfirmed, which is never stale. ADR-0010. */
+      verified?: string | null;
+    },
   ): Promise<string> {
     await client.query('BEGIN');
     const node = await client.query<{ id: string }>(
@@ -49,9 +55,11 @@ describe('retirement', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () 
     const id = node.rows[0]!.id;
     await client.query(
       `INSERT INTO facts (id, path, type, title, description, space, state,
-                          valid_from, stale_after)
-       VALUES ($1, $2, 'reference', $3, 'one line', 'shared', 'proposed', $4, $5)`,
-      [id, over.path, over.path, over.validFrom ?? '2026-01-01', over.staleAfter ?? null],
+                          valid_from, stale_after, verified, verified_by)
+       VALUES ($1, $2, 'reference', $3, 'one line', 'shared', 'proposed', $4, $5, $6,
+               CASE WHEN $6::date IS NULL THEN NULL ELSE 'human:1' END)`,
+      [id, over.path, over.path, over.validFrom ?? '2026-01-01', over.staleAfter ?? null,
+        over.verified === undefined ? '2026-01-01' : over.verified],
     );
     await client.query('COMMIT');
     return id;
@@ -176,9 +184,19 @@ describe('retirement', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () 
       await fact({ path: 'shared/not-yet.md', staleAfter: '2027-01-01' });
       await fact({ path: 'shared/never-rots.md' });
 
-      assert.deepEqual(await stale(client, '2026-08-27'), [
+      // due-today is not yet stale. ADR-0010 reads the boundary strictly, so a
+      // fact falling due today has its whole day before it counts.
+      assert.deepEqual(await stale(client, '2026-08-27'), ['shared/overdue.md']);
+      assert.deepEqual(await stale(client, '2026-08-28'), [
         'shared/overdue.md', 'shared/due-today.md',
-      ]);
+      ], 'and it is stale the following day');
+    });
+
+    test('leaves an unverified fact out, however old its review date', async () => {
+      // Nothing confirmed it, so it has nothing to have gone stale from. It
+      // waits on the review queue as a proposed fact instead.
+      await fact({ path: 'shared/never-confirmed.md', staleAfter: '2026-01-31', verified: null });
+      assert.deepEqual(await stale(client, '2026-08-27'), []);
     });
 
     test('never sets valid_to on anything it flags', async () => {

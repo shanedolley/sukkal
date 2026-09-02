@@ -117,12 +117,21 @@ export async function asAt(client: ClientBase, day: Day): Promise<string[]> {
  *
  * **This reads and never writes.** A stale fact is a fact doing its job rather
  * than a defect, and retiring one on a timer would make the system quietly
- * forget things nobody contradicted. KPA-11 builds the report on top of this.
+ * forget things nobody contradicted. src/memory/sweep.ts raises the review
+ * item on top of this.
+ *
+ * Two conditions come from ADR-0010, which settled the state after this
+ * function was written. A fact goes stale strictly past `stale_after`, so one
+ * falling due today is not yet stale. And only a verified fact can go stale,
+ * because an unverified one has nothing to have gone stale from: it is still
+ * waiting on its first confirmation. `factState` derives the same two, and the
+ * two must not disagree, because KPA-13 diffs this report against the vault's.
  */
 export async function stale(client: ClientBase, day: Day): Promise<string[]> {
   const due = await client.query<{ path: string }>(
     `SELECT path FROM facts
-      WHERE valid_to IS NULL AND stale_after IS NOT NULL AND stale_after <= $1
+      WHERE valid_to IS NULL AND verified IS NOT NULL
+        AND stale_after IS NOT NULL AND stale_after < $1
       ORDER BY stale_after, path`,
     [day],
   );
