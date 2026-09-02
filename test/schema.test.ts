@@ -69,8 +69,8 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
     // question is one of that queue's four kinds rather than a table of its own.
     assert.deepEqual(tables.rows.map((row) => row.relname), [
       'answers', 'audit', 'citations', 'conversations', 'edges', 'entities',
-      'facts', 'meetings', 'needs_you', 'nodes', 'policies', 'rejections',
-      'source_chunks', 'sources', 'tasks', 'users',
+      'facts', 'inbound_deliveries', 'meetings', 'needs_you', 'nodes',
+      'policies', 'rejections', 'source_chunks', 'sources', 'tasks', 'users',
     ]);
   });
 

@@ -1,5 +1,7 @@
 # KPA reads nabium's database read-only
 
+**Status: superseded by ADR-0013.**
+
 Nabium captures and transcribes meetings on Shane's Mac; KPA needs that material
 on amaterasu. We chose to have nabium push a session id over the LAN and KPA read
 the detail from nabium's Postgres through a read-only role, rather than design an

@@ -1,7 +1,7 @@
 # The schema
 
-Sixteen tables and eight enums. `migrations/001_core_schema.sql` created the
-first ten, and migrations 003 to 008 changed what follows. The vault's own
+Seventeen tables and eight enums. `migrations/001_core_schema.sql` created the
+first ten, and migrations 003 to 009 changed what follows. The vault's own
 `CLAUDE.md` is the authority for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
@@ -28,6 +28,7 @@ check constraint here rather than an instruction in a prompt.
 | `conversations` | A chat, with the answers and citations below |
 | `answers` | One question and its answer, read back in the order asked |
 | `citations` | The source and the passage an answer's chip opens |
+| `inbound_deliveries` | A webhook body, verbatim, waiting for a worker |
 
 ## The enums
 
@@ -158,6 +159,23 @@ A citation names a source and a chunk together, through one composite key into
 the wrong text under the right title, which reads as a correct answer and is
 not one. `edges` tolerates that mismatch because it predates chunking and
 resolves it in code; this table carries no such history.
+
+## What arrives over a webhook
+
+`inbound_deliveries` takes a posted body verbatim and parses it no further.
+The sender owns the shape, and a receiver that interprets on the way in loses
+whatever it failed to understand. That is the rule `sources` already obeys.
+
+The table is not nabium's. `source` names the sender, so a second sender needs
+a value rather than a table. `(source, delivery_id)` is unique, and that pair
+is the whole retry story: a sender repeating a delivery writes nothing twice.
+
+`processed_at` is null while the work is owed, so the backlog is one query and
+a crash loses nothing. `error` holds what went wrong, and a check refuses a
+reason for a failure that has not happened.
+
+ADR-0013 records why nabium sends the payload rather than a trigger, and why a
+webhook is acceptable here where ADR-0008 refused one for Jira.
 
 ## The frontmatter mapping
 
