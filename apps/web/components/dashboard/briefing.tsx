@@ -54,6 +54,21 @@ export function Briefing() {
   const proposed = facts.filter(isProposed);
   const stale = facts.filter(isStale);
 
+  // The summary speaks for all three reads, so it answers to the worst of
+  // them. Keyed off one read it said "0 to review, 0 going stale" while that
+  // read was failing, which is the sentence a review queue must never say
+  // when it does not know. The cards were already right and the line above
+  // them was not. Found on 2 September 2026, after the fix that corrected
+  // the cards and the sidebar and stopped there.
+  const reads = [needsStatus, reviewStatus, meetingsStatus];
+  const overall: PageStatus = reads.includes("error")
+    ? "error"
+    : reads.includes("loading")
+      ? "loading"
+      : reads.includes("empty")
+        ? "empty"
+        : "ready";
+
   // The summary counts rows, so it has to say something different in each
   // state. A confident number beside a spinner is worse than no number.
   const summary: Record<PageStatus, string> = {
@@ -70,7 +85,7 @@ export function Briefing() {
           <h1 className="text-xl font-semibold tracking-tight">
             {today ? formatLongDay(today) : "Your briefing"}
           </h1>
-          <p className="text-muted-foreground text-sm">{summary[needsStatus]}</p>
+          <p className="text-muted-foreground text-sm">{summary[overall]}</p>
         </div>
         <Button
           render={<Link href="/chat" />}
