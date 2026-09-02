@@ -75,11 +75,14 @@ describe('the policy and audit tables', { skip: url ? false : 'DATABASE_URL_TEST
   }
 
   describe('policies', () => {
-    test('holds the four rules the brief names, two of them absolute', async () => {
+    test('holds the four rules the brief names, and the engine default beside them', async () => {
       const rows = await client.query<{ key: string; absolute: boolean; enabled: boolean }>(
         'SELECT key, absolute, enabled FROM policies ORDER BY key',
       );
       assert.deepEqual(rows.rows, [
+        // The engine's own behaviour, written down where the audit screen can
+        // render it. `migrations/012` says why an unnamed denial has no home.
+        { key: 'deny-by-default', absolute: true, enabled: true },
         { key: 'fact.verify.never-by-agent', absolute: false, enabled: true },
         { key: 'mail.send.never-unprompted', absolute: true, enabled: true },
         { key: 'never-delete-or-destructively-edit', absolute: true, enabled: true },
