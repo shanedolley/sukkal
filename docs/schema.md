@@ -2,11 +2,11 @@
 
 Nineteen tables and eight enums. `migrations/001_core_schema.sql` created the
 first ten, and migrations 003 to 010 changed what follows. Migrations 011 to
-014 add no table: 011 creates the schema the job queue lives in, 012 seeds one
-policy row, 013 adds one column to `facts`, and 014 adds one column and one
-enum value to `audit`. Migration 016 adds the last two, which hold a
-connection and its sealed secret. The vault's own `CLAUDE.md` is the authority
-for every enum the vault writes.
+014 and 017 add no table: 011 creates the schema the job queue lives in, 012
+seeds one policy row, 013 adds one column to `facts`, 014 adds one column and
+one enum value to `audit`, and 017 adds four columns to `users`. Migration 016
+adds the last two, which hold a connection and its sealed secret. The vault's
+own `CLAUDE.md` is the authority for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
 `valid_to`. And **a machine never marks its own work verified**, which is a
@@ -17,7 +17,7 @@ check constraint here rather than an instruction in a prompt.
 | Table | Holds |
 |---|---|
 | `nodes` | Every endpoint an edge can point at. `facts`, `sources` and `entities` take their `id` from here, so `edges` can carry real foreign keys |
-| `users` | One row. Every `owner_id` defaults to it |
+| `users` | One row, holding the owner and the account it signs in with. Every `owner_id` defaults to it |
 | `sources` | Raw material, verbatim, never edited. Carries the kind, title, date, author and space the drawer shows |
 | `source_chunks` | What gets embedded, with the byte range in `sources.body` a citation opens at |
 | `facts` | One row per note in a space, whatever its `type`, with the dates that retire it, the state it starts in, and the entity it concerns |
@@ -308,21 +308,72 @@ OAuth grant. `verified_on` and `verdict` are null together, and a check
 constraint enforces the pair: a verdict with no date says nothing about now.
 Retyping a secret clears both, because a new secret has never been tried.
 
-## The column KPA-94 has not created yet
+## The account the installation signs in with
 
-`src/auth/password.ts` hashes and verifies a password, and nothing stores one.
-KPA-94 creates the account row, and the column that holds this module's output
-is `text`, never `varchar(n)`.
+`users` holds the account as well as the owner. Migration 017 adds four
+columns to the row `001_core_schema.sql` seeded, rather than a table beside
+it, because an `accounts` table would give one person two masters and every
+`owner_id` already points here.
 
-An encoded hash is 88 characters at today's cost:
+| Column | Holds |
+|---|---|
+| `email` | The address somebody signs in with. Unique without regard to case |
+| `assistant_name` | What the assistant is called |
+| `password_hash` | What `src/auth/password.ts` wrote, in the PHC string format |
+| `created_at` | When the account was made, which is not when the row appeared |
+
+**All four are null, or none of them are.** `users_the_account_is_whole` says
+so with `num_nonnulls`. A hash with no email signs nobody in, and an email with
+no hash is an account anybody may claim, so the setup wizard writes all four in
+one statement. `email IS NULL` is therefore the question "has this installation
+been set up", and it is the question the wizard asks before it refuses to run
+twice.
+
+**The seeded row is the account, unclaimed.** Four tables default `owner_id` to
+id 1, so deleting that row or replacing it would refuse every insert made
+before somebody runs the wizard. It keeps its id and gains four nulls instead.
+
+**A row this migration did not seed stops it.** The guard reads `id <> 1`,
+which is one condition covering both a second row and a row that is not the
+seed, and it raises rather than leave an owner with a null email nobody can
+sign in as. Inventing an address is the guess the vault's own rule forbids.
+
+**`password_hash` is `text`, never `varchar(n)`.** An encoded hash is 88
+characters at today's cost:
 
 ```
 $scrypt$ln=17,r=8,p=1$<22 chars of base64>$<43 chars of base64>
 ```
 
-The length changes whenever the cost, the salt or the key size changes, and
-ADR-0020 records that raising the cost is expected. A width chosen from today's
-88 characters would refuse a hash the same code wrote a year later.
+The length moves with the cost, the salt and the key size, and ADR-0020 records
+that raising the cost is expected. A width taken from today's 88 characters
+would refuse a hash the same module wrote a year later.
+`users_password_is_hashed` checks the shape instead, as four dollar signs. That
+is what every PHC string carries, an argon2 hash included, so it refuses a
+typed password without pinning the algorithm ADR-0020 leaves room to change.
+
+**The email is unique through an index on `lower(email)`, not through
+`citext`.** citext needs `CREATE EXTENSION`, which needs a superuser:
+`provision-amaterasu-root.sh` installs pgvector through `su - postgres` for
+that reason, so a second extension is a second root step on every installation
+somebody else runs. The cost of the index is that every read has to spell
+`lower(email)`. A query written as `WHERE email = $1` misses the index, and
+misses a row somebody typed in another case.
+
+**The index cannot bind while `users_one_owner_per_installation` holds.** That
+constraint is `CHECK (id = 1)`, and one row holds one address. The index is
+there for the lookup sign-in makes, and for the day a second owner arrives.
+
+**One owner per installation is ADR-0009's hedge, not a second guess at
+"single user".** `users.id` exists so that a second owner costs no migration of
+the four tables defaulting `owner_id` to it. The check constraint is what a
+second owner does cost: one line, dropped deliberately.
+
+**The first boot asks for the account again.** `kpa.account` in the browser
+holds a name, an email, an assistant name and a created date, and no password.
+An account carried across would arrive without the one field that signs anybody
+in, so the wizard runs regardless. ADR-0022 records that as a consequence of
+ADR-0009 rather than a preference.
 
 ## The queue lives in its own schema
 
