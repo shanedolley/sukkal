@@ -318,7 +318,7 @@ History is permanent, and a record that carried a key once carries it forever.
 It has no interface beyond Obsidian and a terminal. It ingests mail only when a
 scheduled job runs. It has no path to Outlook or Teams. It cannot handle meeting
 recordings at all. Its search is grep, so it cannot answer a question phrased
-differently from how the fact was written. And it holds 17 facts, which is a
+differently from how the fact was written. And it holds 19 facts, which is a
 corpus a person can still hold in their head.
 
 ## Nabium
@@ -387,11 +387,11 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Nabium integration | Read-only database role, triggered by a LAN push | Cheapest to build, no API to design and maintain across two personal projects. |
 | Nabium cloud flag | Ignored by KPA | Shane's call, 23 August 2026. |
 | Entity ownership | KPA is canonical, nabium feeds it | KPA sees mail as well as meetings, which is a far wider source of people. Nabium's entities merge in on ingest. |
-| Memory vault | KPA replaces it | The 17 facts and 32 sources migrate into Postgres. The vault and its three launchd jobs retire. One system, no sync problem. |
+| Memory vault | KPA replaces it | The 19 facts and 32 sources migrate into Postgres. The vault and its three launchd jobs retire. One system, no sync problem. |
 | Collibra and Koinon separation | A guideline, not a database constraint | Decided 23 August 2026. Retrieval filters by space and crossing answers get flagged. Nothing structurally prevents a leak. |
 | Remote access | Cloudflare Tunnel with Access in front, on Shane's box | Works on any device without installing a client. Traffic transits Cloudflare. Another installation reaches itself however its owner chooses, and the application no longer depends on the answer. ADR-0009. |
 | Ingestion depth | Six months | Covers current engagements at a bounded one-off cost. |
-| Embeddings | Voyage AI, `voyage-4` at 1024 dimensions | Anthropic's own recommendation. This row named `voyage-3` until 27 August 2026, when KPA-26 read Voyage's model list and found it listed as legacy. `voyage-4` over `voyage-4-large` because a corpus of 17 facts and 32 sources cannot show the larger model's quality. Both default to 1024, so moving up later changes a model name and not the schema. Adds a vendor and a key. |
+| Embeddings | Voyage AI, `voyage-4` at 1024 dimensions | Anthropic's own recommendation. This row named `voyage-3` until 27 August 2026, when KPA-26 read Voyage's model list and found it listed as legacy. `voyage-4` over `voyage-4-large` because a corpus of 19 facts and 32 sources cannot show the larger model's quality. Both default to 1024, so moving up later changes a model name and not the schema. Adds a vendor and a key. |
 | Time model | Facts carry `valid_from` and `valid_to` | Retirement becomes a date rather than a delete, so the system answers what was true in March and fact decay stays visible. |
 | Microsoft Graph | Not pursued | Customer-tenant consent is unobtainable. Nabium's desktop capture covers the same material. |
 | Application shape | Next.js for the web tier, a separate worker process for everything long-running | Agent runs and ingestion must never sit in a request handler. The split is load bearing. |
@@ -843,7 +843,7 @@ runs down the page, and each slice states what it unblocks.
 
 | Slice | What it delivers | State |
 |---|---|---|
-| 1. Migrate the memory | The memory model, proved on 17 facts | In progress. KPA-1 |
+| 1. Migrate the memory | The memory model, proved on 19 facts | In progress. KPA-1 |
 | 2. Draw the interface | Every screen, on fixtures | In progress. KPA-35 |
 | 3. Finish the memory schema | The tables and columns the screens need, on top of slice one | Not started |
 | 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | Not started |
@@ -872,7 +872,7 @@ them, and neither has a slice yet. *Open.*
 
 ### Slice one: migrate the memory
 
-Move the 17 facts and 32 sources out of the Obsidian vault into Postgres, with
+Move the 19 facts and 32 sources out of the Obsidian vault into Postgres, with
 the gates, the staleness sweep, and `valid_from` and `valid_to` working.
 
 It ships no user interface and ingests no mail. It proves the memory model is
@@ -887,7 +887,7 @@ retiring a fact sets `valid_to` rather than deleting a row.
 
 #### What the migration involves
 
-Moving 17 facts is trivial. The work is the schema they land in, and the slice
+Moving 19 facts is trivial. The work is the schema they land in, and the slice
 should be judged on that rather than on whether 17 rows arrived.
 
 1. **Design the schema.** `sources`, `source_chunks`, `facts`, `edges`,
@@ -906,9 +906,10 @@ should be judged on that rather than on whether 17 rows arrived.
    The open questions and the Decisions table are workflow rather than prose, so
    `questions` and `rejections` exist in the schema. This step read "migrate
    nothing" until 2 September 2026, because both tables held headers and no rows
-   on 24 August. The Questions table now holds two rows, and Shane answered both
-   before the freeze: one names Nigel Nisbett's role, and one records that BHP
-   bought nothing after the Deasy Labs demo. A question closes by writing the
+   on 24 August. The Questions table on `index.md` now holds two rows, and
+   Shane answered both before the freeze: one names Nigel Nisbett's role, and
+   one records that BHP bought nothing after the Deasy Labs demo. They sit in
+   the vault's markdown, not in Postgres, because nothing has migrated yet. A question closes by writing the
    answer into the fact, so the parser has to carry the answer across rather
    than the question alone.
 6. **Write the four gates as code.** Each gate gets its own test. This is the
