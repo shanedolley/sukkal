@@ -6,9 +6,8 @@
 // more, and it now takes the pool with everything else.
 //
 // The pool is built from `src/db/connect.ts` in the root package, which is the
-// one place a connection string is read and checked. That import also
-// installs the driver's date parser: a `date` column comes back as text, not
-// as a `Date` at local midnight.
+// one place a connection string is read and checked, and the one place the
+// date rule is written.
 //
 // Two properties this file exists for.
 //
@@ -21,9 +20,16 @@
 // a throw at module load would fail `next build`, which reaches no database
 // at all. So the pool is built on the first query and never before.
 
-import { Pool } from "pg";
+import pg, { Pool } from "pg";
 
-import { connectionString } from "../../../src/db/connect";
+import { connectionString, keepDatesAsText } from "../../../src/db/connect.ts";
+
+// The web tier installs its own copy of the driver, so the parser
+// `src/db/connect.ts` sets on the root's copy is absent from this one, and a
+// `date` would arrive as a `Date` at local midnight. Read back as UTC that is
+// a day west of Greenwich: a source dated 19 August reads as the 18th from
+// Sydney. Found by reading one, on 2 September 2026.
+keepDatesAsText(pg.types);
 
 const held = globalThis as typeof globalThis & { kpaPool?: Pool };
 

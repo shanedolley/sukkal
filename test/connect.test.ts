@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { connect } from '../src/db/connect.ts';
+import pg from 'pg';
+import { connect, keepDatesAsText } from '../src/db/connect.ts';
 
 /** Sets `variable` for one call, then restores whatever was there. */
 function withEnv<T>(variable: string, value: string | undefined, work: () => T): T {
@@ -84,5 +85,35 @@ describe('connect', () => {
       assert.equal(parameters.user, 'someone');
       assert.equal(parameters.database, 'nowhere');
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The date rule. It takes the registry rather than reaching for one, because
+// apps/web installs its own copy of the driver and a parser set on this one is
+// absent from that one. A source dated 19 August read as the 18th from Sydney
+// until the web tier called this with its own registry.
+// ---------------------------------------------------------------------------
+
+describe('keepDatesAsText', () => {
+  test('registers a pass-through on whichever registry it is given', () => {
+    const registered = new Map<number, (value: string) => string>();
+    keepDatesAsText({
+      builtins: pg.types.builtins,
+      setTypeParser: (id: number, parse: (value: string) => string) => {
+        registered.set(id, parse);
+      },
+    } as unknown as typeof pg.types);
+
+    const parse = registered.get(pg.types.builtins.DATE);
+    assert.ok(parse, 'no parser was registered for a date');
+    assert.equal(parse('2026-08-19'), '2026-08-19');
+  });
+
+  test('the root package already has it, so a date is never a Date', () => {
+    const parse = pg.types.getTypeParser(pg.types.builtins.DATE) as (
+      value: string,
+    ) => unknown;
+    assert.equal(parse('2026-08-19'), '2026-08-19');
   });
 });

@@ -148,6 +148,21 @@ to the driver. Parsing a calendar date into a `Date` puts it at local midnight,
 and reading that back as UTC moves it a day west: a fact retired on 1 June
 reads as 31 May from Sydney. Compare dates as `YYYY-MM-DD` text.
 
+**The driver is installed twice, and a parser reaches one copy.** `apps/web`
+has its own `node_modules/pg`, so a bare `pg` resolves to the root's copy in
+`src/` and to the web tier's copy in `apps/web/`. They are two module
+instances with two type registries. `connect.ts` exports `keepDatesAsText` for
+that reason and `apps/web/lib/db.ts` calls it with its own registry. Without
+that call a source dated 19 August read as the 18th from Sydney, which is how
+this was found on 2 September 2026. KPA-68 leaves one copy and ends it.
+
+**A cross-package import from `apps/web` names the `.ts` extension.**
+`../../../src/db/connect.ts`, not `../../../src/db/connect`. Turbopack
+resolves either, and `node --experimental-strip-types` resolves only the
+first, so a check under `apps/web/scripts/` can run the real module rather
+than a copy of it. `allowImportingTsExtensions` in `apps/web/tsconfig.json` is
+what lets `tsc` accept it.
+
 **A gate's prompt is a file, never a string in code.** `src/memory/prompts/`
 holds them, and the gate reads its file on every call, so a renamed prompt
 throws and rejects the candidate rather than judging it by nothing. The default

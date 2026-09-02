@@ -15,8 +15,19 @@ import pg from 'pg';
  * and reading that back as UTC moves it a day west of Greenwich. A fact
  * retired on 1 June then reads as 31 May from Sydney, which is a wrong answer
  * that looks right. A calendar date has no time zone, so keep it as text.
+ *
+ * This takes the registry rather than reaching for one, because there are two.
+ * `apps/web` installs its own copy of the driver, so a bare `pg` resolves to
+ * the root's copy here and to the web tier's copy there, and a parser set on
+ * one is absent from the other. `apps/web/lib/db.ts` calls this with its own.
+ * KPA-68 makes `apps/web` a workspace of the root, which leaves one copy and
+ * makes the second call unnecessary.
  */
-pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value);
+export function keepDatesAsText(types: typeof pg.types): void {
+  types.setTypeParser(types.builtins.DATE, (value: string) => value);
+}
+
+keepDatesAsText(pg.types);
 
 /**
  * The modes that encrypt.

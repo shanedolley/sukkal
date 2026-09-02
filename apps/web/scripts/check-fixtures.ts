@@ -21,7 +21,7 @@ import {
 import type { FactState, Space } from "../lib/types.ts";
 import { spaceOf, workspaceNamed } from "../lib/workspaces.ts";
 
-const chunkExists = (sourceId: string, chunkId: string) =>
+const chunkExists = (sourceId: string, chunkId: string | undefined) =>
   SOURCES.some(
     (source) =>
       source.id === sourceId && source.chunks.some((c) => c.id === chunkId)

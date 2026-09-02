@@ -91,6 +91,16 @@ The five columns `sources` gained are all nullable. KPA-5 fills them, and a
 `NOT NULL` column with no default would reject every row written before this
 migration existed.
 
+**The drawer cuts the passage out of the body.** `apps/web/lib/sources.ts`
+reads the source and its chunks and calls `chunkText`, which is the one place
+the byte range is resolved. `String.prototype.slice` counts UTF-16 code units
+and agrees with a byte offset only while every character is ASCII, so one
+accented character moves every passage after it by one position.
+
+The five columns migration 004 added are nullable and nothing fills them yet.
+A source missing any of them opens nothing, and the drawer says so, rather
+than drawing a heading with no kind and no date.
+
 ## Policy and audit
 
 The brief calls the policy layer load bearing and the audit log the safety net.

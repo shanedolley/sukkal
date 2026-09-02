@@ -67,16 +67,17 @@ assert.equal(
 //    nullable, and the row renders without it rather than crashing.
 assert.equal(toItem(row({ entity: null })).entity, null);
 
-// 4. A citation names a chunk. A source with no chunk is half a citation, and
-//    half a citation opens the wrong passage rather than none.
+// 4. A row names a source, a chunk inside it, or neither. A row raised before
+//    its source was broken up still opens that source, at the top: dropping
+//    the source with the missing chunk leaves the row with no address at all.
 assert.deepEqual(
   toItem(row({ source_id: "3", chunk_id: "9" })).provenance,
   { sourceId: "3", chunkId: "9" }
 );
-assert.equal(
+assert.deepEqual(
   toItem(row({ source_id: "3", chunk_id: null })).provenance,
-  undefined,
-  "a source with no chunk became a citation that opens nothing"
+  { sourceId: "3" },
+  "a row with a source and no passage lost its source too"
 );
 assert.equal(toItem(row()).provenance, undefined);
 

@@ -41,10 +41,17 @@ export interface Source {
   chunks: SourceChunk[];
 }
 
-/** Where a fact came from. A citation opens the named chunk. */
+/**
+ * Where a thing came from. A citation opens the named chunk.
+ *
+ * The chunk is optional, because the column is. A derived_from edge written
+ * before chunking existed names the source and no passage, and so does a
+ * queue row raised before its source was broken up. The drawer then opens the
+ * source at the top and says so, which is more use than refusing to open it.
+ */
 export interface Provenance {
   sourceId: string;
-  chunkId: string;
+  chunkId?: string;
 }
 
 export interface Fact {

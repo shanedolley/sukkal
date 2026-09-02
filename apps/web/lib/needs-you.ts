@@ -69,11 +69,18 @@ export function toItem(row: NeedsYouRow): NeedsYouItem {
     ...(row.gmail_url ? { gmailUrl: row.gmail_url } : {}),
     ...(row.rule ? { rule: row.rule } : {}),
     ...(row.audit_id ? { auditId: row.audit_id } : {}),
-    // A citation names the chunk, so provenance needs both. A row carrying a
-    // source and no chunk has no passage to open, and half a citation opens
-    // the wrong thing rather than nothing.
-    ...(row.source_id && row.chunk_id
-      ? { provenance: { sourceId: row.source_id, chunkId: row.chunk_id } }
+    // A row names a source, a chunk inside it, or neither. The chunk is
+    // optional because the column is: a row raised before its source was
+    // broken up names no passage, and the drawer opens that source at the top
+    // and says so. KPA-119 settled that, and it replaced this story's first
+    // answer, which dropped the source along with the missing chunk.
+    ...(row.source_id
+      ? {
+          provenance: {
+            sourceId: row.source_id,
+            ...(row.chunk_id ? { chunkId: row.chunk_id } : {}),
+          },
+        }
       : {}),
   };
 }

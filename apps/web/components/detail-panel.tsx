@@ -15,6 +15,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -43,11 +44,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { findAudit, findSource } from "@/lib/fixtures";
+import { findAudit } from "@/lib/fixtures";
 import { useNeedsYou } from "@/lib/needs-you-context";
 import { formatDay, formatFullDay, formatStamp } from "@/lib/format";
 import { useReview } from "@/lib/review-context";
 import { movesFor } from "@/lib/review-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   SPACE_LABELS,
   type Fact,
@@ -143,13 +145,77 @@ function CopyReference({ text }: { text: string }) {
   );
 }
 
-/** Where a thing came from, with the passage that raised it. */
-function Origin({ provenance }: { provenance: Provenance }) {
-  const source = findSource(provenance.sourceId);
-  if (!source) return null;
+/** What the drawer knows about a source, and whether it knows yet. */
+interface SourceAnswer {
+  sourceId: string;
+  source: Source | null;
+}
 
+/**
+ * One source, read from the database when the drawer opens on it.
+ *
+ * The answer is held with the id it answered for, so a drawer reopened on a
+ * different source reads as loading during render rather than showing the
+ * previous source under the new heading. That also keeps setState out of the
+ * effect body, which the compiler refuses.
+ */
+function useSource(sourceId: string | undefined): {
+  source: Source | null;
+  loading: boolean;
+} {
+  const [answer, setAnswer] = useState<SourceAnswer | null>(null);
+
+  useEffect(() => {
+    if (!sourceId) return;
+    const stop = new AbortController();
+
+    fetch(`/api/sources?id=${encodeURIComponent(sourceId)}`, { signal: stop.signal })
+      .then((response) =>
+        response.ok ? (response.json() as Promise<Source>) : null
+      )
+      .then((source) => setAnswer({ sourceId, source }))
+      .catch((cause: unknown) => {
+        if (stop.signal.aborted) return;
+        console.error("source:", cause);
+        setAnswer({ sourceId, source: null });
+      });
+
+    return () => stop.abort();
+  }, [sourceId]);
+
+  if (!sourceId) return { source: null, loading: false };
+  return answer && answer.sourceId === sourceId
+    ? { source: answer.source, loading: false }
+    : { source: null, loading: true };
+}
+
+function OriginNote({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2 border-t pt-4">
+      <h3 className="text-muted-foreground text-xs font-medium">
+        Where this came from
+      </h3>
+      <p className="text-muted-foreground text-xs">{children}</p>
+    </section>
+  );
+}
+
+/**
+ * Where a thing came from, once the source has been read.
+ *
+ * Held apart from the fetch below because a source target has already read
+ * its own source for the heading, and fetching it again here would ask the
+ * database twice for one drawer.
+ */
+function OriginView({
+  source,
+  chunkId,
+}: {
+  source: Source;
+  chunkId: string | undefined;
+}) {
   const Icon = KIND_ICON[source.kind];
-  const passage = source.chunks.find((c) => c.id === provenance.chunkId);
+  const passage = source.chunks.find((c) => c.id === chunkId);
 
   return (
     <section className="flex flex-col gap-3 border-t pt-4">
@@ -171,9 +237,20 @@ function Origin({ provenance }: { provenance: Provenance }) {
       <p className="text-sm leading-snug font-medium">{source.title}</p>
       <p className="text-muted-foreground text-xs">{source.author}</p>
 
+      {/* A derived_from edge written before chunking names no passage, and so
+          does a source nothing has chunked. The drawer opens at the top and
+          says which, rather than marking a passage it cannot find. */}
+      {!passage && (
+        <p className="text-muted-foreground text-xs">
+          {source.chunks.length === 0
+            ? "Nothing has broken this source into passages yet, so it opens at the top."
+            : "This citation names no passage, so the source opens at the top."}
+        </p>
+      )}
+
       <ol className="flex flex-col gap-2">
         {source.chunks.map((chunk) => {
-          const cited = chunk.id === provenance.chunkId;
+          const cited = chunk.id === chunkId;
           return (
             <li
               key={chunk.id}
@@ -203,20 +280,49 @@ function Origin({ provenance }: { provenance: Provenance }) {
   );
 }
 
+/** Where a fact or a queue row came from. It reads its own source, because
+ *  the source it names is not the one the drawer opened on. */
+function Origin({ provenance }: { provenance: Provenance }) {
+  const { source, loading } = useSource(provenance.sourceId);
+
+  if (loading) {
+    return (
+      <section className="flex flex-col gap-2 border-t pt-4" aria-busy="true">
+        <h3 className="text-muted-foreground text-xs font-medium">
+          Where this came from
+        </h3>
+        <Skeleton className="h-3 w-2/3" />
+        <Skeleton className="h-12 w-full" />
+      </section>
+    );
+  }
+
+  // Either the memory holds no such source, or the read did not answer. The
+  // drawer says so: an empty section reads as a fault in the drawer rather
+  // than as a source nothing has ingested yet.
+  if (!source) {
+    return (
+      <OriginNote>
+        This source is not in the memory yet, so there is nothing to open.
+      </OriginNote>
+    );
+  }
+
+  return <OriginView source={source} chunkId={provenance.chunkId} />;
+}
+
 // ── The three subjects ───────────────────────────────────────────────────
 
 function SourceBody({
-  sourceId,
+  source,
   chunkId,
 }: {
-  sourceId: string;
-  chunkId?: string;
+  source: Source;
+  chunkId: string | undefined;
 }) {
-  const source = findSource(sourceId);
-  if (!source) return null;
   return (
     <div className="flex flex-col gap-4 p-4">
-      <Origin provenance={{ sourceId, chunkId: chunkId ?? "" }} />
+      <OriginView source={source} chunkId={chunkId} />
       <p className="text-muted-foreground text-xs">
         Sources are stored verbatim and never edited. Corrections are made by
         writing a new fact, not by changing this text.
@@ -409,8 +515,12 @@ export function DetailPanelProvider({
     target?.kind === "needsYou"
       ? needsYou.find((row) => row.id === target.itemId)
       : undefined;
-  const source =
-    target?.kind === "source" ? findSource(target.sourceId) : undefined;
+  // Read here rather than inside SourceBody, because the heading and the
+  // badges need the same source the body renders. One read serves both.
+  const { source: opened, loading: openingSource } = useSource(
+    target?.kind === "source" ? target.sourceId : undefined
+  );
+  const source = target?.kind === "source" ? opened : null;
 
   let heading = "";
   let badges: React.ReactNode = null;
@@ -448,6 +558,10 @@ export function DetailPanelProvider({
         {SPACE_LABELS[source.space]}
       </Badge>
     );
+  } else if (target?.kind === "source") {
+    heading = openingSource
+      ? "Opening the source"
+      : "This source is not in the memory yet";
   }
 
   return (
@@ -478,11 +592,26 @@ export function DetailPanelProvider({
               {item && <NeedsYouBody item={item} />}
               {source && (
                 <SourceBody
-                  sourceId={source.id}
+                  source={source}
                   chunkId={
                     target.kind === "source" ? target.chunkId : undefined
                   }
                 />
+              )}
+              {target.kind === "source" && !source && (
+                <div className="flex flex-col gap-3 p-4">
+                  {openingSource ? (
+                    <>
+                      <Skeleton className="h-3 w-2/3" />
+                      <Skeleton className="h-16 w-full" />
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      Nothing has ingested this source, so there is no passage
+                      to open. Nothing was changed.
+                    </p>
+                  )}
+                </div>
               )}
             </>
           )}
