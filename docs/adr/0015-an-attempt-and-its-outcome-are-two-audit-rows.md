@@ -45,6 +45,12 @@ asks Shane a question.
 
 ## Consequences
 
+- A denial writes one row and not two. The effect never runs, so no window
+  opens and nothing follows it. `audit.attempt` is null on that row, and a read
+  that pairs the log has three shapes to render rather than two: an attempt and
+  its outcome, a lone denial, and an attempt nothing closed. Added on
+  2 September 2026 by the agent that built KPA-82, which found this record read
+  as though every entry had two rows.
 - `audit` gains an attempt id and an `attempted` value on its outcome type.
   `result` and `reverse` stay `NOT NULL`: an attempt row says what it meant to
   do and how it would be reversed, both of which are known before acting.

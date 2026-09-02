@@ -13,7 +13,12 @@
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTable, type ColumnDef } from "@tanstack/react-table";
-import { ArrowUpRightIcon, CheckCircle2Icon, ShieldXIcon } from "lucide-react";
+import {
+  ArrowUpRightIcon,
+  CheckCircle2Icon,
+  CircleDashedIcon,
+  ShieldXIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/reui/badge";
 import {
@@ -41,12 +46,27 @@ import { auditRows, type OutcomeFilter } from "@/lib/audit-view";
 import { SPACE_LABELS, type AuditEntry, type AuditOutcome } from "@/lib/types";
 
 function OutcomeBadge({ outcome }: { outcome: AuditOutcome }) {
-  return outcome === "allowed" ? (
-    <Badge variant="success-light" size="sm">
-      <CheckCircle2Icon className="size-3" aria-hidden="true" />
-      Allowed
-    </Badge>
-  ) : (
+  if (outcome === "allowed") {
+    return (
+      <Badge variant="success-light" size="sm">
+        <CheckCircle2Icon className="size-3" aria-hidden="true" />
+        Allowed
+      </Badge>
+    );
+  }
+  // The agent wrote this row, called out, and never came back to say how the
+  // call ended. ADR-0015 calls it the most valuable row in the log, so it gets
+  // a badge of its own rather than falling through to Denied. Falling through
+  // would say the policy refused an action the policy allowed.
+  if (outcome === "attempted") {
+    return (
+      <Badge variant="warning-light" size="sm">
+        <CircleDashedIcon className="size-3" aria-hidden="true" />
+        Attempted
+      </Badge>
+    );
+  }
+  return (
     <Badge variant="destructive-light" size="sm">
       <ShieldXIcon className="size-3" aria-hidden="true" />
       Denied
@@ -198,6 +218,7 @@ function AuditLog() {
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="allowed">Allowed</TabsTrigger>
             <TabsTrigger value="denied">Denied</TabsTrigger>
+            <TabsTrigger value="attempted">Attempted</TabsTrigger>
           </TabsList>
         </Tabs>
       </header>

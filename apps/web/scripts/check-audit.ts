@@ -63,6 +63,16 @@ const ENTRIES: AuditEntry[] = [
   toEntry(row({ id: "3", at: new Date("2026-08-25T06:15:00+10:00") })),
   toEntry(denial()),
   toEntry(
+    row({
+      id: "5",
+      at: new Date("2026-08-25T04:00:00+10:00"),
+      action: "Apply Gmail label",
+      outcome: "attempted",
+      result: "Attempted. Nothing has recorded how it ended yet.",
+      reverse: "Remove the label from the 4 messages listed above.",
+    })
+  ),
+  toEntry(
     denial({
       id: "4",
       at: new Date("2026-08-24T09:00:00+10:00"),
@@ -91,9 +101,16 @@ for (const entry of allowed) {
   assert.equal(entry.outcome, "allowed", `${entry.id} is denied and the allowed filter kept it`);
 }
 
-// 3. The two halves account for every entry, so no filter loses a row and
-//    "all" hides nothing.
-assert.equal(denied.length + allowed.length, ENTRIES.length, "an entry is neither allowed nor denied");
+// 3. The three states account for every entry, so no filter loses a row and
+//    "all" hides nothing. It was two until migration 014: an attempt is a row
+//    state rather than a verdict, and an entry nobody closed is one. ADR-0015.
+const attempted = auditRows(ENTRIES, "attempted");
+assert.ok(attempted.length > 0, "no attempted entry, so the filter proves nothing");
+assert.equal(
+  denied.length + allowed.length + attempted.length,
+  ENTRIES.length,
+  "an entry is none of allowed, denied and attempted"
+);
 assert.equal(auditRows(ENTRIES, "all").length, ENTRIES.length);
 
 // 4. Every denied entry names the rule that denied it. Without the rule the
@@ -106,7 +123,7 @@ for (const entry of denied) {
 }
 
 // 5. Newest first, on every filter. A log out of time order is not a log.
-for (const outcome of ["all", "allowed", "denied"] as const) {
+for (const outcome of ["all", "allowed", "denied", "attempted"] as const) {
   const rows = auditRows(ENTRIES, outcome);
   for (let i = 1; i < rows.length; i++) {
     assert.ok(
@@ -180,5 +197,5 @@ for (const space of ["collibra", "koinon", "personal"] as Space[]) {
 assert.deepEqual(spacesFor("all"), ["collibra", "koinon", "personal", "shared"]);
 
 console.log(
-  `audit OK: ${denied.length} denied and ${allowed.length} allowed, every denial names a rule and where its decision went, newest first`
+  `audit OK: ${denied.length} denied, ${allowed.length} allowed and ${attempted.length} attempted, every denial names a rule and where its decision went, newest first`
 );

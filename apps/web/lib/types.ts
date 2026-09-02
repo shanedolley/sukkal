@@ -311,7 +311,9 @@ export interface Issue {
   parent?: string;
 }
 
-export type AuditOutcome = "allowed" | "denied";
+/** `attempted` is a row state, not a verdict: the agent wrote the row, called
+ *  out, and has not yet recorded how the call ended. ADR-0015. */
+export type AuditOutcome = "allowed" | "denied" | "attempted";
 
 /** The brief requires four fields on every entry, plus the rule on a denial. */
 export interface AuditEntry {

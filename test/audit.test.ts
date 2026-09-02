@@ -136,6 +136,64 @@ describe('the policy and audit tables', { skip: url ? false : 'DATABASE_URL_TEST
     });
   });
 
+  describe('an attempt and its outcome', () => {
+    // Migration 014. ADR-0015 pairs two rows rather than updating one, so the
+    // table has to say which row closes which, and refuse the shapes that
+    // would make the pairing meaningless. `src/policy/act.ts` writes both.
+
+    /** Inserts one row, naming every column the pairing needs. */
+    function pair(over: {
+      outcome: string;
+      attempt: string | null;
+      result?: string;
+      intent?: string;
+    }): Promise<{ rows: { id: string }[] }> {
+      return client.query<{ id: string }>(
+        `INSERT INTO audit (action, intent, before, outcome, result, reverse, space, rule, attempt)
+         VALUES ('Apply Gmail label', $1, 'Thread carried no label.', $2,
+                 $3, 'Remove the label.', 'personal', null, $4)
+         RETURNING id`,
+        [over.intent ?? 'File the thread.', over.outcome, over.result ?? 'Label applied.', over.attempt],
+      );
+    }
+
+    test('an outcome row closes the attempt row it names', async () => {
+      const attempt = (await pair({ outcome: 'attempted', attempt: null })).rows[0]!.id;
+      const outcome = (await pair({ outcome: 'allowed', attempt })).rows[0]!.id;
+
+      const closed = await client.query<{ attempt: string }>(
+        'SELECT attempt FROM audit WHERE id = $1', [outcome],
+      );
+      assert.equal(closed.rows[0]!.attempt, attempt);
+    });
+
+    test('an attempt row closes nothing itself', async () => {
+      const attempt = (await pair({ outcome: 'attempted', attempt: null })).rows[0]!.id;
+
+      await assert.rejects(
+        pair({ outcome: 'attempted', attempt }),
+        /audit_only_an_outcome_names_an_attempt/,
+      );
+    });
+
+    test('a row cannot close an attempt that does not exist', async () => {
+      await assert.rejects(
+        pair({ outcome: 'allowed', attempt: '999999' }),
+        /violates foreign key constraint/,
+      );
+    });
+
+    test('a field that says nothing is refused', async () => {
+      // NOT NULL lets an empty string through, and the four fields the brief
+      // requires say nothing when they are empty. An attempt row is why this
+      // matters now: its `result` is written before the answer exists.
+      await assert.rejects(
+        pair({ outcome: 'attempted', attempt: null, result: '   ' }),
+        /audit_every_field_says_something/,
+      );
+    });
+  });
+
   describe('the append-only guarantee', () => {
     test('an entry cannot be updated', async () => {
       const id = await insert(ALLOWED);
