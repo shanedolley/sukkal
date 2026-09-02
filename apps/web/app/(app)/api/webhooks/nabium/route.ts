@@ -15,9 +15,19 @@
  */
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { receive, statusFor } from '../../../../../../../src/webhooks/receive';
+import { receive, statusFor } from '../../../../../../../src/webhooks/receive.ts';
 
 const SOURCE = 'nabium';
+
+/**
+ * The character that separates one secret from the next in the variable.
+ *
+ * `openssl rand -base64 32` makes every secret here, and base64 writes only
+ * `A-Z`, `a-z`, `0-9`, `+`, `/` and `=`. A comma appears in none of them, so
+ * splitting on it can never cut a secret in half. `+`, `/` and `=` each can,
+ * which is why the obvious separators are wrong.
+ */
+const BETWEEN_SECRETS = ',';
 
 export async function POST(request: Request): Promise<Response> {
   const body = await request.text();
@@ -32,7 +42,11 @@ export async function POST(request: Request): Promise<Response> {
       deliveryId: request.headers.get('x-nabium-delivery-id') ?? '',
       body,
       signature: request.headers.get('x-nabium-signature'),
-      secret: process.env['NABIUM_WEBHOOK_SECRET'],
+      // One variable, one or two secrets. The trim forgives `old, new`, which
+      // is how a person writes a list, and `receive` drops what is left empty.
+      secrets: (process.env['NABIUM_WEBHOOK_SECRET'] ?? '')
+        .split(BETWEEN_SECRETS)
+        .map((secret) => secret.trim()),
     });
 
     const status = statusFor(result);

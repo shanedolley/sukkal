@@ -53,26 +53,42 @@ export interface Refused {
 export type Result = Accepted | Refused;
 
 /**
- * Whether `signature` is this secret's HMAC over `body`.
+ * Whether `signature` is any of these secrets' HMAC over `body`.
  *
  * The comparison is timing safe. A byte-by-byte compare that returns early
  * leaks how much of a guess was right, which is enough to find the rest one
  * byte at a time.
+ *
+ * Constant time against a list means one thing more: the loop tries every
+ * secret and answers at the end. A loop stopping at the first match answers
+ * faster for a delivery signed with the first secret than for one signed with
+ * the second, and during a rotation that difference names which secret the
+ * sender holds. The bitwise `|=` is what keeps it. `||` stops evaluating once
+ * a term is true, so it would restore the early exit.
+ *
+ * Every SHA-256 digest is 32 bytes, whatever the secret's length, so the
+ * length check below answers the same way for every secret. It rejects the
+ * length the caller sent, which the caller already knows.
  */
 export function signatureMatches(
   body: string,
   signature: string,
-  secret: string,
+  secrets: readonly string[],
 ): boolean {
   if (!signature.startsWith(PREFIX)) return false;
 
   const offered = Buffer.from(signature.slice(PREFIX.length), 'hex');
-  const expected = createHmac('sha256', secret).update(body, 'utf8').digest();
+  let matched = 0;
 
-  // timingSafeEqual throws on a length mismatch, which would itself be a
-  // signal. A hex digest of the wrong length cannot be right, so answer here.
-  if (offered.length !== expected.length) return false;
-  return timingSafeEqual(offered, expected);
+  for (const secret of secrets) {
+    const expected = createHmac('sha256', secret).update(body, 'utf8').digest();
+    // timingSafeEqual throws on a length mismatch, which would itself be a
+    // signal. A hex digest of the wrong length cannot be right, so answer here.
+    const same = offered.length === expected.length && timingSafeEqual(offered, expected);
+    matched |= same ? 1 : 0;
+  }
+
+  return matched === 1;
 }
 
 /** What the receiver signs and stores for a sender. */
@@ -106,8 +122,13 @@ export interface Delivery {
   body: string;
   /** The signature header the sender offered. */
   signature: string | null;
-  /** The shared secret for this sender. Absent refuses the delivery. */
-  secret: string | undefined;
+  /**
+   * Every shared secret this sender may sign with. A signature matching any
+   * one of them is accepted, so a rotation can hold the old secret and the new
+   * one at once and drop no delivery. An empty entry is not a secret, and a
+   * list holding no secret at all refuses the delivery.
+   */
+  secrets: readonly string[];
 }
 
 /**
@@ -121,7 +142,11 @@ export async function receive(
   client: ClientBase,
   delivery: Delivery,
 ): Promise<Result> {
-  if (!delivery.secret || delivery.secret.trim().length === 0) {
+  // An empty entry is not a secret. A variable holding `old,` carries one
+  // secret and a stray comma, and the empty half must authenticate nothing.
+  const secrets = delivery.secrets.filter((secret) => secret.trim().length > 0);
+
+  if (secrets.length === 0) {
     return {
       ok: false,
       refusal: 'no-secret',
@@ -145,7 +170,7 @@ export async function receive(
     };
   }
 
-  if (!signatureMatches(delivery.body, delivery.signature, delivery.secret)) {
+  if (!signatureMatches(delivery.body, delivery.signature, secrets)) {
     return {
       ok: false,
       refusal: 'bad-signature',

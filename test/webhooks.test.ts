@@ -15,6 +15,8 @@ import {
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
 const SECRET = 'a-shared-secret-nobody-else-holds';
+/** The secret a rotation is moving to, while the receiver still holds both. */
+const NEXT_SECRET = 'the-secret-the-rotation-moves-to';
 
 /** A body the contract accepts. */
 function body(over: Record<string, unknown> = {}): string {
@@ -32,30 +34,64 @@ function body(over: Record<string, unknown> = {}): string {
 describe('the signature', () => {
   test('accepts what the same secret signed', () => {
     const text = body();
-    assert.ok(signatureMatches(text, sign(text, SECRET), SECRET));
+    assert.ok(signatureMatches(text, sign(text, SECRET), [SECRET]));
   });
 
   test('refuses another secret', () => {
     const text = body();
-    assert.ok(!signatureMatches(text, sign(text, 'a-different-secret'), SECRET));
+    assert.ok(!signatureMatches(text, sign(text, 'a-different-secret'), [SECRET]));
   });
 
   test('refuses a body edited after signing', () => {
     const signature = sign(body(), SECRET);
-    assert.ok(!signatureMatches(body({ sessionId: 'sess-2' }), signature, SECRET));
+    assert.ok(!signatureMatches(body({ sessionId: 'sess-2' }), signature, [SECRET]));
   });
 
   test('refuses a digest of the wrong length', () => {
-    assert.ok(!signatureMatches(body(), 'sha256=abcd', SECRET));
+    assert.ok(!signatureMatches(body(), 'sha256=abcd', [SECRET]));
   });
 
   test('refuses a signature with no algorithm named', () => {
     const bare = sign(body(), SECRET).replace('sha256=', '');
-    assert.ok(!signatureMatches(body(), bare, SECRET));
+    assert.ok(!signatureMatches(body(), bare, [SECRET]));
   });
 
   test('refuses an empty signature', () => {
-    assert.ok(!signatureMatches(body(), '', SECRET));
+    assert.ok(!signatureMatches(body(), '', [SECRET]));
+  });
+
+  test('accepts either secret of a list, whichever way round it is written', () => {
+    const text = body();
+    for (const secrets of [
+      [SECRET, NEXT_SECRET],
+      [NEXT_SECRET, SECRET],
+    ]) {
+      assert.ok(signatureMatches(text, sign(text, SECRET), secrets));
+      assert.ok(signatureMatches(text, sign(text, NEXT_SECRET), secrets));
+    }
+  });
+
+  test('refuses a secret no entry in the list holds', () => {
+    const text = body();
+    assert.ok(!signatureMatches(text, sign(text, 'a-third-secret'), [SECRET, NEXT_SECRET]));
+  });
+
+  test('refuses everything against an empty list', () => {
+    const text = body();
+    assert.ok(!signatureMatches(text, sign(text, SECRET), []));
+  });
+
+  test('tries every secret even after one matches, so the time names none', () => {
+    // The property under test is that the loop never stops early, and only
+    // timing shows that directly. A number instead of a string makes
+    // createHmac throw, so a second entry the loop reaches is a thrown error
+    // and a second entry it skips is a quiet `true`. The cast is the whole
+    // trick: no caller may pass this, and every caller is typed against it.
+    const reached = [SECRET, 42 as unknown as string];
+    const text = body();
+    assert.throws(() => signatureMatches(text, sign(text, SECRET), reached), {
+      name: 'TypeError',
+    });
   });
 });
 
@@ -92,7 +128,7 @@ describe('receiving a delivery', { skip: url ? false : 'DATABASE_URL_TEST is uns
       deliveryId: 'delivery-1',
       body: text,
       signature: sign(text, SECRET),
-      secret: SECRET,
+      secrets: [SECRET],
       ...over,
     };
   }
@@ -168,12 +204,60 @@ describe('receiving a delivery', { skip: url ? false : 'DATABASE_URL_TEST is uns
   });
 
   test('refuses everything when the receiver holds no secret', async () => {
-    for (const secret of [undefined, '', '   ']) {
-      const result = await receive(client, delivery({ secret }));
-      assert.equal(!result.ok && result.refusal, 'no-secret');
+    for (const secrets of [[], [''], ['   '], ['', '   ']]) {
+      const result = await receive(client, delivery({ secrets }));
+      assert.equal(!result.ok && result.refusal, 'no-secret', `${JSON.stringify(secrets)}`);
       assert.equal(statusFor(result), 503);
     }
     assert.equal((await stored()).length, 0);
+  });
+
+  test('stores a delivery signed with either secret of a rotation', async () => {
+    const both = [SECRET, NEXT_SECRET];
+
+    const old = await receive(client, delivery({ secrets: both }));
+    assert.equal(old.ok && old.stored, true, 'the old secret was refused');
+
+    const text = body();
+    const fresh = await receive(
+      client,
+      delivery({
+        deliveryId: 'delivery-2',
+        body: text,
+        signature: sign(text, NEXT_SECRET),
+        secrets: both,
+      }),
+    );
+    assert.equal(fresh.ok && fresh.stored, true, 'the new secret was refused');
+    assert.equal((await stored()).length, 2);
+  });
+
+  test('refuses a delivery signed with neither secret of a rotation', async () => {
+    const text = body();
+    const result = await receive(
+      client,
+      delivery({
+        body: text,
+        signature: sign(text, 'a-third-secret'),
+        secrets: [SECRET, NEXT_SECRET],
+      }),
+    );
+    assert.equal(!result.ok && result.refusal, 'bad-signature');
+    assert.equal(statusFor(result), 401);
+    assert.equal((await stored()).length, 0);
+  });
+
+  test('an empty entry beside a real secret authenticates nothing', async () => {
+    const text = body();
+    const result = await receive(
+      client,
+      delivery({ body: text, signature: sign(text, ''), secrets: ['', SECRET] }),
+    );
+    assert.equal(!result.ok && result.refusal, 'bad-signature');
+    assert.equal((await stored()).length, 0);
+
+    const real = await receive(client, delivery({ secrets: ['', SECRET] }));
+    assert.equal(real.ok && real.stored, true, 'the real secret was lost beside the empty one');
   });
 
   test('refuses a body that is not JSON', async () => {

@@ -1,7 +1,7 @@
 # Where KPA's secrets live
 
-Written for KPA-16, extended for KPA-70, and checked on the Mac on 3 September
-2026.
+Written for KPA-16, extended for KPA-70, KPA-137 and KPA-138, and checked on
+the Mac on 3 September 2026.
 
 **History is permanent.** A repository that carried a key once carries it
 forever, whatever a later commit removes. So no value ever enters this
@@ -143,7 +143,7 @@ $ grep -c '^NABIUM_WEBHOOK_SECRET=' ~/.config/kpa/env
 
 ### Making one
 
-`receive` checks that the secret is not empty and checks nothing else, so
+`receive` checks that each secret is not empty and checks nothing else, so
 length is a choice rather than a rule. Thirty-two bytes matches every other key
 here:
 
@@ -156,39 +156,39 @@ receiver's environment. Never in this repository.
 
 ### Rotating one
 
-**The receiver holds one secret, so a rotation has a window.** `receive` in
-`src/webhooks/receive.ts` takes a single `secret`, `signatureMatches` compares
-against that one, and the route reads a single variable. Nothing accepts an old
-secret and a new one together. A delivery signed with the secret the receiver
-no longer holds earns 401 and is not stored.
+**The receiver holds every secret the variable names**, so a rotation drops
+nothing. `NABIUM_WEBHOOK_SECRET` carries one secret or two, separated by a
+comma, and `receive` in `src/webhooks/receive.ts` accepts a signature matching
+any of them. No base64 secret contains a comma, so the separator cannot cut one
+in half. KPA-138 built this on 3 September 2026.
 
-**ADR-0013 records that nabium does not retry**, so a delivery lost in the
-window stays lost until somebody re-posts it. Two facts close the window to
-nothing.
+The procedure:
 
-Nabium posts when a meeting session is ready, so a rotation run while no
-meeting is running loses nothing. That is the whole trick, and it is the only
-one this code supports.
+1. **Add the new secret.** Make it with the command above. Set
+   `NABIUM_WEBHOOK_SECRET` to both values, the old one first, separated by a
+   comma: `OLD,NEW`. Restart the receiver. It now accepts either.
+2. **Move nabium across.** Set the new value alone on nabium. Prove it with the
+   signed request below.
+3. **Drop the old secret.** Set `NABIUM_WEBHOOK_SECRET` to the new value alone.
+   Restart the receiver.
+
+Restart after each change to the variable. The handler reads `process.env` on
+every request, and the process reads its environment once at startup.
+
+No step depends on the minute you run it. A delivery arriving at any point in
+the rotation is signed with a secret the receiver holds, so a meeting may run
+throughout. **ADR-0013 records that nabium does not retry**, which is why the
+old procedure asked you to pick the right minute.
+
+A space after the comma is safe. The route trims each entry, so `OLD, NEW`
+holds two secrets and neither carries a space.
+
+An empty entry is not a secret. `,,` and an empty variable both leave the
+receiver holding nothing, and it answers 503.
 
 A delivery re-posted with its original delivery id is safe. `receive` writes
 `ON CONFLICT (source, delivery_id) DO NOTHING`, so a repeat stores once whether
 or not the first attempt arrived.
-
-The procedure:
-
-1. Make the new secret with the command above.
-2. Confirm no meeting is running, and none is about to end.
-3. Set the new value on nabium, and in the receiver's environment.
-4. Restart the receiver. The handler reads `process.env` on every request, so
-   the restart is what loads the changed file.
-5. Prove the new secret with the signed request below.
-6. Re-post any delivery from the window, keeping its original delivery id.
-
-**A receiver holding two secrets would remove the window**, and no such code
-exists. `receive` would have to take a list and try each, and the rotation
-would then be: add the new secret, move nabium across, drop the old one. That
-is a change to `src/webhooks/receive.ts` and to its route, and nobody has
-written it.
 
 ### Proving the new secret
 
@@ -405,7 +405,7 @@ finding a key and assuming it still works.
 | Key | Where to change it | What it costs |
 |---|---|---|
 | A database password | `ALTER ROLE kpa PASSWORD ...` on amaterasu | A restart |
-| `NABIUM_WEBHOOK_SECRET` | Both sides, by *Rotating one* above | A delivery, if a meeting ends mid-rotation |
+| `NABIUM_WEBHOOK_SECRET` | Both sides, by *Rotating one* above | A restart |
 | `VOYAGE_API_KEY` | Revoke and reissue at `dash.voyageai.com` | Whatever the old key was billed |
 | `KPA_SECRET_KEY` | A new `openssl rand -base64 32` | Every stored credential, retyped |
 | `REUI_LICENSE_KEY` | Reissue at `reui.io` | A premium block install |
