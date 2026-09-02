@@ -11,7 +11,6 @@ import { Badge } from "@/components/reui/badge"
 
 import { cn } from "@/lib/utils"
 import { useReview } from "@/lib/review-context"
-import { useSpace } from "@/lib/space-context"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +33,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useAudit } from "@/lib/audit-context"
+import { useMeetings } from "@/lib/meetings-context"
+import { isProposed, isStale } from "@/lib/review-state"
 import { useNeedsYou } from "@/lib/needs-you-context"
 import { navMain, type NavChild, type NavItem } from "./data"
 import { ChevronRightIcon } from "lucide-react"
@@ -292,23 +293,28 @@ export function NavGroup({
 }
 
 export function NavMain() {
-  const { space } = useSpace()
-  const { facts } = useReview()
-  const { items, status } = useNeedsYou()
+  const { items, status: needsStatus } = useNeedsYou()
+  const { facts, status: reviewStatus } = useReview()
+  const { meetings, status: meetingsStatus } = useMeetings()
   const { entries, status: auditStatus } = useAudit()
-  const denied =
-    auditStatus === "ready"
-      ? entries.filter((entry) => entry.outcome === "denied").length
-      : null
+
+  // Each count waits for its own read and for no other. Every read already
+  // narrowed by space in SQL, so nothing is narrowed again here.
+  const once = (status: string, n: number) => (status === "ready" ? n : null)
+
   return (
     <NavGroup
       label="Assistant"
-      items={navMain(
-        space,
-        facts,
-        status === "ready" ? items.length : null,
-        denied
-      )}
+      items={navMain({
+        needsYou: once(needsStatus, items.length),
+        proposed: once(reviewStatus, facts.filter(isProposed).length),
+        stale: once(reviewStatus, facts.filter(isStale).length),
+        meetings: once(meetingsStatus, meetings.length),
+        denied: once(
+          auditStatus,
+          entries.filter((entry) => entry.outcome === "denied").length
+        ),
+      })}
     />
   )
 }

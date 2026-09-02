@@ -10,17 +10,22 @@ import { Suspense } from "react";
 import { QueuePage } from "@/components/queue-page";
 import { StaleFacts } from "@/components/dashboard/stale-facts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TODAY } from "@/lib/fixtures";
-import { useForcedStatus } from "@/lib/forced-state";
+import { useForcedState } from "@/lib/forced-state";
 import { useReview } from "@/lib/review-context";
 import { isStale } from "@/lib/review-state";
-import { inSpace, useSpace } from "@/lib/space-context";
 
 function Stale() {
-  const { space } = useSpace();
-  const status = useForcedStatus();
-  const { facts, reconfirm } = useReview();
-  const stale = inSpace(facts, space).filter(isStale);
+  // The day comes back with the rows. A fact is on this page because a date
+  // passed, so "days past review" has to count from the day that decided it,
+  // not from a second opinion the browser forms.
+  const { facts, today, status: live, reconfirm } = useReview();
+  const status = useForcedState() ?? live;
+  // The read narrowed by space in SQL already, through spacesFor, and that
+  // list carries `shared` with every space. Narrowing again here would drop
+  // every shared row, because inSpace keeps one space and discards the rest.
+  // Found in the integration pass on 2 September 2026, by running the two
+  // against one another. ADR-0018.
+  const stale = facts.filter(isStale);
 
   return (
     <QueuePage
@@ -31,7 +36,7 @@ function Stale() {
       emptyTitle="Nothing is going stale"
       emptyDescription="Every fact is inside its review window."
     >
-      <StaleFacts facts={stale} today={TODAY} onReconfirm={reconfirm} />
+      <StaleFacts facts={stale} today={today} onReconfirm={reconfirm} />
     </QueuePage>
   );
 }

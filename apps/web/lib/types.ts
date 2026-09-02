@@ -59,14 +59,32 @@ export interface Fact {
   statement: string;
   state: FactState;
   space: Space;
-  entity: string;
+  /**
+   * The customer, engagement or person this fact concerns. Null until
+   * something resolves one, which migration 010 made the column allow and
+   * ADR-0014 explains. Every screen that groups by entity says what it does
+   * with a row naming none, rather than letting one fall through a template
+   * literal and read as "undefined". KPA-69, carried by KPA-121.
+   */
+  entity: string | null;
   /** ISO date the fact became true. */
   validFrom: string;
   /** ISO date it stopped being true. Null while it still holds. */
   validTo: string | null;
   /** ISO date it falls due for review. The sweep flags, it never retires. */
   staleAfter: string | null;
-  provenance: Provenance;
+  /**
+   * Where the fact came from, when anything records it.
+   *
+   * Optional because a fact's source is a `derived_from` edge rather than a
+   * column, and nothing writes that edge yet: `src/memory/gates.ts` inserts
+   * the node and the fact row alone. A required field here would be a promise
+   * no read could keep, and the two answers to that are worse than the gap.
+   * Dropping a sourceless fact hides a proposed fact nobody would then
+   * confirm, and an empty `sourceId` is the sentinel ADR-0014 argues against.
+   * The panel says so instead. KPA-121.
+   */
+  provenance?: Provenance;
   /** Set when an agent wrote it rather than Shane. */
   generatedByAgent: boolean;
   /** Recorded when Shane rejects it. Kept, never deleted. */

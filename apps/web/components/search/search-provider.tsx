@@ -175,7 +175,7 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
               {matchingFacts.map((fact) => (
                 <CommandItem
                   key={fact.id}
-                  value={`${fact.statement} ${fact.entity}`}
+                  value={`${fact.statement} ${fact.entity ?? ""}`}
                   onSelect={() => {
                     close();
                     openPanel({ kind: "fact", factId: fact.id });
@@ -183,9 +183,11 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
                 >
                   <FileTextIcon aria-hidden="true" />
                   <span className="truncate">{fact.statement}</span>
-                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                    {fact.entity}
-                  </span>
+                  {fact.entity && (
+                    <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                      {fact.entity}
+                    </span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

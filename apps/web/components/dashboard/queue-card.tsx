@@ -16,16 +16,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { PageStatus } from "@/lib/forced-state";
 import { cn } from "@/lib/utils";
 
-/** Count rows per engagement, heaviest first. */
-export function byEntity<T extends { entity: string }>(rows: T[]) {
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    counts.set(row.entity, (counts.get(row.entity) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .map(([entity, count]) => ({ entity, count }))
-    .sort((a, b) => b.count - a.count || a.entity.localeCompare(b.entity));
-}
+// The breakdown moved to lib/facts.ts, which renders no JSX, so
+// scripts/check-facts.ts can run it under plain node. `facts.entity` is
+// nullable and nothing resolves it yet -- ADR-0014 -- so a row naming none is
+// the common case, and what it is called is worth a check rather than a
+// template literal falling through to "undefined" on the briefing.
+export { byEntity } from "@/lib/facts";
 
 export function QueueCard({
   title,

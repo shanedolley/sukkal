@@ -19,10 +19,8 @@ import {
   EyeOffIcon,
 } from "lucide-react"
 
-import { CONVERSATIONS, MEETINGS } from "@/lib/fixtures"
-import { inSpace, type SpaceFilter } from "@/lib/space-context"
+import { CONVERSATIONS } from "@/lib/fixtures"
 import { WORKSPACES } from "@/lib/workspaces"
-import type { Fact } from "@/lib/types"
 
 // ── Types ──
 
@@ -125,33 +123,41 @@ export const SPACE_OPTIONS: SpaceOption[] = [
 ]
 
 // ── Nav Main ──
-// Counts follow the space filter, so the sidebar never disagrees with the
-// screen beside it.
+// Every count arrives already narrowed by space, because each read narrows in
+// SQL. Narrowing again here would drop every `shared` row, which is how the
+// integration pass found the same defect on the briefing and both review
+// pages on 2 September 2026. ADR-0018.
+//
+// A count is null while its read has not answered, and the label then carries
+// no number. A confident number beside a spinner is worse than no number, and
+// a queue that reads "(0)" when the read failed is worse still. Each count
+// answers for itself, so one slow read no longer blanks the other two.
 
-export function navMain(
-  space: SpaceFilter,
-  facts: Fact[],
-  /** Open Needs you rows, or null while the read has not answered. The badge
-   *  stays off until it has: a confident number beside a spinner is worse
-   *  than no number. */
-  needsYou: number | null,
-  /** Denied audit entries, or null while the read has not answered. */
-  denied: number | null,
-  known = true
-): NavItem[] {
-  const proposed = inSpace(facts, space).filter(
-    (f) => f.state === "proposed"
-  ).length
-  const stale = inSpace(facts, space).filter((f) => f.state === "stale").length
-  const meetings = inSpace(MEETINGS, space).length
+/** What the sidebar counts, each null until its own read answers. */
+export interface NavCounts {
+  needsYou: number | null
+  proposed: number | null
+  stale: number | null
+  meetings: number | null
+  denied: number | null
+}
 
+/** A label with its count, or the bare label while the read is out. */
+function counted(label: string, count: number | null): string {
+  return count === null ? label : `${label} (${count})`
+}
+
+export function navMain(counts: NavCounts): NavItem[] {
   return [
     {
       id: "dashboard",
       label: "Briefing",
       href: "/dashboard",
       icon: <LayoutDashboardIcon aria-hidden="true" />,
-      badge: needsYou !== null && needsYou > 0 ? needsYou : undefined,
+      badge:
+        counts.needsYou !== null && counts.needsYou > 0
+          ? counts.needsYou
+          : undefined,
     },
     {
       id: "review",
@@ -160,17 +166,17 @@ export function navMain(
       children: [
         {
           id: "proposed",
-          label: known ? `Proposed facts (${proposed})` : "Proposed facts",
+          label: counted("Proposed facts", counts.proposed),
           href: "/review/proposed",
         },
         {
           id: "stale",
-          label: known ? `Stale facts (${stale})` : "Stale facts",
+          label: counted("Stale facts", counts.stale),
           href: "/review/stale",
         },
         {
           id: "meetings",
-          label: known ? `Meetings today (${meetings})` : "Meetings today",
+          label: counted("Meetings today", counts.meetings),
           href: "/meetings",
         },
       ],
@@ -193,7 +199,8 @@ export function navMain(
       label: "Audit log",
       href: "/audit",
       icon: <ShieldCheckIcon aria-hidden="true" />,
-      badge: denied !== null && denied > 0 ? denied : undefined,
+      badge:
+        counts.denied !== null && counts.denied > 0 ? counts.denied : undefined,
     },
   ]
 }

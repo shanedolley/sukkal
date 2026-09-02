@@ -11,16 +11,21 @@ import { Suspense } from "react";
 import { ProposedFacts } from "@/components/dashboard/proposed-facts";
 import { QueuePage } from "@/components/queue-page";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useForcedStatus } from "@/lib/forced-state";
+import { useForcedState } from "@/lib/forced-state";
 import { useReview } from "@/lib/review-context";
 import { isProposed } from "@/lib/review-state";
-import { inSpace, useSpace } from "@/lib/space-context";
 
 function Proposed() {
-  const { space } = useSpace();
-  const status = useForcedStatus();
-  const { facts, accept, reject } = useReview();
-  const proposed = inSpace(facts, space).filter(isProposed);
+  const { facts, status: live, accept, reject } = useReview();
+  // The page reads a database now, so it reports what actually happened.
+  // ?state= still forces a state for review, and forcing one wins.
+  const status = useForcedState() ?? live;
+  // The read narrowed by space in SQL already, through spacesFor, and that
+  // list carries `shared` with every space. Narrowing again here would drop
+  // every shared row, because inSpace keeps one space and discards the rest.
+  // Found in the integration pass on 2 September 2026, by running the two
+  // against one another. ADR-0018.
+  const proposed = facts.filter(isProposed);
 
   return (
     <QueuePage

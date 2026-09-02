@@ -156,6 +156,15 @@ that reason and `apps/web/lib/db.ts` calls it with its own registry. Without
 that call a source dated 19 August read as the 18th from Sydney, which is how
 this was found on 2 September 2026. KPA-68 leaves one copy and ends it.
 
+**A read that narrows in SQL is never narrowed again in the browser.**
+`spacesFor` in `apps/web/lib/space.ts` carries `shared` with every space, so
+the SQL returns it. `inSpace` keeps one space and discards the rest, so calling
+it on rows the SQL already narrowed drops every `shared` row. The screen then
+shows fewer rows than the query returned, and nothing fails. Found on
+2 September 2026 in an integration pass, on the briefing, both review pages and
+the sidebar at once, after an agent had warned about the same shape on its own
+screen. ADR-0018.
+
 **A cross-package import from `apps/web` names the `.ts` extension.**
 `../../../src/db/connect.ts`, not `../../../src/db/connect`. Turbopack
 resolves either, and `node --experimental-strip-types` resolves only the

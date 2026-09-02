@@ -10,6 +10,7 @@
 
 import { Badge } from "@/components/reui/badge";
 import { useDetailPanel } from "@/components/detail-panel";
+import { NO_ENTITY } from "@/lib/facts";
 import { formatDay } from "@/lib/format";
 import { findSource } from "@/lib/fixtures";
 import { FACT_STATE_LABELS, SPACE_LABELS, type Fact, type FactState } from "@/lib/types";
@@ -45,7 +46,10 @@ export function FactCard({
   children?: React.ReactNode;
 }) {
   const { open } = useDetailPanel();
-  const source = findSource(fact.provenance.sourceId);
+  // A fact carries a source only when a derived_from edge names one. Nothing
+  // writes that edge yet, so the card has to read without it.
+  const provenance = fact.provenance;
+  const source = provenance ? findSource(provenance.sourceId) : undefined;
 
   return (
     <li className="border-border/70 hover:border-border hover:bg-muted/30 relative flex flex-col gap-3 rounded-lg border p-3 transition-colors">
@@ -54,7 +58,11 @@ export function FactCard({
         <Badge variant="outline" size="sm">
           {SPACE_LABELS[fact.space]}
         </Badge>
-        <span className="text-muted-foreground text-xs">{fact.entity}</span>
+        {/* A fact naming no entity says so. Rendering the null leaves a gap
+            beside the space badge that reads as a card that failed to draw. */}
+        <span className="text-muted-foreground text-xs">
+          {fact.entity ?? NO_ENTITY}
+        </span>
         {fact.generatedByAgent && (
           <span className="text-muted-foreground text-xs">
             &middot; written by an agent
@@ -99,7 +107,7 @@ export function FactCard({
       )}
 
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
-        {source ? (
+        {source && provenance ? (
           // KPA-42. The provenance opens the same drawer a citation opens, on
           // the chunk this fact came from. It sits above the statement's
           // overlay, so it takes the click rather than passing it on.
@@ -108,8 +116,8 @@ export function FactCard({
             onClick={() =>
               open({
                 kind: "source",
-                sourceId: fact.provenance.sourceId,
-                chunkId: fact.provenance.chunkId,
+                sourceId: provenance.sourceId,
+                chunkId: provenance.chunkId,
               })
             }
             className="text-muted-foreground hover:text-foreground focus-visible:ring-ring max-w-full truncate rounded-sm text-xs underline decoration-dotted underline-offset-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"

@@ -45,8 +45,16 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { findAudit } from "@/lib/fixtures";
+import { NO_ENTITY } from "@/lib/facts";
 import { useNeedsYou } from "@/lib/needs-you-context";
-import { formatDay, formatFullDay, formatStamp } from "@/lib/format";
+import {
+  formatDay,
+  formatFullDay,
+  formatLongDay,
+  formatStamp,
+  formatTime,
+} from "@/lib/format";
+import type { MeetingItem } from "@/lib/meetings";
 import { useReview } from "@/lib/review-context";
 import { movesFor } from "@/lib/review-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,7 +72,13 @@ import { cn } from "@/lib/utils";
 export type DetailTarget =
   | { kind: "source"; sourceId: string; chunkId?: string }
   | { kind: "fact"; factId: string }
-  | { kind: "needsYou"; itemId: string };
+  | { kind: "needsYou"; itemId: string }
+  // A meeting travels whole rather than by id, unlike the three above. A fact
+  // is resolved on every render because a decision taken inside the panel
+  // changes it; a meeting is a calendar row nothing here edits, so the row
+  // the list already holds is the row to show. It also keeps the panel out of
+  // the meetings read, which only the pages that list them need.
+  | { kind: "meeting"; meeting: MeetingItem };
 
 interface DetailPanelValue {
   open: (target: DetailTarget) => void;
@@ -238,13 +252,15 @@ function OriginView({
       <p className="text-muted-foreground text-xs">{source.author}</p>
 
       {/* A derived_from edge written before chunking names no passage, and so
-          does a source nothing has chunked. The drawer opens at the top and
-          says which, rather than marking a passage it cannot find. */}
+          does a source nothing has chunked. A meeting names none either: it
+          opens its whole transcript rather than one line of it. The drawer
+          opens at the top and says which, rather than marking a passage it
+          cannot find. */}
       {!passage && (
         <p className="text-muted-foreground text-xs">
           {source.chunks.length === 0
             ? "Nothing has broken this source into passages yet, so it opens at the top."
-            : "This citation names no passage, so the source opens at the top."}
+            : "No passage is marked, so this opens at the top."}
         </p>
       )}
 
@@ -360,7 +376,14 @@ function FactBody({ fact }: { fact: Fact }) {
         </p>
       )}
 
-      <Origin provenance={fact.provenance} />
+      {fact.provenance ? (
+        <Origin provenance={fact.provenance} />
+      ) : (
+        <OriginNote>
+          Nothing recorded where this came from. A fact carries a source once a
+          derived_from edge names one, and nothing writes that edge yet.
+        </OriginNote>
+      )}
 
       {moves.length > 0 && (
         <section className="flex flex-col gap-2 border-t pt-4">
@@ -491,6 +514,39 @@ function NeedsYouBody({ item }: { item: NeedsYouItem }) {
   );
 }
 
+/**
+ * One meeting, and the transcript behind it or the reason there is none.
+ *
+ * A meeting with no transcript is the ordinary case and not a fault. ADR-0013
+ * has nabium push the payload after the meeting ends, so the calendar row
+ * exists for hours before anything transcribes it. The panel says so rather
+ * than opening nothing, which is what the row did before KPA-118.
+ */
+function MeetingBody({ meeting }: { meeting: MeetingItem }) {
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      <dl className="grid grid-cols-2 gap-4">
+        <Field label="Day" value={formatLongDay(meeting.start)} />
+        <Field
+          label="Time"
+          value={`${formatTime(meeting.start)} to ${formatTime(meeting.end)}`}
+        />
+        <Field label="Engagement" value={meeting.engagement} />
+        <Field label="Attendees" value={meeting.attendees.join(", ")} />
+      </dl>
+
+      {meeting.sourceId ? (
+        <Origin provenance={{ sourceId: meeting.sourceId }} />
+      ) : (
+        <OriginNote>
+          Nabium sends the transcript after the meeting ends, and it has not
+          arrived yet. There is nothing to open.
+        </OriginNote>
+      )}
+    </div>
+  );
+}
+
 // ── The provider ─────────────────────────────────────────────────────────
 
 export function DetailPanelProvider({
@@ -515,6 +571,8 @@ export function DetailPanelProvider({
     target?.kind === "needsYou"
       ? needsYou.find((row) => row.id === target.itemId)
       : undefined;
+  // The meeting rides on the target, so there is nothing to look up.
+  const meeting = target?.kind === "meeting" ? target.meeting : undefined;
   // Read here rather than inside SourceBody, because the heading and the
   // badges need the same source the body renders. One read serves both.
   const { source: opened, loading: openingSource } = useSource(
@@ -533,7 +591,9 @@ export function DetailPanelProvider({
         <Badge variant="outline" size="sm">
           {SPACE_LABELS[fact.space]}
         </Badge>
-        <span className="text-muted-foreground text-xs">{fact.entity}</span>
+        <span className="text-muted-foreground text-xs">
+          {fact.entity ?? NO_ENTITY}
+        </span>
       </>
     );
   } else if (item) {
@@ -549,6 +609,22 @@ export function DetailPanelProvider({
         {item.entity && (
           <span className="text-muted-foreground text-xs">{item.entity}</span>
         )}
+      </>
+    );
+  } else if (meeting) {
+    heading = meeting.title;
+    badges = (
+      <>
+        <Badge variant="secondary" size="sm">
+          <UsersIcon className="size-3" aria-hidden="true" />
+          Meeting
+        </Badge>
+        <Badge variant="outline" size="sm">
+          {SPACE_LABELS[meeting.space]}
+        </Badge>
+        <span className="text-muted-foreground text-xs">
+          {meeting.engagement}
+        </span>
       </>
     );
   } else if (source) {
@@ -590,6 +666,7 @@ export function DetailPanelProvider({
 
               {fact && <FactBody fact={fact} />}
               {item && <NeedsYouBody item={item} />}
+              {meeting && <MeetingBody meeting={meeting} />}
               {source && (
                 <SourceBody
                   source={source}

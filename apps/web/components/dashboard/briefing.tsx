@@ -16,27 +16,26 @@ import { Region } from "@/components/dashboard/region";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatLongDay } from "@/lib/format";
-import { MEETINGS, TODAY } from "@/lib/fixtures";
 import { useForcedState, type PageStatus } from "@/lib/forced-state";
 import { NeedsYou } from "@/components/dashboard/needs-you";
+import { useMeetings } from "@/lib/meetings-context";
 import { useNeedsYou } from "@/lib/needs-you-context";
 import { useReview } from "@/lib/review-context";
 import { isProposed, isStale } from "@/lib/review-state";
-import { inSpace, useSpace } from "@/lib/space-context";
 
 export function Briefing() {
-  const { space } = useSpace();
-  const { facts } = useReview();
-  const { items: needsYou, status: live } = useNeedsYou();
+  const { items: needsYou, status: needsLive } = useNeedsYou();
+  const { facts, today, status: reviewLive } = useReview();
+  const { meetings, status: meetingsLive } = useMeetings();
 
-  // Needs you reads the database and reports what happened. The three queue
-  // cards still read fixtures, so nothing about them can fail, and ?state=
-  // remains the only way to see their other states.
+  // Every region reads a database now, so each reports what happened to its
+  // own read rather than sharing one optimistic answer. A card that says a
+  // queue is clear when the read failed is worse than a card that says it
+  // does not know. ?state= still forces, and forcing wins.
   const forced = useForcedState();
-  const needsStatus = forced ?? live;
-  const status = forced ?? "ready";
-
-  const meetings = inSpace(MEETINGS, space);
+  const needsStatus = forced ?? needsLive;
+  const reviewStatus = forced ?? reviewLive;
+  const meetingsStatus = forced ?? meetingsLive;
 
   // The audit log links a denial here, at #needs-you. The region renders only
   // once its read answers, so by then the browser has already looked for that
@@ -47,8 +46,13 @@ export function Briefing() {
     if (window.location.hash !== "#needs-you") return;
     document.getElementById("needs-you")?.scrollIntoView({ block: "start" });
   }, [needsStatus]);
-  const proposed = inSpace(facts, space).filter(isProposed);
-  const stale = inSpace(facts, space).filter(isStale);
+
+  // No second narrow by space. Each read narrowed in SQL through spacesFor,
+  // and that list carries `shared` with every space, so filtering again here
+  // would drop every shared row. Found in the integration pass on 2 September
+  // 2026 by running the two against one another. ADR-0018.
+  const proposed = facts.filter(isProposed);
+  const stale = facts.filter(isStale);
 
   // The summary counts rows, so it has to say something different in each
   // state. A confident number beside a spinner is worse than no number.
@@ -64,7 +68,7 @@ export function Briefing() {
       <header className="bg-background sticky top-12 z-10 -mx-4 flex flex-wrap items-end justify-between gap-3 border-b px-4 py-4 md:-mx-6 md:px-6">
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold tracking-tight">
-            {formatLongDay(TODAY)}
+            {today ? formatLongDay(today) : "Your briefing"}
           </h1>
           <p className="text-muted-foreground text-sm">{summary[needsStatus]}</p>
         </div>
@@ -88,7 +92,7 @@ export function Briefing() {
             href="/review/proposed"
             count={proposed.length}
             breakdown={byEntity(proposed)}
-            status={status}
+            status={reviewStatus}
             emptyLabel="Nothing an agent wrote is waiting for your confirmation."
           />
           <QueueCard
@@ -96,7 +100,7 @@ export function Briefing() {
             href="/review/stale"
             count={stale.length}
             breakdown={byEntity(stale)}
-            status={status}
+            status={reviewStatus}
             tone="warning"
             emptyLabel="Every fact is inside its review window."
           />
@@ -107,7 +111,7 @@ export function Briefing() {
             breakdown={byEntity(
               meetings.map((m) => ({ ...m, entity: m.engagement }))
             )}
-            status={status}
+            status={meetingsStatus}
             emptyLabel="Nothing in the calendar for this space."
           />
         </div>
