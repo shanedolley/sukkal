@@ -10,6 +10,13 @@
 // custom colour is computed in TypeScript, and a copy of that maths inlined
 // here would be a second implementation to keep in step.
 //
+// It reads this browser and never the network, which is why the choice moving
+// to the server in KPA-126 left it alone. A device that has never painted these
+// colours has no cached blob, so the script returns at its second line and the
+// stylesheet's own green shows. The provider then applies what the server said
+// and caches it, so the wrong colour is one paint on one load rather than a
+// flash on every load. ADR-0022 accepts that trade in as many words.
+//
 // It goes through next/script with beforeInteractive rather than a bare
 // <script>. React does not execute a script tag rendered by a component and
 // warns about it; this is the supported way to run something before

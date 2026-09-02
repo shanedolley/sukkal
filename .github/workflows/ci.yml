@@ -69,7 +69,7 @@ jobs:
       # route's cross-package import needs. KPA-68.
       - run: npm ci
 
-      # The sixteen checks under apps/web/scripts. Each proves one rule the
+      # The seventeen checks under apps/web/scripts. Each proves one rule the
       # screens rest on, and each fails when that rule breaks.
       - run: npm run check
         working-directory: apps/web

@@ -11,9 +11,16 @@
 // across the top says how much is left, because a person who cannot see the
 // end of a setup assumes the worst.
 //
-// ponytail: the password is measured and dropped. Nothing hashes it, because
-// nothing can check it: there is no server yet. Send it to the account
-// endpoint when one exists, and keep this screen exactly as it is.
+// The account goes to the server, and the password with it. KPA-126 moved it
+// there: `POST /api/account` hashes the password and writes all four columns in
+// one statement, because `users_the_account_is_whole` refuses a subset.
+//
+// THE WIZARD ASKS FRESH. A browser that already held an account under
+// `kpa.account` is not read here, so nothing is pre-filled from it. ADR-0022
+// states the half that follows from ADR-0009: that account carried no password,
+// so it could not sign anybody in and the first boot has to ask again. Whether
+// the three other fields are worth pre-filling for the typing they save is a
+// question nobody has ruled on, so this screen asks for all four.
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -42,9 +49,8 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { setAccount, useAccount } from "@/lib/account";
+import { createAccount, useOwner } from "@/lib/account";
 import { looksLikeEmail } from "@/lib/email";
-import { useIsClient } from "@/lib/local-store";
 import {
   check,
   MARKS_REQUIRED,
@@ -178,9 +184,10 @@ export function SetupWizard() {
   const [suggestions, setSuggestions] = useState(NAMES.slice(0, SHOWN));
   // A box that is already set up. The screen is reachable by address, and
   // walking it again would write over the only account on the installation.
-  const onClient = useIsClient();
-  const existing = useAccount();
+  const { status, account: existing } = useOwner();
   const [overwrite, setOverwrite] = useState(false);
+  // What the server said when it refused the write.
+  const [writeFault, setWriteFault] = useState("");
   // Picking a name leaves the cursor on the button that was clicked, where
   // the return key does nothing. It belongs back in the box, so the next
   // press moves the step on.
@@ -225,7 +232,7 @@ export function SetupWizard() {
     setStage("building");
   }
 
-  if (onClient && existing && !overwrite && stage === "asking") {
+  if (status === "ready" && existing && !overwrite && stage === "asking") {
     return (
       <Card className="w-full max-w-lg gap-0 overflow-hidden p-0 shadow-sm">
         <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center sm:px-10">
@@ -263,12 +270,26 @@ export function SetupWizard() {
         onDone={() => {
           // The account is written when the box that holds it is ready, so a
           // half-built installation never reads as a finished one.
-          setAccount({
+          createAccount({
             name: name.trim(),
             email: email.trim(),
             assistant: assistant.trim(),
-          });
-          setStage("done");
+            password,
+          })
+            .then(() => setStage("done"))
+            .catch((cause: unknown) => {
+              // Back to the last question, with the reason above it. Saying
+              // the box is ready when no account reached it would send
+              // somebody to a briefing the layout bounces them out of.
+              console.error("account:", cause);
+              setWriteFault(
+                cause instanceof Error
+                  ? cause.message
+                  : "The account was not written."
+              );
+              setAt(STEPS.length - 1);
+              setStage("asking");
+            });
         }}
       />
     );
@@ -321,6 +342,11 @@ export function SetupWizard() {
             </div>
           </div>
           <Rail at={at} />
+          {writeFault && (
+            <p className="text-destructive text-sm" role="alert">
+              {writeFault}
+            </p>
+          )}
         </div>
 
         <CardContent className="p-0">
@@ -597,8 +623,9 @@ export function SetupWizard() {
       </Card>
 
       <p className="text-muted-foreground mx-auto max-w-lg text-center text-xs text-pretty">
-        Everything here stays on this installation. The password is measured on
-        this screen and kept nowhere, because no server exists yet to hold it.
+        Everything here stays on this installation. The password is hashed on
+        the server and stored only as that hash, so nothing here or there ever
+        holds the password itself.
       </p>
     </div>
   );

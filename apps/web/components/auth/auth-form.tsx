@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { EyeIcon, EyeOffIcon, KeyRoundIcon } from "lucide-react";
 
 import { AuthCard } from "@/components/auth/auth-card";
-import { useAccount } from "@/lib/account";
+import { useOwner } from "@/lib/account";
 import { looksLikeEmail } from "@/lib/email";
 import { check, PASSWORD_MINIMUM, passes } from "@/lib/password";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,12 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   // Nothing here authenticates anybody, and nothing writes an account. So a
   // box nobody has set up has nowhere to send them but the setup screen,
   // which is where the application itself sends them.
-  const configured = useAccount() !== null;
+  //
+  // A read still out or a read that failed sends them to the briefing. The app
+  // layout gates that door on its own read, so a box with no account still
+  // ends at the wizard, one redirect later.
+  const { account } = useOwner();
+  const configured = account !== null;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

@@ -183,17 +183,18 @@ export function customChart(hex: string): Preset {
   };
 }
 
-export const ACCENT_KEY = "kpa.accent";
-export const CHARTS_KEY = "kpa.charts";
 /**
  * The resolved tokens for the current selection, written by the provider and
  * read by the bootstrap script. One key so the script needs no preset table
  * and no colour maths of its own.
+ *
+ * The last key here. ADR-0022 moved the four the selection is made of to the
+ * server, because an accent is a person's taste and should follow them to a
+ * second device. This one stays, because the bootstrap script reads it before
+ * React runs and a theme read from the network flashes. It is a cache of a
+ * decision held elsewhere rather than the decision itself.
  */
 export const RESOLVED_KEY = "kpa.appearance";
-
-export const ACCENT_HEX_KEY = "kpa.accent.hex";
-export const CHARTS_HEX_KEY = "kpa.charts.hex";
 
 /** Every property any preset can set, so a change clears the last one. */
 const ALL_KEYS = [
@@ -211,6 +212,44 @@ export interface Selection {
   chartsId: string;
   accentHex: string;
   chartsHex: string;
+}
+
+/** The green the stylesheet already paints, and the hex behind it. What a box
+ *  shows before anybody opens the settings screen. */
+export const DEFAULT_HEX = "#0d6b45";
+
+export const DEFAULT_SELECTION: Selection = {
+  accentId: "green",
+  chartsId: "greens",
+  accentHex: DEFAULT_HEX,
+  chartsHex: DEFAULT_HEX,
+};
+
+/** Six hex digits with a leading hash, which is what a colour input gives. */
+const isHex = (value: unknown) =>
+  typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+
+const isPresetId = (presets: Preset[], id: unknown) =>
+  typeof id === "string" &&
+  (id === "custom" || presets.some((preset) => preset.id === id));
+
+/**
+ * Whether something is a selection this build can paint.
+ *
+ * Two callers, and both read a value this code did not write. The route reads
+ * a request body, and the provider reads what the route answered. A preset id
+ * this build no longer offers therefore reads as no selection at all, and the
+ * caller falls back to the default rather than painting nothing.
+ */
+export function isSelection(value: unknown): value is Selection {
+  if (value === null || typeof value !== "object") return false;
+  const read = value as Record<string, unknown>;
+  return (
+    isPresetId(ACCENTS, read["accentId"]) &&
+    isPresetId(CHART_PALETTES, read["chartsId"]) &&
+    isHex(read["accentHex"]) &&
+    isHex(read["chartsHex"])
+  );
 }
 
 /** Everything a selection sets, in both themes. */
@@ -236,8 +275,22 @@ export function resolveAppearance(selection: Selection): {
   return { light, dark };
 }
 
+/**
+ * What `applyAppearance` writes to.
+ *
+ * `HTMLElement` in all but name, and named structurally so this module needs
+ * no DOM. `lib/owner.ts` imports the validator above and runs on the server,
+ * where `HTMLElement` is a type nothing declares.
+ */
+export interface StyleTarget {
+  style: {
+    setProperty: (name: string, value: string) => void;
+    removeProperty: (name: string) => void;
+  };
+}
+
 export function applyAppearance(
-  root: HTMLElement,
+  root: StyleTarget,
   selection: Selection,
   isDark: boolean
 ) {

@@ -3,8 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { useAccount } from "@/lib/account";
-import { useIsClient } from "@/lib/local-store";
+import { useOwner } from "@/lib/account";
 import { AppShell } from "@/components/blocks/app-shell-1/components/app-shell";
 import { DetailPanelProvider } from "@/components/detail-panel";
 import { SearchProvider } from "@/components/search/search-provider";
@@ -54,13 +53,14 @@ function crumbFor(pathname: string): string[] {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  // The account is read from localStorage, which the server cannot see. Until
-  // the browser has taken over, every render says "no account", so a gate
-  // that trusted it would throw a person who set this box up months ago back
-  // into the setup screen on every reload.
-  const ready = useIsClient();
-  const configured = useAccount() !== null;
-  const firstBoot = ready && !configured;
+  // The account is read from the server now, so the gate waits for an answer.
+  // Neither of the other two statuses may open it. "loading" is every render
+  // before the read lands, and a gate that trusted it would throw a person who
+  // set this box up months ago back into the setup screen on every reload.
+  // "error" is a database that did not answer, and sending that person to the
+  // wizard would invite them to write over the account they already have.
+  const { status, account } = useOwner();
+  const firstBoot = status === "ready" && account === null;
 
   // The first boot. Nobody has set this box up, so every screen behind the
   // door leads back to the one that asks who you are.

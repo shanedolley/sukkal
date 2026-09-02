@@ -67,13 +67,16 @@ export default function SettingsPage() {
     charts,
     accentHex,
     chartsHex,
+    ready: colours,
     setAccent,
     setCharts,
     setAccentHex,
     setChartsHex,
   } = useAppearance();
   const modifier = useModifierKey();
-  // Nothing reads as selected until the browser is in charge of the answer.
+  // The theme and the space live in this browser, so nothing reads as selected
+  // until the browser is in charge of the answer. The colours live on the
+  // server and carry their own `ready`.
   const ready = useIsClient();
 
   return (
@@ -81,8 +84,10 @@ export default function SettingsPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold tracking-tight">Preferences</h1>
         <p className="text-muted-foreground text-sm">
-          Everything here lives in this browser and takes effect at once.
-          Nothing needs a rebuild, and nothing reaches the server.
+          Everything here takes effect at once, and nothing needs a rebuild.
+          The colours follow you to any device you sign in from. The theme and
+          the space this browser opens on stay here, because the right theme is
+          the one that suits the room.
         </p>
       </header>
 
@@ -113,7 +118,7 @@ export default function SettingsPage() {
         <ColourPicker
           label="Menu colour"
           presets={ACCENTS}
-          value={ready ? accent : ""}
+          value={colours ? accent : ""}
           onChange={setAccent}
           custom={{
             hex: accentHex,
@@ -131,7 +136,7 @@ export default function SettingsPage() {
           <ColourPicker
             label="Chart colours"
             presets={CHART_PALETTES}
-            value={ready ? charts : ""}
+            value={colours ? charts : ""}
             onChange={setCharts}
             custom={{
               hex: chartsHex,

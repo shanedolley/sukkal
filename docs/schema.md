@@ -343,6 +343,7 @@ it, because an `accounts` table would give one person two masters and every
 | `assistant_name` | What the assistant is called |
 | `password_hash` | What `src/auth/password.ts` wrote, in the PHC string format |
 | `created_at` | When the account was made, which is not when the row appeared |
+| `appearance` | The accent and chart colours the owner picked. Null until they pick one |
 
 **All four are null, or none of them are.** `users_the_account_is_whole` says
 so with `num_nonnulls`. A hash with no email signs nobody in, and an email with
@@ -396,6 +397,33 @@ holds a name, an email, an assistant name and a created date, and no password.
 An account carried across would arrive without the one field that signs anybody
 in, so the wizard runs regardless. ADR-0022 records that as a consequence of
 ADR-0009 rather than a preference.
+
+**The colours the owner picked are one `jsonb` column, not four.** Migration
+019 adds `appearance`. ADR-0022 rules that an accent belongs to the person
+rather than to the device, so `kpa.accent`, `kpa.accent.hex`, `kpa.charts` and
+`kpa.charts.hex` move here. The three reasons the ADR gives for one column all
+hold: the four values change together, because the settings screen writes them
+from one selection; nothing filters, joins or orders by an accent; and the set
+grows with every preset family added later.
+
+**`appearance` joins no whole-account constraint.**
+`users_the_account_is_whole` counts four columns and this is not one of them,
+so somebody may pick a colour on a box nobody has set up, and an account
+written without a colour is whole.
+
+**The column refuses a number, a string and an array.**
+`users_appearance_is_an_object` names the three shapes that could never carry
+four fields. It stops there rather than naming the fields, because the field
+values are preset ids that live in `apps/web/lib/appearance.ts` and change with
+the presets. `isSelection` in that file is the check that knows them, and the
+route calls it before it writes.
+
+**`kpa.appearance` stays in the browser.** It is the resolved token blob
+`apps/web/components/appearance-bootstrap.tsx` reads before React runs.
+Measured on 3 September 2026: on a load that holds the blob the accent is
+applied 30 to 40 ms before first contentful paint. A device that holds none
+paints the stylesheet's own green once and the right colour from the second
+load, which is the trade ADR-0022 accepts.
 
 ## The workspace and project tree
 
