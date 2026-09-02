@@ -6,8 +6,10 @@ not yet answered.
 **Jira project:** KPA, `koinon.atlassian.net`. Empty as of 23 August 2026. It
 becomes the source of work once this brief settles.
 
-**Last updated:** 3 September 2026, after three parallel rounds: the worker, the
-first real reads and the first write, the policy engine and the audit trail
+**Last updated:** 3 September 2026, after an overnight run of four parallel
+rounds and two solo stories: what leaves the browser, the credential store, the
+account row, the workspace and project tree, and one linter across both
+packages
 
 ---
 
@@ -542,7 +544,7 @@ in every way that matters.
 | Deletes | Never. It retires and supersedes | Ordinarily. A removed connection is gone |
 | Who owns the truth | KPA. A fact is its own | The tracker. ADR-0007 keeps the text there and caches it here |
 | Shape | A graph with time on every node | Plain rows |
-| Today | Ten tables in `migrations/001_core_schema.sql` | No tables. Browser storage and fixtures |
+| Today | Ten tables in `migrations/001_core_schema.sql`, and nine migrations on top | Six tables, and the fixtures every screen still reads |
 
 **They meet in two places, and neither is a data dependency.** The `space`
 filter cuts both, and the sidebar renders the memory's counts beside the
@@ -576,12 +578,17 @@ decision.
 Six things the interface shows have nowhere to live: needs-you items, meetings,
 chat answers, conversations, audit entries, and citations.
 
-**The application data has no schema at all.** Every issue, sprint, workspace,
-project, custom field and connection sits in `apps/web/lib/fixtures.ts` or in
-`localStorage`. Nineteen browser keys hold state, eighteen under `kpa` and one
-`theme` from next-themes. Eight of them belong on a server, and one of those
-eight holds the account. ADR-0022 names every key and says why the other eleven
-stay. Nothing survives a second device, and nothing survives a cleared browser.
+**The application data now has half a schema.** Six tables landed on
+3 September 2026: `connections` and `connection_credentials`, `workspaces` and
+`projects`, `workspace_fields`, and four columns on `users` holding the
+account. The issue cache and the sprints have no table yet, and every screen
+still reads `apps/web/lib/fixtures.ts`. Slice seven is where a table replaces a
+fixture.
+
+Nineteen browser keys held state, eighteen under `kpa` and one `theme` from
+next-themes. Eight belong on a server, and ADR-0022 names every one and says
+why the other eleven stay. The account and the four colour keys have moved.
+Four remain, and KPA-127 carries them.
 
 **The `space` enum keeps its fourth value, and the interface learns it.**
 ADR-0018 settled this on 2 September 2026. `shared` holds how Shane works
@@ -877,14 +884,14 @@ runs down the page, and each slice states what it unblocks.
 | 1. Migrate the memory | The memory model, proved on 19 facts | In progress. KPA-1, 16 of 20 |
 | 2. Draw the interface | Every screen, on fixtures | Done. KPA-35 |
 | 3. Finish the memory schema | The tables and columns the screens need, on top of slice one | Done. KPA-51 |
-| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | Not started. KPA-53, 0 of 10 |
-| 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | In progress. KPA-54, 1 of 9 |
-| 6. Fill the stores | Ingestion into the memory, and a Jira poller into the cache | In progress. KPA-55, 2 of 13 |
-| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-52, 11 of 19 |
+| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | In progress. KPA-53, 7 of 11 |
+| 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | In progress. KPA-54, 4 of 10 |
+| 6. Fill the stores | Ingestion into the memory, and a Jira poller into the cache | In progress. KPA-55, 3 of 14 |
+| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-52, 12 of 20 |
 
 Two capabilities sat outside this order because each is a product in itself.
 Both have started. The agent that acts within policy has its engine and its
-audit trail, KPA-56 at 3 of 6. Retrieval has nothing yet, KPA-57 at 0 of 7. A
+audit trail, KPA-56 at 6 of 7. Retrieval has nothing yet, KPA-57 at 0 of 7. A
 third arrived that no slice named: the installation authenticating its own
 owner, KPA-75 at 1 of 5, which ADR-0009 created and ADR-0020 now carries.
 
@@ -979,3 +986,9 @@ push over the LAN, rather than inventing a second mechanism.
 4. Does the Microsoft card serve a tenant Shane owns? *Every connection the
    product offers* names the contradiction: the catalogue offers Microsoft and
    the brief rules out customer-tenant Graph access.
+5. Where does the Voyage key live? `VOYAGE_API_KEY` and `VOYAGE_PROJECT_ID` are
+   named in `.env.example` and read by no code, measured on 3 September 2026.
+   `apps/web/lib/providers.ts` offers Voyage as a connection instead, whose key
+   the credential store now seals. One key with two homes. If the connection
+   wins, the two variables go; if the environment wins, the card stops offering
+   Voyage.
