@@ -9,15 +9,17 @@
  * This process imports nothing from `apps/web`, and `apps/web` imports
  * nothing from here. The two meet at the database and nowhere else.
  *
- * One job runs today: the backlog over `inbound_deliveries`. Every other
- * scheduled job in the project waits on this file for somewhere to run, and
- * each belongs to the epic whose work it does rather than to this one.
+ * Two jobs run today: the backlog over `inbound_deliveries`, every minute,
+ * and the nightly review in `./nightly.ts`. Every other scheduled job in the
+ * project waits on this file for somewhere to run, and each belongs to the
+ * epic whose work it does rather than to this one.
  */
 import path from 'node:path';
 import { PgBoss } from 'pg-boss';
 import type { ClientBase } from 'pg';
 import { connect, connectionString } from '../db/connect.ts';
 import { backlog, read, runDelivery, type Handler } from './deliveries.ts';
+import { NIGHTLY, NIGHTLY_CRON, schedule as scheduleNightly } from './nightly.ts';
 
 /** Migration 011 creates this. pg-boss owns every table inside it. */
 export const QUEUE_SCHEMA = 'pgboss';
@@ -153,7 +155,11 @@ async function main(): Promise<void> {
 
   await boss.start();
   await register(boss, client, HANDLERS);
-  console.log(`kpa-worker: ${DRAIN} every minute, ${TAKE} on demand`);
+  await scheduleNightly(boss, client);
+  console.log(
+    `kpa-worker: ${DRAIN} every minute, ${TAKE} on demand, ` +
+      `${NIGHTLY} at ${NIGHTLY_CRON}`,
+  );
 
   const stop = async (signal: string): Promise<void> => {
     console.log(`kpa-worker: ${signal}, finishing what is running`);

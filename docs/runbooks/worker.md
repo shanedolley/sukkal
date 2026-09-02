@@ -16,7 +16,7 @@ this process. They meet at the database and nowhere else.
 | Command | `npm run worker` |
 | Reads | `DATABASE_URL`, from `~/.config/kpa/env` |
 | Queue | pg-boss, in the `pgboss` schema of the same database |
-| Jobs today | `deliveries.drain` every minute, and `deliveries.take` on demand |
+| Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, and `nightly.review` at 03:30 Sydney |
 
 ## Before you start it
 
@@ -42,7 +42,7 @@ npm run worker
 It prints the queues it registered. Stop it with Ctrl-C: it takes the signal,
 lets what is running finish, and closes both connections.
 
-## The one job it runs
+## The delivery backlog
 
 `deliveries.drain` reads `inbound_deliveries` for the rows nobody has taken.
 That is `processed_at IS NULL`, ordered by `received_at`, which is the shape of
@@ -90,6 +90,73 @@ in the backlog.
 ```sql
 UPDATE inbound_deliveries SET processed_at = NULL, error = NULL WHERE id = $1;
 ```
+
+## The nightly review
+
+`nightly.review` runs three things at 03:30 Sydney, in `src/worker/nightly.ts`.
+
+1. The staleness sweep, `src/memory/sweep.ts`. It opens one `needs_you` row of
+   kind `deadline` for every live, verified fact past its review date.
+2. The six problems, `src/checks/problems.ts`. They read the vault.
+3. The four advisories, `src/checks/advisories.ts`. They read the database.
+
+The sweep is the only one of the three that writes. It changes no fact state,
+which is ADR-0010: a stale fact is doing its job, and only a source or a human
+retires one.
+
+The run prints one line, and every problem and advisory line after it.
+
+```
+nightly.review: 2026-09-02, 3 stale (1 raised), 0 problems, 4 advisories
+```
+
+**Read the schedule in the queue, not here.** The cron and the timezone are
+rows, so `psql` answers what is registered.
+
+```sql
+SELECT name, cron, timezone FROM pgboss.schedule;
+```
+
+`Australia/Sydney` is the timezone, because the job asks what today is and
+Shane's day is the one it means. `apps/web/lib/format.ts` pins the same zone.
+
+The problems find nothing on amaterasu. They read the Obsidian vault, the vault
+sits on Shane's Mac, and no copy of it reaches the server. The line stays in the
+report so the check runs wherever the vault does.
+
+### Closing a review item without re-confirming the fact
+
+Shane can close a `deadline` item and leave the fact alone. The fact is then
+still stale, so the sweep would open the same item the next night, and every
+night after that.
+
+`SNOOZE_DAYS` in `src/memory/sweep.ts` stops that. The guard reads closed items
+as well as open ones, so a fact keeps quiet for 30 days after its item closes.
+Then it comes back, because a fact nobody dealt with is still owed a review.
+
+Re-confirming needs no snooze. ADR-0017 gives the fact a new `stale_after`, the
+fact stops being stale, and the sweep never selects it.
+
+### When the review fails
+
+The job opens one `needs_you` row of kind `question`, titled *The nightly review
+did not finish*. The reason and the date go in `detail`.
+
+```sql
+SELECT id, detail, raised_at FROM needs_you
+ WHERE title = 'The nightly review did not finish' AND closed_at IS NULL;
+```
+
+One row stands at a time. Closing it lets the next failure open another, which
+is the opposite of the sweep's rule and is deliberate: a job that will not run
+has to keep saying so.
+
+A failure the job cannot write reaches nobody, because the database is what
+broke. pg-boss still records the job, so read `pgboss.job` for the state and the
+output.
+
+The audit table is the better home for this record. KPA-82 builds the audit
+write; route the failure through it once that lands.
 
 ## Under systemd
 

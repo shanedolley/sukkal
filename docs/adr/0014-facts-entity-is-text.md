@@ -53,12 +53,12 @@ story filling it in.
   entity-resolution slice lands and can convert the column to a foreign key
   (or add one alongside it) and migrate the text values already written.
 - `src/memory/sweep.ts` reads `facts.entity` for the `needs_you` row it
-  opens, and `needs_you.entity` stays `NOT NULL`. A fact the sweep finds due
-  for review with no entity set still has nowhere to write, the same gap
-  migration 001 already left for entity resolution generally. Nothing calls
-  `sweep()` outside its own tests, so this gap has nothing live to break
-  today; the resolution slice that fills `facts.entity` closes it before
-  sweep gets a scheduler.
+  opens, so `needs_you.entity` had to follow.
+  `migrations/010_fact_entity.sql` drops its `NOT NULL` in the same story: a
+  due fact naming no entity now opens a row with none, rather than failing
+  the whole insert and losing every other row with it. KPA-85 gave `sweep()`
+  a scheduler on 2 September 2026, before the resolution slice landed, and
+  that nullable column is what let it run.
 - Every existing writer of `facts`, `src/memory/gates.ts`'s insert and each
   test file's, keeps working unchanged: an unlisted nullable column defaults
   to `NULL`.
