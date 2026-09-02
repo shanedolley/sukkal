@@ -51,7 +51,7 @@ export interface NightlyReport {
   /** Live verified facts past their review date. */
   stale: number;
   /** How many of those this run opened a `needs_you` item for. The rest
-   *  already had one, open or closed inside `SNOOZE_DAYS`. */
+   *  already had one for the staleness they carry now, open or closed. */
   raised: number;
   /** `check.py`'s six. Empty on a machine with no vault, which is every
    *  machine but Shane's, so this is empty on amaterasu today. */
@@ -89,10 +89,10 @@ export async function nightly(
  * question is the one that means "this is waiting on you to look". The row
  * names no fact and no source: nothing here is about one fact.
  *
- * Guarded on an open row only, with no snooze. A run that fails every night
- * has to keep saying so, so closing the row lets the next failure re-raise
- * it. That is the opposite of the sweep's rule and it is deliberate: a stale
- * fact Shane dismissed is a decision, a job that will not run is not.
+ * Guarded on an open row only. A run that fails every night has to keep saying
+ * so, so closing the row lets the next failure re-raise it. That is the
+ * opposite of the sweep's rule and it is deliberate: a stale fact Shane
+ * dismissed is a decision, a job that will not run is not.
  *
  * Returns true when it opened one. A failure this cannot write, because the
  * database is what broke, reaches nobody: pg-boss still records the job

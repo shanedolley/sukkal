@@ -21,23 +21,6 @@
 import type { ClientBase } from 'pg';
 import type { Day } from './retire.ts';
 
-/**
- * How long a closed review item keeps its fact quiet.
- *
- * Shane can close a `deadline` item without re-confirming the fact behind it.
- * The fact is still stale, so without this the next night opens the same item
- * again, and the night after that, forever. ADR-0017 fixed the other half of
- * this: a re-confirmed fact gets a new `stale_after` and stops being stale, so
- * that path already goes quiet on its own. This covers the path where nothing
- * about the fact changed.
- *
- * Thirty days rather than never, because never is the failure ADR-0017 names:
- * a memory that quietly decides to stop asking. A fact Shane dismissed without
- * dealing with is a fact still owed a review, so it comes back in a month.
- * One number, changed here, and `docs/runbooks/worker.md` prints it.
- */
-export const SNOOZE_DAYS = 30;
-
 export interface StaleFact {
   id: string;
   path: string;
@@ -45,19 +28,19 @@ export interface StaleFact {
   space: string;
   staleAfter: Day;
   /** True when this run opened a new needs_you item. False when one already
-   *  stands for the fact -- open, or closed inside the last `SNOOZE_DAYS` --
-   *  so the fact is reported and not raised twice. */
+   *  names this staleness -- open or closed -- so the fact is reported and
+   *  not raised twice. */
   raised: boolean;
 }
 
 /**
  * Every live, verified fact past `stale_after` as of `today`, oldest first.
  *
- * Each one gets a `needs_you` row of kind `deadline`, unless an open one
- * already names it. `docs/schema.md`'s four kinds are a draft, a question, a
- * denied action, and a deadline coming; a fact whose review date has passed
- * is that fourth kind; the codebase's own words for this state, "past their
- * review date" and "falls due", are a deadline's words.
+ * Each one gets a `needs_you` row of kind `deadline`, unless a row already
+ * names that staleness. `docs/schema.md`'s four kinds are a draft, a
+ * question, a denied action, and a deadline coming; a fact whose review date
+ * has passed is that fourth kind; the codebase's own words for this state,
+ * "past their review date" and "falls due", are a deadline's words.
  *
  * Three statements. The first closes an item whose fact has stopped being
  * stale. The second lists what is due. The third opens what no item already
@@ -67,12 +50,18 @@ export interface StaleFact {
  * reconciled to ADR-0010 alongside this file. The three now agree, which is
  * what lets KPA-13 diff one report against the vault's.
  *
- * **The guard reads closed items as well as open ones**, inside
- * `SNOOZE_DAYS`. An open item alone would stop two sweeps in one night from
- * opening two rows and nothing more: closing an item without re-confirming
- * the fact left it stale, and the next night raised it again. The snooze is
- * measured from `today`, the argument, so a test holds that day still the way
- * it holds every other date here.
+ * **The guard is an exact match on `raised_for`, and it reads closed items as
+ * well as open ones.** One staleness raises one item, whatever becomes of it,
+ * and the next staleness raises a fresh one the night it arrives. So closing
+ * an item without re-confirming the fact settles that review: the fact
+ * returns when its `stale_after` moves, which is what a re-confirmation or a
+ * hand edit does, and KPA-134 chose that over the thirty day snooze it
+ * replaces. The snooze made a fact reviewed more often than monthly wait out
+ * the difference before it could raise again.
+ *
+ * `raised_for` and `stale_after` are both `date`, and the guard compares them
+ * in SQL. Nothing here parses a calendar date into a `Date`, which is the
+ * conversion that reads a Sydney date a day west.
  *
  * ponytail: two statements against a `NOT EXISTS` guard, not a unique
  * constraint, so two sweeps running at once could each open a row.
@@ -87,17 +76,19 @@ export interface StaleFact {
 export async function sweep(client: ClientBase, today: Day): Promise<StaleFact[]> {
   // An open deadline item whose fact is no longer stale has nothing left to
   // ask, so it closes. Re-confirming moves `stale_after` (ADR-0017) and
-  // retiring sets `valid_to`, and neither closes the item: nothing in the
+  // retiring sets `valid_to`, and neither closes the item: nothing else in the
   // codebase closes a needs_you row, and `apps/web/lib/needs-you.ts` only
-  // reads the open ones. Without this the item stayed open forever, and the
-  // guard below then read it as covering the fact's NEXT staleness too, so a
-  // re-confirmed fact was never raised again. That is worse than the bug the
-  // snooze fixes, and only scheduling the sweep made it reachable.
+  // reads the open ones. Without this the briefing keeps asking Shane to
+  // review a fact he re-confirmed last night, or one he retired.
   //
-  // ponytail: closing here plus the snooze means a fact whose review interval
-  // is under SNOOZE_DAYS waits out the difference before it raises again. The
-  // vault's shortest interval is 41 days, so nothing waits today. Give
-  // needs_you a column naming the staleness it was raised for when one does.
+  // The guard below no longer needs this statement. It did while an open item
+  // stood for the fact rather than for one staleness, because an item left
+  // open forever then read as covering the fact's next staleness too.
+  // `raised_for` names one date, the next staleness is a different date, and
+  // an item nothing closed stops nothing from raising. So this survives for
+  // the screen alone, and `test/sweep.test.ts` is what holds it there: two
+  // tests read the open items after a fact stops being stale, and both fail
+  // if this statement goes.
   await client.query(
     `UPDATE needs_you n SET closed_at = now()
        FROM facts f
@@ -127,22 +118,22 @@ export async function sweep(client: ClientBase, today: Day): Promise<StaleFact[]
   }
 
   const opened = await client.query<{ fact_id: string }>(
-    `INSERT INTO needs_you (kind, title, detail, space, entity, fact_id)
+    `INSERT INTO needs_you (kind, title, detail, space, entity, fact_id, raised_for)
        SELECT 'deadline',
               f.title || ' is due for review',
               'Stale since ' || f.stale_after
                 || '. Re-confirm against current evidence, or retire it.',
-              f.space, f.entity, f.id
+              f.space, f.entity, f.id, f.stale_after
          FROM facts f
         WHERE f.verified IS NOT NULL AND f.stale_after IS NOT NULL
           AND f.stale_after < $1 AND f.valid_to IS NULL
           AND NOT EXISTS (
             SELECT 1 FROM needs_you n
              WHERE n.fact_id = f.id AND n.kind = 'deadline'
-               AND (n.closed_at IS NULL OR n.closed_at >= $1::date - $2::int)
+               AND n.raised_for = f.stale_after
           )
       RETURNING fact_id`,
-    [today, SNOOZE_DAYS],
+    [today],
   );
   const raised = new Set(opened.rows.map((row) => row.fact_id));
 

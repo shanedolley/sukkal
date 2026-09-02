@@ -206,11 +206,19 @@ stale. Nothing else in the codebase closes a row: ADR-0017's re-confirm write
 moves `stale_after` and leaves the item open, and `apps/web/lib/needs-you.ts`
 reads only the open ones.
 
-A closed `deadline` row keeps its fact quiet for `SNOOZE_DAYS`, 30 days.
-Closing an item without re-confirming the fact leaves the fact stale, and
-without the snooze the sweep opened the same item every night after. The snooze
-runs out and the fact comes back, because a fact nobody dealt with is still
-owed a review.
+`raised_for` records the `stale_after` a `deadline` row was raised for, and
+the sweep opens nothing for a staleness a row already names, open or closed.
+So one staleness raises one item, and the next raises a fresh one the night it
+arrives. Closing an item without re-confirming the fact settles that review:
+the fact returns when its `stale_after` moves, which is what re-confirming or
+a hand edit does. The fact still reads stale on the review screen meanwhile,
+because `factState` derives that from the dates and reads no item. Every kind
+but `deadline` holds null here, and
+`needs_you_raised_for_is_a_deadline` keeps it there.
+
+Migration 015 replaced a thirty day snooze with this column. The snooze made a
+fact reviewed more often than monthly wait out the difference before it could
+raise again.
 
 Four kinds wait on Shane: a draft to send, a question to answer, an action the
 policy refused, and a deadline coming. The screen reads them as one list in

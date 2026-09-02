@@ -130,12 +130,15 @@ Shane can close a `deadline` item and leave the fact alone. The fact is then
 still stale, so the sweep would open the same item the next night, and every
 night after that.
 
-`SNOOZE_DAYS` in `src/memory/sweep.ts` stops that. The guard reads closed items
-as well as open ones, so a fact keeps quiet for 30 days after its item closes.
-Then it comes back, because a fact nobody dealt with is still owed a review.
+`needs_you.raised_for` stops that. It records the `stale_after` the item was
+raised for, and the sweep opens nothing for a staleness a row already names,
+open or closed. So closing an item settles that one review, and the fact
+returns the night its `stale_after` moves past. Re-confirming moves it, and so
+does an edit by hand. Nothing else does.
 
-Re-confirming needs no snooze. ADR-0017 gives the fact a new `stale_after`, the
-fact stops being stale, and the sweep never selects it.
+Re-confirming needs no special case. ADR-0017 gives the fact a new
+`stale_after`, the fact stops being stale, and the sweep closes the open item.
+A fresh item opens the night that new date passes, however short the interval.
 
 ### When the review fails
 

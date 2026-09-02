@@ -4,7 +4,7 @@ import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
 import { connect } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
-import { SNOOZE_DAYS, sweep } from '../src/memory/sweep.ts';
+import { sweep } from '../src/memory/sweep.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
@@ -95,20 +95,23 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
       space: string;
       entity: string;
       fact_id: string;
+      raised_for: string | null;
     }>(
-      `SELECT kind, title, detail, space, entity, fact_id
+      `SELECT kind, title, detail, space, entity, fact_id, raised_for
          FROM needs_you WHERE closed_at IS NULL ORDER BY id`,
     );
     return found.rows;
   }
 
-  /** Every row, closed ones included. The guard now reads closed items, so a
-   *  count of the open ones alone would miss a second row opening beside a
-   *  closed one. */
+  /** Every row, closed ones included. The guard reads closed items as well as
+   *  open ones, so a count of the open ones alone would miss a second row
+   *  opening beside a closed one. */
   async function allItems() {
-    const found = await client.query<{ entity: string | null; closed_at: string | null }>(
-      'SELECT entity, closed_at FROM needs_you ORDER BY id',
-    );
+    const found = await client.query<{
+      entity: string | null;
+      closed_at: string | null;
+      raised_for: string | null;
+    }>('SELECT entity, closed_at, raised_for FROM needs_you ORDER BY id');
     return found.rows;
   }
 
@@ -190,6 +193,24 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
     assert.match(opened!.title, /Priya moves teams/);
     assert.match(opened!.detail, /2026-01-31/);
     assert.equal(opened!.fact_id, found!.id);
+    // The staleness the row was raised for, as YYYY-MM-DD text rather than a
+    // Date: connect.ts leaves a date alone, and the guard compares it in SQL.
+    assert.equal(opened!.raised_for, '2026-01-31');
+  });
+
+  test('leaves raised_for null on a row naming no staleness', async () => {
+    // The failure row src/worker/nightly.ts opens is kind question, and
+    // migration 015 constrains every kind but deadline to a null raised_for.
+    await client.query(
+      `INSERT INTO needs_you (kind, title, detail, space)
+       VALUES ('question', 'The nightly review did not finish', 'why', 'shared')`,
+    );
+
+    assert.equal((await openItems())[0]!.raised_for, null);
+    await assert.rejects(
+      () => client.query("UPDATE needs_you SET raised_for = '2026-01-31'"),
+      /needs_you_raised_for_is_a_deadline/,
+    );
   });
 
   test('does not raise a second item for a fact an open one already names', async () => {
@@ -237,11 +258,12 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
   });
 
   // -------------------------------------------------------------------------
-  // An open item outlives the fact's staleness. Nothing in the codebase closes
-  // a needs_you row: ADR-0017's re-confirm write moves stale_after and leaves
-  // the item open, and apps/web reads only the open ones. An item left open
-  // forever reads to the guard below as covering the fact's next staleness
-  // too, so the fact would never be raised again.
+  // An open item outlives the fact's staleness. Nothing else in the codebase
+  // closes a needs_you row: ADR-0017's re-confirm write moves stale_after and
+  // leaves the item open, and apps/web reads only the open ones. So an item
+  // nothing closed sits on the briefing asking Shane to review a fact he has
+  // already dealt with. These two tests are the whole reason the sweep still
+  // runs its closing statement now that raised_for guards the insert.
   // -------------------------------------------------------------------------
   describe('an item whose fact has stopped being stale', () => {
     test('closes, once the fact is re-confirmed', async () => {
@@ -280,12 +302,47 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
       );
       await sweep(client, '2026-08-28');
 
-      // 41 days later, past SNOOZE_DAYS, so the closed item is out of the way.
+      // The night the new stale_after passes. The closed item names
+      // 2026-01-31, this staleness is 2026-10-07, so the guard lets it raise.
       const due = await sweep(client, '2026-10-08');
 
       assert.equal(due[0]!.raised, true, 'a re-confirmed fact must go stale again');
-      assert.equal((await openItems()).length, 1);
+      const items = await openItems();
+      assert.equal(items.length, 1);
+      assert.equal(items[0]!.raised_for, '2026-10-07');
     });
+  });
+
+  test('a fact reviewed every 14 days raises again inside the month', async () => {
+    // The edge the thirty day snooze left, and the reason KPA-134 replaced it
+    // with raised_for. The snooze kept a closed item's fact quiet for 30 days,
+    // so a fact due again on day 15 waited until day 31. The vault's shortest
+    // interval was 41 days when the snooze was written. KPA-133 gave every
+    // fact its own interval, so a shorter one arrives the first time Shane
+    // judges a fact worth reviewing monthly.
+    const INTERVAL = 14;
+    const id = await fact({ path: 'shared/fortnightly.md', staleAfter: '2026-08-13' });
+    await client.query('UPDATE facts SET review_interval = $1 WHERE id = $2', [INTERVAL, id]);
+
+    assert.equal((await sweep(client, '2026-08-27'))[0]!.raised, true);
+
+    // ADR-0017's re-confirm write: today, plus the interval the fact carries.
+    const next = addDays('2026-08-27', INTERVAL);
+    await client.query('UPDATE facts SET verified = $1, stale_after = $2 WHERE id = $3', [
+      '2026-08-27',
+      next,
+      id,
+    ]);
+    assert.deepEqual(await sweep(client, '2026-08-28'), [], 'it is not stale any more');
+    assert.deepEqual(await openItems(), [], 'and the item it raised has closed');
+
+    // Day 15, well inside the 30 days the snooze used to impose.
+    const due = await sweep(client, addDays(next, 1));
+
+    assert.equal(due[0]!.raised, true, 'the new staleness raises the night it arrives');
+    const items = await openItems();
+    assert.equal(items.length, 1);
+    assert.equal(items[0]!.raised_for, next);
   });
 
   // -------------------------------------------------------------------------
@@ -293,20 +350,21 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
   // half: re-confirming moves stale_after, the fact stops being stale, and the
   // sweep never sees it again. This is the half where nothing about the fact
   // changed, and it is the one that used to re-raise the same item forever.
+  // raised_for settles it: the closed item names that staleness, so the guard
+  // reads it whether it is open or closed.
   // -------------------------------------------------------------------------
   describe('a closed item, on a fact nobody re-confirmed', () => {
-    /** The item raised for `path`, closed on `closedOn` rather than now(), so
-     *  the snooze is measured against a date the test chose. */
-    async function close(closedOn: string): Promise<void> {
-      await client.query("UPDATE needs_you SET closed_at = $1 WHERE kind = 'deadline'", [
-        `${closedOn}T09:00:00+10:00`,
-      ]);
+    /** The item raised for the one fact these tests build. `now()` is enough:
+     *  the guard reads raised_for and never reads closed_at, so no test here
+     *  has to choose the day an item closed. */
+    async function close(): Promise<void> {
+      await client.query("UPDATE needs_you SET closed_at = now() WHERE kind = 'deadline'");
     }
 
     test('does not come back the next night', async () => {
       await fact({ path: 'shared/overdue.md', staleAfter: '2026-01-31' });
       await sweep(client, '2026-08-27');
-      await close('2026-08-27');
+      await close();
 
       const second = await sweep(client, '2026-08-28');
 
@@ -314,31 +372,43 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
       assert.equal((await allItems()).length, 1, 'still the one item, still closed');
     });
 
-    test('is still quiet the night before the snooze runs out', async () => {
+    test('stays quiet for as long as the fact sits at the same stale_after', async () => {
       await fact({ path: 'shared/overdue.md', staleAfter: '2026-01-31' });
       await sweep(client, '2026-08-27');
-      await close('2026-08-27');
+      await close();
 
-      const later = await sweep(client, addDays('2026-08-27', SNOOZE_DAYS - 1));
+      const later = await sweep(client, '2027-08-27');
 
-      assert.equal(later[0]!.raised, false);
+      assert.equal(later[0]!.raised, false, 'closing it settled that one review');
+      assert.equal((await allItems()).length, 1);
     });
 
-    test('comes back once the snooze runs out, because the fact is still stale', async () => {
+    test('comes back once the fact falls due at a new date', async () => {
       await fact({ path: 'shared/overdue.md', staleAfter: '2026-01-31' });
       await sweep(client, '2026-08-27');
-      await close('2026-08-27');
+      await close();
+      // Editing stale_after by hand moves the next review and nothing else,
+      // which is what migration 013's comment on review_interval says. The
+      // closed item names 2026-01-31, so this staleness has never been raised.
+      await client.query("UPDATE facts SET stale_after = '2026-08-26' WHERE path = $1", [
+        'shared/overdue.md',
+      ]);
 
-      const later = await sweep(client, addDays('2026-08-27', SNOOZE_DAYS + 1));
+      const later = await sweep(client, '2026-08-28');
 
-      assert.equal(later[0]!.raised, true, 'a fact nobody dealt with is still owed a review');
-      assert.equal((await allItems()).length, 2);
+      assert.equal(later[0]!.raised, true, 'a staleness nothing has raised must raise');
+      const items = await allItems();
+      assert.equal(items.length, 2);
+      assert.deepEqual(
+        items.map((item) => item.raised_for),
+        ['2026-01-31', '2026-08-26'],
+      );
     });
 
-    test('a re-confirmed fact goes quiet without waiting for the snooze', async () => {
+    test('a re-confirmed fact goes quiet, and raises again on the new date', async () => {
       await fact({ path: 'shared/overdue.md', staleAfter: '2026-01-31' });
       await sweep(client, '2026-08-27');
-      await close('2026-08-27');
+      await close();
 
       // What ADR-0017's write does: today, plus the interval the fact carried.
       await client.query(
@@ -347,7 +417,7 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
       );
 
       assert.deepEqual(await sweep(client, '2026-08-28'), [], 'it is not stale any more');
-      // And once it falls due again, past the snooze, it raises a fresh item.
+      // And once it falls due again it raises a fresh item.
       const due = await sweep(client, '2026-10-08');
       assert.equal(due[0]!.raised, true);
     });
