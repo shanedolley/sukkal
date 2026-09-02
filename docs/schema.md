@@ -16,7 +16,7 @@ check constraint here rather than an instruction in a prompt.
 | `users` | One row. Every `owner_id` defaults to it |
 | `sources` | Raw material, verbatim, never edited. Carries the kind, title, date, author and space the drawer shows |
 | `source_chunks` | What gets embedded, with the byte range in `sources.body` a citation opens at |
-| `facts` | One row per note in a space, whatever its `type`, with the dates that retire it and the state it starts in |
+| `facts` | One row per note in a space, whatever its `type`, with the dates that retire it, the state it starts in, and the entity it concerns |
 | `edges` | Typed, directional links between two nodes. A `derived_from` edge may name the chunk as well as the source |
 | `entities` | People, organisations and the like. Created now, populated by a later slice |
 | `tasks` | An inline `- [ ]` from a note, with its due, start and done dates and the original line |
@@ -176,6 +176,29 @@ reason for a failure that has not happened.
 
 ADR-0013 records why nabium sends the payload rather than a trigger, and why a
 webhook is acceptable here where ADR-0008 refused one for Jira.
+
+## The entity a fact concerns
+
+`facts.entity` and `needs_you.entity` are both nullable text, and neither is a
+foreign key into `entities`. ADR-0014 records why.
+
+`entities` exists and holds no rows. The vault's frontmatter carries no entity
+field at all: a note's type, title and tags only imply who it concerns, and
+resolving that is reserved for the slice that ingests a second source of
+people. Eight callers insert a fact today and none names an entity, so a
+`NOT NULL` column would reject every one of them.
+
+**`needs_you.entity` had to follow, and that is the half worth knowing about.**
+It was `NOT NULL` when the queue was built. The sweep reads `facts.entity`
+straight into it, so one due fact naming no entity failed the whole insert and
+the run raised nothing at all. Not a row lost, every row lost, on a job that
+exists so Shane sees what is waiting. A constraint no writer can satisfy is a
+constraint against the product.
+
+Reversing migration 010 leaves `needs_you.entity` nullable rather than
+restoring the constraint, because rows the sweep already raised would violate
+it, and the only ways round that are to invent a value or to delete a review
+item.
 
 ## The frontmatter mapping
 

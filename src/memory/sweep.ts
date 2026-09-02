@@ -37,21 +37,25 @@ export interface StaleFact {
  * already names it. `docs/schema.md`'s four kinds are a draft, a question, a
  * denied action, and a deadline coming; a fact whose review date has passed
  * is that fourth kind; the codebase's own words for this state, "past their
- * review date" and "falls due", are a deadline's words. `facts` carries no
- * `entity` column yet (KPA-51 adds one), so the row's `entity` holds the
- * fact's `title`, the only name the row can give without guessing one.
+ * review date" and "falls due", are a deadline's words.
  *
  * One statement lists what is due; a second opens what is not already open,
  * guarded by its own `NOT EXISTS`, so the same fact never gets a second open
  * item for the same staleness. Both read `stale_after < $1`, matching
- * `factState`'s derivation rather than the `<=` this file's sibling
- * `retire.ts` still uses: that function predates ADR-0010, and a fact whose
- * `stale_after` falls today is not yet stale under the decision this sweep
- * implements.
+ * `factState`'s derivation: a fact whose `stale_after` falls today is not yet
+ * stale. `retire.ts` read `<=` until 2 September 2026, when it was reconciled
+ * to ADR-0010 alongside this file. The three now agree, which is what lets
+ * KPA-13 diff one report against the vault's.
  *
  * ponytail: two statements against a `NOT EXISTS` guard, not a unique
  * constraint, so two sweeps running at once could each open a row. A nightly
  * job never overlaps itself; add the constraint if that stops being true.
+ *
+ * ponytail: `facts.entity` is nullable (ADR-0014; nothing resolves a fact to
+ * one yet), and `needs_you.entity` is not, so a due fact with no entity set
+ * fails this whole statement rather than only that row. Nothing calls
+ * `sweep()` outside a test today, so this has nothing live to break; give the
+ * entity-resolution slice this comment once it schedules the sweep for real.
  */
 export async function sweep(client: ClientBase, today: Day): Promise<StaleFact[]> {
   const due = await client.query<{
@@ -79,7 +83,7 @@ export async function sweep(client: ClientBase, today: Day): Promise<StaleFact[]
               f.title || ' is due for review',
               'Stale since ' || f.stale_after
                 || '. Re-confirm against current evidence, or retire it.',
-              f.space, f.title, f.id
+              f.space, f.entity, f.id
          FROM facts f
         WHERE f.verified IS NOT NULL AND f.stale_after IS NOT NULL
           AND f.stale_after < $1 AND f.valid_to IS NULL

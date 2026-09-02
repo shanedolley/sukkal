@@ -15,7 +15,8 @@ interface Row {
   title: string;
   detail: string;
   space: 'collibra' | 'koinon' | 'personal' | 'shared';
-  entity: string;
+  /** Null until something resolves entities. Migration 010, ADR-0014. */
+  entity: string | null;
   factId?: string | null;
   sourceId?: string | null;
   chunkId?: string | null;
@@ -130,7 +131,12 @@ describe('needs_you', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
   }
 
   describe('a row of any kind', () => {
-    test('carries a title, a detail, a space and an entity as NOT NULL columns', async () => {
+    test('carries a title, a detail, a space and a raised date as NOT NULL columns', async () => {
+      // entity is the exception, and migration 010 made it one. Nothing
+      // resolves an entity yet: the vault's frontmatter carries no such field
+      // and entities holds no rows. Requiring one meant the sweep's insert
+      // failed on the first fact that had none, and one failed insert lost
+      // every review item in that run rather than one. ADR-0014 records it.
       const columns = await client.query<{ column_name: string; is_nullable: string }>(
         `SELECT column_name, is_nullable FROM information_schema.columns
           WHERE table_schema = 'public' AND table_name = 'needs_you'
@@ -139,11 +145,19 @@ describe('needs_you', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
       );
       assert.deepEqual(columns.rows, [
         { column_name: 'detail', is_nullable: 'NO' },
-        { column_name: 'entity', is_nullable: 'NO' },
+        { column_name: 'entity', is_nullable: 'YES' },
         { column_name: 'raised_at', is_nullable: 'NO' },
         { column_name: 'space', is_nullable: 'NO' },
         { column_name: 'title', is_nullable: 'NO' },
       ]);
+    });
+
+    test('may name no entity, because nothing resolves one yet', async () => {
+      const id = await insert({ ...QUESTION, entity: null });
+      const row = await client.query<{ entity: string | null }>(
+        'SELECT entity FROM needs_you WHERE id = $1', [id],
+      );
+      assert.equal(row.rows[0]!.entity, null);
     });
 
     test('may point at neither a fact nor a source', async () => {

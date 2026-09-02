@@ -33,11 +33,16 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
     await client.query("DELETE FROM nodes WHERE kind = 'fact'");
   });
 
-  /** A live fact. Both statements in one transaction, per the node registry. */
+  /** A live fact. Both statements in one transaction, per the node registry.
+   *  `entity` defaults to a name distinct from the title, so a test that does
+   *  not care still gives the needs_you insert, which requires one, a value
+   *  to write -- and proves entity and title are two different columns now,
+   *  not the same value read twice. */
   async function fact(over: {
     path: string;
     title?: string;
     space?: string;
+    entity?: string | null;
     verified?: string | null;
     staleAfter?: string | null;
   }): Promise<string> {
@@ -47,15 +52,16 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
     );
     const id = node.rows[0]!.id;
     await client.query(
-      `INSERT INTO facts (id, path, type, title, description, space, state,
-                          valid_from, verified, verified_by, stale_after)
-       VALUES ($1, $2, 'reference', $3, 'one line', $4, 'proposed',
-               '2026-01-01', $5, $6, $7)`,
+      `INSERT INTO facts (id, path, type, title, description, space, entity,
+                          state, valid_from, verified, verified_by, stale_after)
+       VALUES ($1, $2, 'reference', $3, 'one line', $4, $5, 'proposed',
+               '2026-01-01', $6, $7, $8)`,
       [
         id,
         over.path,
         over.title ?? over.path,
         over.space ?? 'shared',
+        over.entity === undefined ? 'Some Entity' : over.entity,
         over.verified === undefined ? '2026-01-01' : over.verified,
         over.verified === null ? null : 'human:shane',
         over.staleAfter ?? null,
@@ -149,6 +155,7 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
       path: 'shared/overdue.md',
       title: 'Priya moves teams',
       space: 'collibra',
+      entity: 'Priya Shah',
       staleAfter: '2026-01-31',
     });
 
@@ -158,7 +165,10 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
     const [opened] = await openItems();
     assert.equal(opened!.kind, 'deadline');
     assert.equal(opened!.space, 'collibra');
-    assert.equal(opened!.entity, 'Priya moves teams');
+    // entity comes from the fact's own column, not its title: the two differ
+    // here on purpose, so a test that passed on the old title stand-in would
+    // fail this one.
+    assert.equal(opened!.entity, 'Priya Shah');
     assert.match(opened!.title, /Priya moves teams/);
     assert.match(opened!.detail, /2026-01-31/);
     assert.equal(opened!.fact_id, found!.id);
