@@ -158,6 +158,9 @@ async function seed(over: {
   generated?: string | null;
   validFrom?: string;
   staleAfter?: string | null;
+  /** Migration 013's column, named rather than derived. A seed that left it
+   *  out and let the write derive it is the defect KPA-133 removed. */
+  reviewInterval?: number | null;
   verified?: string | null;
 }): Promise<string> {
   const client = await pool.connect();
@@ -169,9 +172,10 @@ async function seed(over: {
     const id = node.rows[0]!.id;
     await client.query(
       `INSERT INTO facts (id, path, type, title, description, space, state,
-                          generated, valid_from, stale_after, verified, verified_by)
-       VALUES ($1, $2, 'reference', $2, $3, 'shared', $4, $5, $6, $7, $8,
-               CASE WHEN $8::date IS NULL THEN NULL ELSE 'human:1' END)`,
+                          generated, valid_from, stale_after, review_interval,
+                          verified, verified_by)
+       VALUES ($1, $2, 'reference', $2, $3, 'shared', $4, $5, $6, $7, $8, $9,
+               CASE WHEN $9::date IS NULL THEN NULL ELSE 'human:1' END)`,
       [
         id,
         over.path,
@@ -180,6 +184,7 @@ async function seed(over: {
         over.generated === undefined ? "2026-01-01" : over.generated,
         over.validFrom ?? "2026-01-01",
         over.staleAfter ?? null,
+        over.reviewInterval ?? null,
         over.verified ?? null,
       ],
     );
@@ -202,9 +207,10 @@ async function stored(id: string) {
     verified: string | null;
     verified_by: string | null;
     stale_after: string | null;
+    review_interval: number | null;
     valid_to: string | null;
   }>(
-    `SELECT state, verified, verified_by, stale_after, valid_to
+    `SELECT state, verified, verified_by, stale_after, review_interval, valid_to
        FROM facts WHERE id = $1`,
     [id],
   );
@@ -329,10 +335,11 @@ try {
 
   // ── Re-confirm moves the review date by the fact's own interval ──
   //
-  // ADR-0017. Generated on 1 January and first due on 15 June is 165 days, so
-  // re-confirming on 2 September falls due on 14 February. The number is the
-  // fact's own, not a horizon every fact shares, which is what keeps a batch
-  // confirmed in one afternoon from falling due in one afternoon.
+  // ADR-0017. The interval is `facts.review_interval`, which migration 013
+  // added. 165 days carried on the row, so re-confirming on 2 September falls
+  // due on 14 February. The number is the fact's own, not a horizon every fact
+  // shares, which is what keeps a batch confirmed in one afternoon from
+  // falling due in one afternoon.
   //
   // 165 rather than a round number on purpose. A ninety-day fixture is the
   // one a fixed ninety-day horizon passes by accident, and it did: this check
@@ -343,6 +350,7 @@ try {
       path: "kpa-122/stale.md",
       generated: "2026-01-01",
       staleAfter: "2026-06-15",
+      reviewInterval: 165,
       verified: "2026-01-01",
     });
     const moved = await writeMove(pool, id, "reconfirm", TODAY, VERIFIER);
@@ -354,6 +362,7 @@ try {
     assert.equal(row.stale_after, "2027-02-14");
     assert.equal(row.valid_to, null, "re-confirm retired the fact");
     assert.equal(row.verified, "2026-01-01", "re-confirm set something other than the date");
+    assert.equal(row.review_interval, 165, "re-confirm moved the interval as well as the date");
 
     // The row must not come back on the next read. This is the whole move.
     const read = await readFacts(pool, "all", TODAY);
@@ -368,6 +377,49 @@ try {
     assert.equal(await writeMove(pool, id, "reconfirm", TODAY, VERIFIER), null);
   }
 
+  // ── The same fact, re-confirmed three times, is granted the same span ──
+  //
+  // This is KPA-133, and it is the whole story. The write used to read the
+  // interval back out of `stale_after` minus `generated`, and it is the write
+  // that moves `stale_after`, so every confirmation measured the span the last
+  // one created. Against that code this fact was granted 41 days, then 285,
+  // then 571: a fact judged to hold for six weeks holding for years, which
+  // ADR-0017 exists to prevent.
+  //
+  // Each re-confirmation happens the day after the last one fell due, because
+  // that is the only day the move is offered. Two of them are years apart in
+  // practice, which is why nothing caught this in use.
+
+  {
+    const id = await seed({
+      path: "kpa-133/three-times.md",
+      generated: "2026-01-01",
+      staleAfter: "2026-02-11",
+      reviewInterval: 41,
+      verified: "2026-01-01",
+    });
+
+    // Each pair is the day the move is made and the day it must fall due:
+    // 41 days later, every time, whatever the row has been through.
+    for (const [today, due] of [
+      ["2026-09-02", "2026-10-13"],
+      ["2026-10-14", "2026-11-24"],
+      ["2026-11-25", "2027-01-05"],
+    ] as const) {
+      const moved = await writeMove(pool, id, "reconfirm", today, VERIFIER);
+      assert.equal(
+        moved?.staleAfter,
+        due,
+        `re-confirming on ${today} granted a span other than the fact's own 41 days`,
+      );
+      assert.equal(
+        (await stored(id)).review_interval,
+        41,
+        `re-confirming on ${today} changed the interval it was supposed to keep`,
+      );
+    }
+  }
+
   // ── A fact with no review date never gets one ──
   //
   // ADR-0017 again: it never goes stale, so it never offers the move, and the
@@ -379,22 +431,60 @@ try {
     assert.equal((await stored(id)).stale_after, null, "a fact with no review date was given one");
   }
 
-  // ── A span that runs backwards still moves the date forward ──
+  // ── A horizon with no interval beside it writes nothing ──
   //
-  // Nothing stops a row whose review date predates the day it was generated.
-  // Today plus a negative span is a date already past, and the row would leave
-  // the queue and be back in it on the next read. The floor is why it cannot.
+  // Which of the two wins when they disagree, decided by KPA-133: the column
+  // is the only interval, and nothing derives one. Migration 013 backfilled
+  // every row that carries a horizon, so a row in this state was written after
+  // it, and the honest answer to "how long is this good for" is that nobody
+  // said. Deriving one from the dates is the defect this story removed, and
+  // guessing one is worse than the null.
+
+  {
+    const id = await seed({
+      path: "kpa-133/horizon-with-no-interval.md",
+      generated: "2026-01-01",
+      staleAfter: "2026-06-15",
+      verified: "2026-01-01",
+    });
+    assert.equal(await writeMove(pool, id, "reconfirm", TODAY, VERIFIER), null);
+    assert.equal(
+      (await stored(id)).stale_after,
+      "2026-06-15",
+      "a fact carrying no interval was given a span from somewhere",
+    );
+  }
+
+  // ── An interval that runs backwards cannot be stored at all ──
+  //
+  // Nothing stops a row whose review date predates the day it was generated,
+  // and today plus a negative span is a date already past: the row would leave
+  // the queue and be back in it on the next read. The floor used to sit in the
+  // statement above. It now sits in migration 013, which floors what it
+  // backfills at a day and constrains the column to match, so the one day
+  // interval below is what such a row carries and the write needs no floor.
 
   {
     const id = await seed({
       path: "kpa-122/backwards.md",
       generated: "2026-05-01",
       staleAfter: "2026-04-01",
+      reviewInterval: 1,
       verified: "2026-01-01",
     });
     const moved = await writeMove(pool, id, "reconfirm", TODAY, VERIFIER);
     assert.equal(moved?.staleAfter, "2026-09-03", "a backwards span moved the date into the past");
     assert.equal(moved?.state, "verified", "the fact came straight back into the stale queue");
+
+    // The constraint is what makes the floor above true for every later
+    // writer, so it is proved by running the statement it must refuse.
+    for (const bad of [0, -30]) {
+      await assert.rejects(
+        pool.query("UPDATE facts SET review_interval = $2 WHERE id = $1", [id, bad]),
+        /facts_review_interval_positive/,
+        `the database stored a review interval of ${bad} days`,
+      );
+    }
   }
 
   console.log("review writes OK: accept, reject and re-confirm land in the store");

@@ -1,9 +1,11 @@
 # Re-confirming a fact keeps its own review interval
 
-A re-confirmed fact's new `stale_after` is today plus the span that fact
-already carried, measured from when it was generated to when it first fell due.
-A fact carrying no `stale_after` gets none and never goes stale. Decided
-2 September 2026, closing the question ADR-0010 left open.
+A re-confirmed fact's new `stale_after` is today plus the interval that fact
+carries in `facts.review_interval`, which is the span it was first given: from
+when it was generated to when it first fell due. A fact carrying no
+`stale_after` gets none and never goes stale. Decided 2 September 2026,
+closing the question ADR-0010 left open, and amended the same day by KPA-133,
+which moved the interval out of the dates and into a column.
 
 ## The vault already answered this
 
@@ -40,39 +42,58 @@ Preserving them preserves the staggering for free.
    queue cheap to work, and a date picker on every row makes it expensive
    enough to skip. A queue nobody works is the failure this whole loop guards
    against.
-3. **Keep the fact's own interval** - chosen. The arithmetic is one subtraction
-   and one addition, over a number already on the row.
+3. **Keep the fact's own interval** - chosen. The arithmetic is one addition,
+   over the number the row records. This document first read that number back
+   out of two dates rather than storing it, which is the amendment below.
 
 ## Consequences
 
 - A fact with no `stale_after` stays without one. `check.py` already holds that
   rule, and its own selftest asserts a note with no `stale_after` is not stale.
-- The interval derives from `stale_after` minus `generated`, so it lives in the
-  data rather than needing a column. A fact whose `generated` is null measures
-  from `valid_from` instead.
+- The interval is a column. `facts.review_interval` holds it, in days.
+  Migration 013 added it and backfilled it as
+  `stale_after - COALESCE(generated, valid_from)`, floored at one day, which is
+  what this document says the interval is. A fact whose `generated` is null
+  measures from `valid_from`, and a fact with no `stale_after` was left null
+  rather than given a guess. `apps/web/lib/facts.ts` adds that number to today
+  and changes nothing else.
 
-  **This consequence is wrong, and KPA-122 measured it on 2 September 2026.**
-  The data holds the interval once. The write moves `stale_after` and leaves
-  `generated` where it was, so the span grows on every re-confirmation after
-  the first. A fact carrying a 41 day interval is granted 41 days the first
-  time, correctly, and 281 days the second time, because the row now spans 281
-  days. Two more confirmations and a fact judged to hold for six weeks holds
-  for years. That is a memory quietly deciding to stop asking, which is the
-  failure this whole document exists to prevent.
+  **This document first derived the interval instead, and the derivation
+  compounded.** KPA-122 measured it on 2 September 2026, and KPA-133 reproduced
+  it before removing it. The write moves `stale_after` and leaves `generated`
+  where it was, so each confirmation measured the span the last one created. A
+  fact carrying a 41 day interval, re-confirmed the day after each due date,
+  was granted 41 days, then 285, then 571, then 1143. KPA-122 measured 281 for
+  the second grant because it re-confirmed on a different day: the span
+  swallowed every day since `generated`, so the error grew with the delay as
+  well as with the count. Four clicks turn six weeks into three years. That is
+  a memory quietly deciding to stop asking, which is the failure this whole
+  document exists to prevent, and two confirmations sit years apart, which is
+  why the cost arrives long after the mistake.
 
-  The decision above stands. A fact keeps its own interval, and the sixteen
-  vault intervals stagger the queue for free. Only this derivation is wrong.
-  The interval is a judgement about the world, which is this document's own
-  argument, and a judgement deserves a column rather than a subtraction between
-  two dates that move. KPA-133 adds `facts.review_interval`, backfilled as
-  `stale_after - COALESCE(generated, valid_from)`, which is what this document
-  already says the interval is.
+  The decision above never moved. A fact keeps its own interval, and the
+  sixteen vault intervals stagger the queue for free. Only the derivation was
+  wrong. The interval is a judgement about the world, which is this document's
+  own argument, and a judgement deserves a column rather than a subtraction
+  between two dates that move.
+- Shane can still change a horizon by editing the fact, and the two columns
+  divide that judgement between them. `stale_after` says when the next review
+  falls. `review_interval` says how long one confirmation lasts. So a hand edit
+  to `stale_after` moves the next review and nothing else, and changing how
+  long every later confirmation lasts means editing `review_interval`.
 
-  Until it lands, `apps/web/lib/facts.ts` carries the stated formula and a
-  `ponytail:` comment naming the ceiling. The first re-confirmation of any fact
-  is correct, and at these intervals the second is years away.
-- Shane can still change a horizon by editing the fact, which is where a
-  judgement about the world belongs.
+  KPA-133 settled which one wins where they disagree: the column wins the
+  arithmetic, always. Reading an interval back out of a date that the write
+  itself moves is the defect above in a slower form, and a hand edit is the row
+  where such a guess is most likely wrong.
+
+  One row stays awkward, and that is what this rule costs. Migration 013 filled
+  every row carrying a horizon, so a fact holding a `stale_after` and no
+  `review_interval` can arrive only from a later writer or a hand edit. Nobody
+  has said how long a confirmation of it lasts, so the store writes nothing and
+  the screen reports a move that had already happened, which is the wrong words
+  for the right refusal. Whoever writes the next `stale_after` gives it an
+  interval in the same statement.
 - The staleness sweep needs no change. It reads dates and raises items, and
   this decision only touches the write the re-confirm control makes.
 - KPA-13's diff is unaffected. Re-confirmation is a human action the vault

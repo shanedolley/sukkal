@@ -257,25 +257,33 @@ function statement(
           RETURNING id`,
         [factId],
       ];
-    // ADR-0017: today plus the span this fact already carried, from when it
-    // was generated to when it first fell due. A fact with no `stale_after` is
-    // never stale, so it never offers this move and the arithmetic never sees
-    // a null.
+    // ADR-0017: today plus the interval this fact carries. `review_interval`
+    // is the whole of the arithmetic, and the write leaves it alone.
     //
-    // GREATEST floors the span at a day. A row whose `stale_after` predates
-    // its `generated` carries a negative span, and today plus a negative span
-    // is a date already past: the row would leave the queue and be back in it
-    // on the next read, which is the one thing this move must never do.
+    // KPA-133 put it there. This used to derive the interval as `stale_after`
+    // minus `generated`, and this is the write that moves `stale_after`, so
+    // each confirmation measured the span the last one created. A fact
+    // carrying 41 days was granted 41, then 285, then 571, then 1143.
+    // Migration 013 ran that subtraction once, over dates nothing had moved,
+    // and floors both the backfill and the column at a day, so no floor is
+    // needed here.
+    //
+    // Two conditions read like one. A fact with no `stale_after` is never
+    // stale and never offers the move. A fact carrying a horizon and no
+    // interval is a row written after 013, and nobody said how long a
+    // confirmation of it should last; it writes nothing rather than deriving
+    // a number, because deriving one is the defect above and guessing one is
+    // worse than the null.
     case "reconfirm":
       return [
         `UPDATE facts
-            SET stale_after = $2::date
-              + GREATEST(stale_after - COALESCE(generated, valid_from), 1)
+            SET stale_after = $2::date + review_interval
           WHERE id = $1
             AND valid_to IS NULL
             AND verified IS NOT NULL
             AND stale_after IS NOT NULL
             AND stale_after < $2::date
+            AND review_interval IS NOT NULL
           RETURNING id`,
         [factId, today],
       ];
