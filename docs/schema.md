@@ -1,7 +1,7 @@
 # The schema
 
-Twelve tables and six enums. `migrations/001_core_schema.sql` created the
-first ten, and migrations 003 to 005 changed what follows. The vault's own
+Sixteen tables and eight enums. `migrations/001_core_schema.sql` created the
+first ten, and migrations 003 to 008 changed what follows. The vault's own
 `CLAUDE.md` is the authority for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
@@ -20,10 +20,14 @@ check constraint here rather than an instruction in a prompt.
 | `edges` | Typed, directional links between two nodes. A `derived_from` edge may name the chunk as well as the source |
 | `entities` | People, organisations and the like. Created now, populated by a later slice |
 | `tasks` | An inline `- [ ]` from a note, with its due, start and done dates and the original line |
-| `questions` | A question Shane can answer, closed by writing the answer into the fact |
 | `rejections` | A candidate that did not become a fact, and why, so a later run does not raise it again |
 | `policies` | The rules a policy engine consults before every outbound action |
 | `audit` | One entry per attempt, allowed or denied alike. Append only |
+| `needs_you` | The four kinds of item waiting on Shane. A row closes rather than disappears |
+| `meetings` | A calendar event, never the transcript it produces |
+| `conversations` | A chat, with the answers and citations below |
+| `answers` | One question and its answer, read back in the order asked |
+| `citations` | The source and the passage an answer's chip opens |
 
 ## The enums
 
@@ -36,6 +40,7 @@ check constraint here rather than an instruction in a prompt.
 | `edge_kind` | `derived_from`, `links_to`, `supersedes` |
 | `source_kind` | `meeting`, `mail`, `document`, `chat` |
 | `audit_outcome` | `allowed`, `denied` |
+| `needs_you_kind` | `draft`, `question`, `denied-action`, `deadline` |
 
 `edge_kind` is enumerated in one place so no call site invents a sixth.
 `derived_from` comes from a `sources:` entry, `links_to` from a `[[wikilink]]`
@@ -118,6 +123,41 @@ which belongs to role permissions once the worker owns a database user.
 
 `audit_outcome_at` indexes `(outcome, at DESC)`, so the screen's two questions,
 just the denials and newest first, come from one index.
+
+## The needs-you queue
+
+Four kinds wait on Shane: a draft to send, a question to answer, an action the
+policy refused, and a deadline coming. The screen reads them as one list in
+arrival order, so they share one table and one shape.
+
+A denial names the audit entry that refused it, so the screen can show what the
+policy said rather than only that something was stopped. A row may point at the
+fact or the source it came from, and may point at neither.
+
+Nothing here disappears. A row closes by setting `closed_at`, which is the same
+rule retirement follows for a fact.
+
+`questions` used to hold one of these four kinds and `006_needs_you.sql` drops
+it. Every row on the screen shows a space and an entity, and `questions` held
+neither. ADR-0012 records why the join that would have supplied them cannot
+work.
+
+## Chat history
+
+`conversations`, `answers`, and `citations` hold what the chat screen reads.
+Two things stay derived, so the database can never disagree with the code above
+it. A conversation's token count reads from its answers rather than a stored
+total. An answer crosses spaces when its citations came from more than one, and
+`apps/web/lib/space.ts` holds that rule for the interface.
+
+`answers` reads back by `asked_at`, never by `id`. An id only happens to track
+the order rows arrived, and nothing makes the two agree.
+
+A citation names a source and a chunk together, through one composite key into
+`source_chunks (id, source_id)`. Naming a chunk from another source would open
+the wrong text under the right title, which reads as a correct answer and is
+not one. `edges` tolerates that mismatch because it predates chunking and
+resolves it in code; this table carries no such history.
 
 ## The frontmatter mapping
 

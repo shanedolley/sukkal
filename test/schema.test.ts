@@ -65,9 +65,12 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
        WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname <> 'schema_migrations'
        ORDER BY c.relname
     `);
+    // questions is absent on purpose. ADR-0012 folded it into needs_you, so a
+    // question is one of that queue's four kinds rather than a table of its own.
     assert.deepEqual(tables.rows.map((row) => row.relname), [
-      'audit', 'edges', 'entities', 'facts', 'nodes', 'policies', 'questions',
-      'rejections', 'source_chunks', 'sources', 'tasks', 'users',
+      'answers', 'audit', 'citations', 'conversations', 'edges', 'entities',
+      'facts', 'meetings', 'needs_you', 'nodes', 'policies', 'rejections',
+      'source_chunks', 'sources', 'tasks', 'users',
     ]);
   });
 
@@ -79,7 +82,7 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
       SELECT table_name, column_default FROM information_schema.columns
        WHERE table_schema = 'public' AND column_name = 'owner_id' ORDER BY table_name
     `);
-    assert.deepEqual(defaults.rows.map((row) => row.table_name), ['facts', 'sources', 'tasks']);
+    assert.deepEqual(defaults.rows.map((row) => row.table_name), ['facts', 'meetings', 'sources', 'tasks']);
     for (const row of defaults.rows) {
       assert.equal(row.column_default, '1', row.table_name);
     }

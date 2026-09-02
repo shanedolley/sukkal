@@ -164,11 +164,24 @@ describe('the policy and audit tables', { skip: url ? false : 'DATABASE_URL_TEST
       // TRUNCATE fires no row-level trigger, so the two guards above never see
       // it. One statement would empty the log and leave nothing saying it
       // happened, which is the failure this table exists to survive.
+      //
+      // Two things refuse it, and only one of them is deliberate. needs_you
+      // carries a foreign key into audit, so Postgres refuses a plain TRUNCATE
+      // on its own. That protection is incidental: it lasts exactly as long as
+      // that column does, and CASCADE walks around it. The trigger is the
+      // guarantee, so this asserts both routes and names which is which.
       await insert(ALLOWED);
 
       await assert.rejects(
         client.query('TRUNCATE audit'),
+        /cannot truncate a table referenced in a foreign key constraint/,
+        'the incidental guard, from needs_you.audit_id',
+      );
+
+      await assert.rejects(
+        client.query('TRUNCATE audit CASCADE'),
         /audit is append only: TRUNCATE would erase the whole log/,
+        'the deliberate guard, which CASCADE must not get past',
       );
 
       const left = await client.query<{ n: number }>('SELECT count(*)::int AS n FROM audit');
