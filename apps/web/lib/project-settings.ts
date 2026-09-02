@@ -12,6 +12,11 @@
 // localStorage for the reason the custom fields do: a setting that resets on
 // every navigation reads as a fault.
 //
+// THE ROW HOLDS ALL FOUR NOW. `projects` carries the label from migration 018,
+// and the description, both contract dates and the source of each date from
+// migration 020. A poller reads the row and cannot read this store, so a date
+// typed here reaches nothing. KPA-127 is where the store reads the row.
+//
 // ponytail: the second store of this shape, after lib/project-fields.ts. A
 // third one earns a shared keyed-record helper in lib/local-store.ts.
 
@@ -52,7 +57,13 @@ const store = createLocalStore<string>("kpa.project.settings", "{}", (value) => 
  *
  * The address the project is reached at is also the label its issues carry,
  * which is what makes a project findable before anyone has been near this
- * form.
+ * form. The stored row agrees: `match_label` equals `id` on every seeded
+ * project a label matches.
+ *
+ * This guess belongs in the database and cannot go there. A column default
+ * naming `id` is refused, and a constant one breaks every project matched by
+ * a key prefix, because `projects_match_one_way` allows one rule per row.
+ * Migration 018 answers the same question by requiring the rule at insert.
  */
 function fallback(key: string): ProjectSetting {
   const overview = PROJECT_OVERVIEW[key];

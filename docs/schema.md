@@ -1,6 +1,6 @@
 # The schema
 
-Twenty-one tables and eight enums. `migrations/001_core_schema.sql` created
+Twenty-two tables and nine enums. `migrations/001_core_schema.sql` created
 the first ten, and migrations 003 to 010 changed what follows. Migrations 011
 to 014 and 017 add no table: 011 creates the schema the job queue lives in,
 012 seeds one policy row, 013 adds one column to `facts`, 014 adds one column
@@ -469,6 +469,35 @@ case, digits, and single hyphens between them. The id is the route, so a space
 or a slash in it breaks the address and a check refuses both. A project id is
 unique across every workspace rather than within one, because `/projects/mp`
 carries no workspace in the path.
+
+**The contract sits on the project row, and each of its two dates says where
+it came from.** `migrations/020_project_contract.sql` adds a description, a
+`contract_start`, a `contract_end`, and a `contract_date_source` beside each
+date. Salesforce holds the contract through Certinia PSA, and a sync writes
+over the dates it wrote before and leaves the dates Shane typed. One column
+covering the pair cannot say that, because a start Shane typed beside an end
+the sync read is the ordinary case. Two columns make the rule a `WHERE` clause
+rather than a convention:
+
+```sql
+UPDATE projects
+   SET contract_start = $2, contract_start_source = 'salesforce'
+ WHERE id = $1 AND contract_start_source IS DISTINCT FROM 'typed';
+```
+
+`IS DISTINCT FROM` carries the third answer, which is a date nobody has set. It
+names no source, and the sync fills it. A date and its source are null together
+or set together, on the terms migration 016 gives a credential's `verdict` and
+its `verified_on`, and a check refuses an end before a start.
+
+**No column default starts a label as the project key.** KPA-96 asks for one
+and PostgreSQL refuses it. A default cannot name another column, so `id` cannot
+be one, and a constant default breaks every project matched by a key prefix,
+because `projects_match_one_way` allows one rule per row. Migration 018 answers
+the same question a second way: it requires the rule at insert, and the seed
+gives every label-matched project a `match_label` equal to its `id`. `fallback`
+in `apps/web/lib/project-settings.ts` still guesses that, and KPA-127 is where
+it reads the row instead.
 
 ## The queue lives in its own schema
 
