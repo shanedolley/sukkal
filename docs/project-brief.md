@@ -424,6 +424,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Review interval | A re-confirmed fact keeps its own | The sixteen dated facts in the vault carry sixteen different intervals, each chosen for that fact. A fixed horizon discards those judgements and lands the whole batch on one afternoon. ADR-0017. |
 | The fourth space | `shared` stays, and never counts as a crossing | It is the space either side may cite, so flagging it teaches Shane to ignore the flag that guards the only wall nothing else enforces. ADR-0018. |
 | A link to a root page | It resolves to no row, and the two orphan advisories that costs KPA-13 are recorded rather than removed | A root page belongs to none of the memory's three layers, and both orphans are true findings. The nine `[[index]]` citations cost no report line at all: the drift runs the other way, from links out of `log.md` and `index.md`. ADR-0019. |
+| What leaves the browser | Eight keys move, eleven stay | The test is whether a value belongs to the person or to the device. An accent follows the person. A resolved pre-paint blob and a table's own furniture belong to the machine that paints them. ADR-0022. |
 | Users | One owner per installation | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means the owner. On Shane's box that owner is Shane. |
 
 **A note on the memory store decision.** Row-level security enforcing the
@@ -577,9 +578,10 @@ chat answers, conversations, audit entries, and citations.
 
 **The application data has no schema at all.** Every issue, sprint, workspace,
 project, custom field and connection sits in `apps/web/lib/fixtures.ts` or in
-`localStorage`. Eleven browser keys hold state that belongs on a server, and one
-of them holds the account. Nothing survives a second device, and nothing
-survives a cleared browser.
+`localStorage`. Nineteen browser keys hold state, eighteen under `kpa` and one
+`theme` from next-themes. Eight of them belong on a server, and one of those
+eight holds the account. ADR-0022 names every key and says why the other eleven
+stay. Nothing survives a second device, and nothing survives a cleared browser.
 
 **The `space` enum keeps its fourth value, and the interface learns it.**
 ADR-0018 settled this on 2 September 2026. `shared` holds how Shane works
