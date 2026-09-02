@@ -6,7 +6,8 @@ not yet answered.
 **Jira project:** KPA, `koinon.atlassian.net`. Empty as of 23 August 2026. It
 becomes the source of work once this brief settles.
 
-**Last updated:** 2 September 2026, for the worker and the first real read
+**Last updated:** 3 September 2026, after three parallel rounds: the worker, the
+first real reads and the first write, the policy engine and the audit trail
 
 ---
 
@@ -871,13 +872,19 @@ runs down the page, and each slice states what it unblocks.
 
 | Slice | What it delivers | State |
 |---|---|---|
-| 1. Migrate the memory | The memory model, proved on 19 facts | In progress. KPA-1 |
-| 2. Draw the interface | Every screen, on fixtures | In progress. KPA-35 |
-| 3. Finish the memory schema | The tables and columns the screens need, on top of slice one | Not started |
-| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | Not started |
-| 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | Not started |
-| 6. Fill the stores | Ingestion into the memory, and a Jira poller into the cache | Not started |
-| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-117 |
+| 1. Migrate the memory | The memory model, proved on 19 facts | In progress. KPA-1, 16 of 20 |
+| 2. Draw the interface | Every screen, on fixtures | Done. KPA-35 |
+| 3. Finish the memory schema | The tables and columns the screens need, on top of slice one | Done. KPA-51 |
+| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | Not started. KPA-53, 0 of 10 |
+| 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | In progress. KPA-54, 1 of 9 |
+| 6. Fill the stores | Ingestion into the memory, and a Jira poller into the cache | In progress. KPA-55, 2 of 13 |
+| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-52, 11 of 19 |
+
+Two capabilities sat outside this order because each is a product in itself.
+Both have started. The agent that acts within policy has its engine and its
+audit trail, KPA-56 at 3 of 6. Retrieval has nothing yet, KPA-57 at 0 of 7. A
+third arrived that no slice named: the installation authenticating its own
+owner, KPA-75 at 1 of 5, which ADR-0009 created and ADR-0020 now carries.
 
 **Slices three and four are separate on purpose.** *Two stores, not one* says
 why. One extends a schema that exists and settles four disagreements with the
@@ -892,11 +899,6 @@ shape, and it stores no credential.
 **Slice seven carries the integration risk the others defer.** Take one region
 end to end before the rest. Needs you reads and writes nothing, so it proves the
 whole path with the least to undo.
-
-Two capabilities sit outside this order, because each is a product in itself:
-the agent that acts within policy and writes the audit log, and the retrieval
-path that answers a question with citations. Both need slice three underneath
-them, and neither has a slice yet. *Open.*
 
 ### Slice one: migrate the memory
 
