@@ -63,13 +63,14 @@ would face the same refusal ADR-0008 gives Jira.
   delivery nabium never retries. The catch-up path that property needs is out
   of scope here and needs its own story before the read-only role can retire.
 - The web tier gains its first database access. It reaches `src/db/connect.ts`
-  across the package boundary between the root project and `apps/web`, which
-  is its own npm package with its own lockfile and its own `node_modules`. The
-  import resolves today because `apps/web` sits inside this repository and
-  Node's and Turbopack's module resolution both walk up to the root
-  `node_modules`, where `pg` is already installed for the root package; `npm
-  run build` inside `apps/web` was run by hand to confirm it. Continuous
-  integration does not build or lint `apps/web` today, so nothing catches a
-  future change that breaks this path.
+  across the package boundary between the root project and `apps/web`. That
+  import rested on nothing when this decision was taken: `apps/web` was its own
+  npm package with its own lockfile and its own `node_modules`, and the import
+  resolved only because a second install happened to leave `pg` at the root.
+  **KPA-68 closed this on 3 September 2026.** `apps/web` is now a workspace of
+  the root package, so one `npm install` at the root installs both and hoists
+  one copy of `pg` that both packages resolve. The web job in
+  `.github/workflows/ci.yml` runs one `npm ci` and proves the route builds from
+  a clean checkout.
 - A worker reads the backlog this endpoint fills. That is KPA-55, out of scope
   here.

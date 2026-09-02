@@ -24,11 +24,14 @@ import pg, { Pool } from "pg";
 
 import { connectionString, keepDatesAsText } from "../../../src/db/connect.ts";
 
-// The web tier installs its own copy of the driver, so the parser
-// `src/db/connect.ts` sets on the root's copy is absent from this one, and a
-// `date` would arrive as a `Date` at local midnight. Read back as UTC that is
-// a day west of Greenwich: a source dated 19 August reads as the 18th from
-// Sydney. Found by reading one, on 2 September 2026.
+// KPA-68 made apps/web a workspace, so npm hoists one copy of the driver and
+// `src/db/connect.ts` has already set this parser on the registry below. The
+// call is idempotent and it stays as insurance. Let the two `pg` ranges drift,
+// npm nests a second copy under apps/web, and a `date` arrives as a `Date` at
+// local midnight. Read back as UTC that is a day west of Greenwich: a source
+// dated 19 August reads as the 18th from Sydney. Found by reading one, on
+// 2 September 2026. Nothing else catches it, because CI's web job unsets
+// DATABASE_URL_TEST and no check here reads a real date.
 keepDatesAsText(pg.types);
 
 const held = globalThis as typeof globalThis & { kpaPool?: Pool };

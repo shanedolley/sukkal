@@ -20,6 +20,7 @@ Cloudflare Access.
 | `src/db/` | the connection module and the migration runner |
 | `src/worker/` | the worker process, and the jobs pg-boss runs in it |
 | `test/` | the suite, and its fixtures |
+| `apps/web/` | the Next.js interface, a workspace of this package |
 
 **Read the brief first.** It carries the architecture, the sequence diagrams, the
 policy the assistant operates under, the risks accepted, and the questions still
@@ -29,7 +30,7 @@ open.
 
 You need Node 22.18 or newer, and an account on the PostgreSQL server.
 
-1. `npm install`
+1. `npm install` at the root. `apps/web` is a workspace, so this installs it too
 2. `mkdir -p ~/.config/kpa && cp .env.example ~/.config/kpa/env && chmod 600 ~/.config/kpa/env`
 3. Fill in both connection strings in `~/.config/kpa/env`.
 4. `npm run migrate`

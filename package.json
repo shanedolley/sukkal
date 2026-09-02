@@ -7,6 +7,9 @@
   "engines": {
     "node": ">=22.18.0"
   },
+  "workspaces": [
+    "apps/web"
+  ],
   "scripts": {
     "migrate": "node --env-file-if-exists=$HOME/.config/kpa/env src/db/migrate.ts",
     "worker": "node --env-file-if-exists=$HOME/.config/kpa/env src/worker/index.ts",

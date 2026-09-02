@@ -1,5 +1,5 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
 
   // The four plugins eslint-config-next ran, plus the three oxlint turns on by
   // default. Naming any plugin replaces the default set, so all seven appear.

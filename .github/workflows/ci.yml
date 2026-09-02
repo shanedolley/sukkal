@@ -64,21 +64,10 @@ jobs:
         with:
           node-version: '22'
 
-      # Both packages, and the order matters. The webhook route imports
-      # src/db/connect.ts, which lives in the root package and resolves `pg`
-      # from the root's node_modules rather than from apps/web's. Installing
-      # apps/web alone builds everything except that route, and then fails on
-      # it with "Module not found: Can't resolve 'pg'". Proved by running this
-      # job's steps against a clean checkout before writing it down.
-      #
-      # This mirrors how the application deploys: kpa-web and kpa-worker run
-      # from one repository with both installed. KPA-68 removes the coupling by
-      # making apps/web a real workspace of the root, which is the version that
-      # cannot break this way.
+      # One install, at the root. apps/web is a workspace of the root package,
+      # so this installs both and hoists the one copy of `pg` that the webhook
+      # route's cross-package import needs. KPA-68.
       - run: npm ci
-
-      - run: npm ci
-        working-directory: apps/web
 
       # The sixteen checks under apps/web/scripts. Each proves one rule the
       # screens rest on, and each fails when that rule breaks.

@@ -131,7 +131,7 @@ DATABASE_URL_TEST="postgresql://$(whoami)@localhost:5432/kpa_dev" npm test
 
 ```
 migrations/     One .sql file per migration, applied in filename order
-apps/web/       The Next.js interface. Its own package, its own node_modules
+apps/web/       The Next.js interface. A workspace of the root package
 src/db/         The connection module and the migration runner
 src/memory/     The four gates, the inference seam, the state rule and the sweep
 src/migrate/    The vault reader, and what it turns notes into
@@ -149,21 +149,31 @@ to the driver. Parsing a calendar date into a `Date` puts it at local midnight,
 and reading that back as UTC moves it a day west: a fact retired on 1 June
 reads as 31 May from Sydney. Compare dates as `YYYY-MM-DD` text.
 
-**The driver is installed twice, and a parser reaches one copy.** `apps/web`
-has its own `node_modules/pg`, so a bare `pg` resolves to the root's copy in
-`src/` and to the web tier's copy in `apps/web/`. They are two module
-instances with two type registries. `connect.ts` exports `keepDatesAsText` for
-that reason and `apps/web/lib/db.ts` calls it with its own registry. Without
-that call a source dated 19 August read as the 18th from Sydney, which is how
-this was found on 2 September 2026. KPA-68 leaves one copy and ends it.
+**`apps/web` is a workspace of the root, so one `npm install` at the root
+installs both packages.** KPA-68 made it one on 3 September 2026. One lockfile
+remains, at the root, and npm hoists `pg`, `oxlint` and `typescript` into the
+root `node_modules`. `src/db/connect.ts` and `apps/web/lib/db.ts` therefore
+share one driver and one type registry, and one linter reads both packages.
+`npm install` run from inside `apps/web` walks up and installs at the root, so
+no second lockfile appears there. Never commit a lockfile under `apps/web`.
 
-**oxlint is installed twice, and both copies name the same exact version.**
-The root and `apps/web` each pin `1.80.0` rather than a caret range, because
-`^1.80.0` resolves to 1.81.0 today and two versions is two rule sets. KPA-135
-asked for one linter across both packages, so bump both together. The plugin
-lists differ on purpose: `src/` and `test/` hold no JSX, so the root runs
-three plugins and the web tier runs seven. KPA-68 leaves one copy and ends
-this too.
+**Bump a shared dependency in both `package.json` files together.** The two
+declare `pg`, `oxlint`, `typescript`, `@types/pg` and `@types/node`
+separately, and npm hoists one copy only while the ranges agree. Bump one and
+npm nests a second copy under `apps/web`: two linters with two rule sets, or
+two drivers with two type registries, where a source dated 19 August reads as
+the 18th from Sydney. `oxlint` is pinned at exactly `1.80.0` in both for that
+reason rather than at a caret range, and `apps/web/lib/db.ts` still calls
+`keepDatesAsText` on its own registry as insurance against the second copy.
+The plugin lists differ on purpose: `src/` and `test/` hold no JSX, so the
+root runs three plugins and the web tier runs seven.
+
+**A shared package holding `src/db` was weighed and rejected.** The web tier
+imports five modules under `src/`, not one: `db/connect.ts`,
+`memory/state.ts`, `memory/source.ts`, `embedding.ts` and
+`webhooks/receive.ts`. A package holding `src/db` alone closes one import of
+seven, and it needs the workspace to link it anyway. Reach for it when a
+second repository consumes `src/`.
 
 **Both packages run TypeScript 7.0.2, the native compiler.** `apps/web` ran
 5.9.3 until KPA-135. A cross-package import still names the `.ts` extension,
