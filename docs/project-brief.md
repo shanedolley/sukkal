@@ -270,7 +270,7 @@ through use. The new product inherits its principles rather than replacing them.
 rendered from Claude Code transcripts, three scheduled jobs under launchd, Gmail
 filter rules, and the reports those jobs produce.
 
-`~/Development/obsidian_vaults/Memory` holds the knowledge: 17 compiled facts
+`~/Development/obsidian_vaults/Memory` holds the knowledge: 19 compiled facts
 across four spaces, and 32 raw sources they were compiled from.
 
 ### What carries forward
@@ -416,6 +416,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Inference path | The subscription for scheduled work, the metered API for chat | *Risks accepted* already separates them: a few scheduled jobs a day is ordinary use of a coding tool, and an always-on screen is not. Both sit behind the seam `src/memory/inference.ts` already provides. ADR-0016. |
 | Review interval | A re-confirmed fact keeps its own | The sixteen dated facts in the vault carry sixteen different intervals, each chosen for that fact. A fixed horizon discards those judgements and lands the whole batch on one afternoon. ADR-0017. |
 | The fourth space | `shared` stays, and never counts as a crossing | It is the space either side may cite, so flagging it teaches Shane to ignore the flag that guards the only wall nothing else enforces. ADR-0018. |
+| A link to a root page | It resolves to no row, and the two orphan advisories that costs KPA-13 are recorded rather than removed | A root page belongs to none of the memory's three layers, and both orphans are true findings. The nine `[[index]]` citations cost no report line at all: the drift runs the other way, from links out of `log.md` and `index.md`. ADR-0019. |
 | Users | One owner per installation | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means the owner. On Shane's box that owner is Shane. |
 
 **A note on the memory store decision.** Row-level security enforcing the

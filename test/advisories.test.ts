@@ -309,11 +309,12 @@ describe(
       ]);
     });
 
-    // check.py reports zero orphans today. This reports two: KPA-66's known
-    // gap. Both notes are linked only from a root page (log.md and
-    // index.md), which check.py scans for outbound links and this port does
-    // not, because no node kind exists yet for a root page.
-    test('orphans: 2, diverging from check.py\'s 0 because of the KPA-66 root-page gap', async () => {
+    // check.py reports zero orphans today. This reports two, and
+    // docs/adr/0019-a-root-page-is-not-a-node.md decided to keep them. Both
+    // notes are linked only from a root page (log.md and index.md), which
+    // check.py scans for outbound links and this port does not, because a
+    // root page belongs to none of the memory's three layers.
+    test('orphans: 2, diverging from check.py\'s 0 by ADR-0019\'s accepted drift', async () => {
       assert.deepEqual(await orphans(client), [
         'orphan: collibra/bhp-unstructured-declined.md is linked from nowhere',
         'orphan: collibra/collibra-meeting-defaults.md is linked from nowhere',
@@ -324,6 +325,28 @@ describe(
     // closest is two facts sharing 2026-11-30, short of the >3 threshold.
     test('review pile-up: none, the frozen vault has no date shared by more than 3 facts', async () => {
       assert.deepEqual(await reviewPileUp(client), []);
+    });
+
+    // The whole report in one assertion, so KPA-13's permitted delta is
+    // pinned in one place rather than inferred from four. `check.py --review`
+    // prints the same seven lines less the two orphans, which is exactly the
+    // drift docs/adr/0019-a-root-page-is-not-a-node.md accepts. An eighth
+    // line here, or a seventh there, is a defect in the migration.
+    test('the whole advisory report: check.py\'s five lines plus ADR-0019\'s two orphans', async () => {
+      assert.deepEqual(await advisories(client), [
+        'orphan: collibra/bhp-unstructured-declined.md is linked from nowhere',
+        'orphan: collibra/collibra-meeting-defaults.md is linked from nowhere',
+        'crosses spaces: collibra/collibra-customers.md links koinon/koinon-clients. ' +
+          'Fine if it names the boundary, wrong if it carries a fact across.',
+        'crosses spaces: collibra/collibra-people.md links koinon/koinon-people. ' +
+          'Fine if it names the boundary, wrong if it carries a fact across.',
+        'crosses spaces: koinon/koinon-clients.md links collibra/collibra-customers. ' +
+          'Fine if it names the boundary, wrong if it carries a fact across.',
+        'crosses spaces: koinon/koinon-people.md links collibra/collibra-people. ' +
+          'Fine if it names the boundary, wrong if it carries a fact across.',
+        'uncompiled sources: 31 of 32 are cited by no fact. ' +
+          'Most bulk imports never should be; a recent one that is not, is worth a look.',
+      ]);
     });
   },
 );

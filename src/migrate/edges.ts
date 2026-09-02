@@ -182,10 +182,16 @@ export function knownTargets(
  * `README`) as a valid target. This resolves against facts and sources
  * only, because those are the two kinds a wikilink can become in the
  * registry -- a root page is ingested as neither, so it has no row to
- * point at. The frozen vault cites `[[index]]` nine times and nothing else
- * outside a space or `sources/`, so those nine resolve `unresolved` here
- * though `check.py` counts zero broken links. `test/edges.test.ts` and the
- * KPA-6 report both name this gap; it is not a bug in the match above.
+ * point at. `docs/adr/0019-a-root-page-is-not-a-node.md` decided that and
+ * says why: a root page belongs to none of the memory's three layers.
+ *
+ * The frozen vault cites `[[index]]` nine times and nothing else outside a
+ * space or `sources/`, so those nine resolve `unresolved` here though
+ * `check.py` counts zero broken links. **The nine cost the two reports no
+ * line.** `src/checks/problems.ts` runs `check.py`'s own link rule, root
+ * pages included, and both sides report zero broken links. The real drift
+ * runs the other way, from a root page's outbound links, and ADR-0019
+ * measures it at two orphan advisories.
  */
 export function resolveTarget(target: RawTarget, known: KnownTargets): ResolvedTarget {
   switch (target.form) {

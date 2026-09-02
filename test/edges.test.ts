@@ -161,8 +161,13 @@ describe('against the frozen vault, compared with scripts/check.py', { skip: vau
     // node kind for a root page -- only fact, source and entity are ingested
     // -- so a link to one resolves unresolved here. [[index]] is the only
     // root page the frozen vault cites, nine times across body and
-    // sources:. This is the gap named in edges.ts and in the KPA-6 report,
-    // not a defect in resolution.
+    // sources:, and docs/adr/0019-a-root-page-is-not-a-node.md keeps it that
+    // way.
+    //
+    // Nine is not the diff KPA-13 will see. All nine cost the two reports no
+    // line: test/problems.test.ts proves zero broken links on both sides,
+    // and test/advisories.test.ts pins the whole drift at two orphans, which
+    // come from a root page's outbound links rather than from these.
     assert.equal(unresolvedWikilinks, 9, `expected 9 links to a root page, found ${unresolvedWikilinks}`);
     assert.deepEqual(targets, new Set(['index']));
   });

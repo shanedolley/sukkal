@@ -12,16 +12,24 @@
  * and changes nothing, and none of the four fails the run -- unlike the six
  * problems KPA-32 ports, which do.
  *
- * One known gap, from KPA-66: `check.py` treats the vault's four root pages
- * (`index`, `log`, `CLAUDE`, `README`) as valid link targets and scans them
- * for their own outbound links. The node registry has no kind for a root
- * page, so a root page is ingested as neither a fact nor a source and its
- * links never become edges. A fact linked only from a root page therefore
- * reads as an orphan here though `check.py` does not flag it -- `orphans`
- * below says so again, where it bites. The other three checks are
- * unaffected: a link to a root page (`[[index]]`) resolves to no fact, so it
- * never feeds cross-space or uncompiled-sources either way, and pile-up
- * reads `stale_after` off `facts` directly, never a link.
+ * **This file carries the whole drift KPA-13 will find, and it is two
+ * lines.** `check.py` scans the vault's four root pages (`index`, `log`,
+ * `CLAUDE`, `README`) for their own outbound links, and counts one as an
+ * inbound link on the fact it names. The node registry has no kind for a
+ * root page, so a root page is ingested as neither a fact nor a source and
+ * its links never become edges. A fact linked only from a root page
+ * therefore reads as an orphan here though `check.py` does not flag it.
+ * `orphans` below names both.
+ *
+ * `docs/adr/0019-a-root-page-is-not-a-node.md` decided to keep those two
+ * lines rather than ingest a root page, and argues they are true findings:
+ * a `log.md` entry is provenance, and an `index.md` question row is deleted
+ * once Shane answers it, so neither is a link a reader follows.
+ *
+ * The other three checks are unaffected. A link to a root page (`[[index]]`)
+ * resolves to no fact, so it feeds neither cross-space nor
+ * uncompiled-sources, and pile-up reads `stale_after` off `facts` directly,
+ * never a link.
  */
 import path from 'node:path';
 import type { ClientBase } from 'pg';
@@ -35,11 +43,11 @@ import type { ClientBase } from 'pg';
  * matching `check.py`'s regex, which does not distinguish a body wikilink
  * from one inside a `sources:` entry.
  *
- * KPA-66's gap costs this check two rows against the frozen vault:
- * `collibra/bhp-unstructured-declined.md` and
- * `collibra/collibra-meeting-defaults.md` are linked only from `log.md` and
- * `index.md`, which carry no edges here, so both read as orphans though
- * `check.py` reports none.
+ * ADR-0019's accepted drift is these two rows, and no others. Against the
+ * frozen vault `collibra/bhp-unstructured-declined.md` is named only by
+ * `index.md` and `log.md`, and `collibra/collibra-meeting-defaults.md` only
+ * by `log.md`. Neither root page carries an edge here, so both facts read
+ * as orphans though `check.py` reports none. A third orphan is a defect.
  */
 export async function orphans(client: ClientBase): Promise<string[]> {
   const found = await client.query<{ path: string }>(

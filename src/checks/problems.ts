@@ -34,8 +34,12 @@
  * and sources only, because the node registry has no kind for a root page.
  * The frozen vault cites `[[index]]` nine times; `edges.ts` reads those as
  * unresolved, and this file reads them as fine, because that is what
- * `check.py` does. KPA-66 decides which side is right. This file does not
- * take a side; it matches `check.py` so the diff stays honest.
+ * `check.py` does.
+ *
+ * That difference costs this report nothing. Both sides find zero broken
+ * links in the frozen vault, so the nine never reach a line here.
+ * `docs/adr/0019-a-root-page-is-not-a-node.md` settled it and put the whole
+ * drift in `src/checks/advisories.ts`, at two orphan lines.
  */
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';

@@ -48,6 +48,12 @@ check constraint here rather than an instruction in a prompt.
 `derived_from` comes from a `sources:` entry, `links_to` from a `[[wikilink]]`
 in the body, and `supersedes` from a replacement to the fact it retires.
 
+`node_kind` has no value for a root page. The vault's `index.md`, `log.md`,
+`CLAUDE.md` and `README.md` belong to none of the memory's three layers, so a
+wikilink naming one resolves `unresolved`. ADR-0019 decided that and measures
+what it costs: not the nine citations anyone would count, but two orphan
+advisories, raised by links running the other way.
+
 ## A fact's state: three stored, three derived
 
 The interface shows a fact in one of six states. `facts.state` stores three,
