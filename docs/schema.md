@@ -1,12 +1,13 @@
 # The schema
 
-Twenty-two tables and nine enums. `migrations/001_core_schema.sql` created
+Twenty-four tables and twelve enums. `migrations/001_core_schema.sql` created
 the first ten, and migrations 003 to 010 changed what follows. Migrations 011
 to 014 and 017 add no table: 011 creates the schema the job queue lives in,
 012 seeds one policy row, 013 adds one column to `facts`, 014 adds one column
 and one enum value to `audit`, and 017 adds four columns to `users`. Migration
-016 adds a connection and its sealed secret, and 018 adds the last two, which
-hold the workspace and project tree. The vault's own `CLAUDE.md` is the
+016 adds a connection and its sealed secret, 018 adds the workspace and
+project tree, 021 adds the fields a workspace carries, and 022 adds the last
+two, which cache the issues a tracker owns. The vault's own `CLAUDE.md` is the
 authority for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
@@ -34,6 +35,8 @@ check constraint here rather than an instruction in a prompt.
 | `answers` | One question and its answer, read back in the order asked |
 | `citations` | The source and the passage an answer's chip opens |
 | `inbound_deliveries` | A webhook body, verbatim, waiting for a worker |
+| `issues` | A cache of the issues a tracker owns, keyed by workspace and key, carrying the tracker's own `updated` stamp |
+| `issue_blocks` | One blocking link, stored once from the blocker |
 | `connections` | One account on one provider. Provider, name, method, and the services it may be reached for |
 | `connection_credentials` | The sealed secret for one connection, with the dates the provider named and the last verdict |
 | `workspaces` | One Jira tracker and the space it belongs to. The id is stable, the name is not, and nothing files anything under the name |
@@ -52,6 +55,10 @@ check constraint here rather than an instruction in a prompt.
 | `source_kind` | `meeting`, `mail`, `document`, `chat` |
 | `audit_outcome` | `allowed`, `denied`, `attempted` |
 | `needs_you_kind` | `draft`, `question`, `denied-action`, `deadline` |
+| `contract_date_source` | `typed`, `salesforce` |
+| `issue_status` | `backlog`, `todo`, `in-progress`, `in-review`, `done`, `cancelled` |
+| `issue_kind` | `epic`, `story`, `subtask` |
+| `issue_priority` | `none`, `low`, `medium`, `high`, `urgent` |
 
 `edge_kind` is enumerated in one place so no call site invents a sixth.
 `derived_from` comes from a `sources:` entry, `links_to` from a `[[wikilink]]`
@@ -541,6 +548,77 @@ The reference removes the fields when the workspace goes, where `projects` has
 no `ON DELETE` clause at all. A project is work in its own right, so a
 workspace still holding one cannot be removed. A field list is a property of
 the workspace and means nothing without it.
+
+## The issues a tracker owns
+
+`migrations/022_issue_cache.sql` caches the issues the interface reads from
+`ISSUES` in `apps/web/lib/fixtures.ts` today. A row is keyed by the workspace
+and the tracker's own key, so two sites may both hold an `MP-1`. The workspace
+is `workspaces.id`, the slug migration 018 made stable, and never the name.
+
+**The table is a cache and never a master.** ADR-0007 leaves the text with the
+tracker and converts at the boundary. The comment on the table says so, and
+`issues.updated` is what makes it true: a write reads that stamp, refuses when
+it has moved, and hands the conflict back to a person. Drop the stamp and the
+cache becomes the second master ADR-0007 exists to prevent.
+
+**Three stamps, and each answers its own question.** `updated` is what the
+tracker last changed. `fetched_at` is when this cache last read the issue.
+`seen_at` is when a listing last named the key. `updated` is a moment rather
+than a calendar date, because a stamp resolved to the day refuses no write made
+later the same day, and ADR-0008 already polls in minutes. `start` and `due`
+stay `date`.
+
+**A deleted issue needs `seen_at`.** ADR-0008 polls on `updated >= the last
+run`, and a deleted issue appears in no such answer. `fetched_at` finds it no
+better: nobody edits a quiet issue, so no poll fetches it, and an old
+`fetched_at` says the issue is quiet rather than gone. A second sweep lists
+every key the tracker still holds and stamps each row it names:
+
+```sql
+UPDATE issues SET seen_at = now()
+ WHERE workspace = $1 AND key = ANY($2::text[]);
+DELETE FROM issues WHERE workspace = $1 AND seen_at < $2;
+```
+
+The second `$2` is the moment the sweep started. A row the listing skipped
+keeps the older stamp, and the `DELETE` removes it. A run that fails before the
+second statement deletes nothing, so the listing may page.
+
+**The parent rule is a foreign key, because a check reads one row.** An epic
+has no parent, which `issues_an_epic_has_no_parent` holds. A sub-task's parent
+is a story, which reads the parent row, and a `CHECK` reaches no second row.
+`parent_kind` is generated from `kind` and holds what the parent must be, which
+is `PARENT_KIND` in `apps/web/lib/types.ts` written as a column. The reference
+names `(workspace, parent, parent_kind)` against `(workspace, key, kind)`, so
+the parent exists and is of the one kind the rule allows. An epic generates
+null, which leaves the reference unchecked, and the check refuses its parent
+instead. A trigger was the other answer and it takes two: one on the child, and
+a second refusing a parent whose kind changes under it.
+
+The reference is deferrable, so one poll writes a batch in the tracker's own
+order inside one transaction. What it costs is a child whose parent the cache
+does not hold: that row is refused outright, so a workspace fills whole before
+the poll asks for changes.
+
+**A link is stored once, from the blocker.** `Issue.blocks` holds the keys an
+issue blocks, and "blocked by" is a read of the other column. Two rows per link
+invite the pair to disagree, and no reader could then say which half was right.
+Jira puts the truth at the inward end of its own link. A check refuses a
+self-link, and both ends reference `issues`, so removing an issue takes its
+links.
+
+**The description is stored as the tracker sent it.** ADR-0007 rejects markdown
+as lossy, so the column is `jsonb`: Jira sends ADF, which is JSON, and Linear
+sends markdown, which `jsonb` holds as a JSON string. `Issue.description` is
+the plain string the editor binds to, and the adapter converts between the two.
+
+**A cache may not refuse what the tracker accepts.** Jira takes a due date
+before its own start date, so no check compares the pair, where migration 020
+compares the contract's two dates. Three rules are the exceptions, and each
+refuses a row KPA wrote wrong rather than a row Jira holds: the key is upper
+case in the shape `projects.match_key_prefix` compares, the title says
+something, and `fields` is a JSON object rather than an array.
 
 ## The queue lives in its own schema
 

@@ -275,7 +275,14 @@ export interface Issue {
   /** The Jira key, such as MP-142. */
   key: string;
   title: string;
-  /** What the issue is, at length. Empty until somebody writes it. */
+  /**
+   * What the issue is, at length. Empty until somebody writes it.
+   *
+   * The cache stores something else. ADR-0007 rejects markdown as lossy, so
+   * `issues.description` is `jsonb` and holds what the tracker sent: ADF from
+   * Jira, markdown from Linear. This is the plain string the editor binds to,
+   * and the adapter converts between the two at the boundary.
+   */
   description: string;
   status: IssueStatus;
   kind: IssueKind;
@@ -293,18 +300,27 @@ export interface Issue {
   start: string | null;
   /** ISO date it is due. Null when Jira holds no due date. */
   due: string | null;
-  /** ISO date it last moved. */
+  /**
+   * ISO date it last moved, which is the day the list screen shows.
+   *
+   * `issues.updated` holds the moment instead, because it is the stamp a
+   * write reads before it refuses a stale one. A stamp resolved to the day
+   * refuses no write made later the same day, which is every conflict worth
+   * catching. ADR-0007.
+   */
   updated: string;
   /** The sprint it sits in. Null while it sits in the backlog. */
   sprintId: string | null;
-  /** What the project's custom fields hold, by field id. Absent is empty. */
+  /** What the workspace's custom fields hold, keyed by `workspace_fields.id`.
+   *  Absent is empty. */
   fields: Record<string, string>;
   /**
    * The keys this issue blocks.
    *
    * One direction, stored once. "Blocked by" is read from the other end,
    * because holding both sides invites them to disagree, and Jira's own link
-   * puts the truth at the inward end.
+   * puts the truth at the inward end. `issue_blocks` stores the pair from the
+   * blocker for that reason, and a check there refuses a self-link.
    */
   blocks: string[];
   /** The key of the issue it hangs under. Absent on an epic. */
