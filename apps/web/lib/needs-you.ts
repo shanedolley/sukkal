@@ -17,7 +17,7 @@
 import type { Pool } from "pg";
 
 import type { NeedsYouItem, NeedsYouKind, Space } from "./types";
-import type { SpaceFilter } from "./space";
+import { spacesFor, type SpaceFilter } from "./space.ts";
 
 /** One row of the read below, before it becomes what a screen renders. */
 export interface NeedsYouRow {
@@ -33,20 +33,6 @@ export interface NeedsYouRow {
   chunk_id: string | null;
   audit_id: string | null;
   rule: string | null;
-}
-
-/**
- * The spaces a filter reads.
- *
- * `shared` comes with every one of them. It is the space either side may
- * cite, so narrowing to Collibra hides Koinon and keeps what belongs to
- * both. ADR-0018 decides this, and it is why the filter is a list rather
- * than an equality: `'all'` has no value in the enum to compare against.
- */
-export function spacesFor(filter: SpaceFilter): Space[] {
-  return filter === "all"
-    ? ["collibra", "koinon", "personal", "shared"]
-    : [filter, "shared"];
 }
 
 /**

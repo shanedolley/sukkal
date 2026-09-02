@@ -7,6 +7,7 @@
 // sits with, so the shape of the morning reads before anything is opened.
 // Each card is a link to the page that holds the queue itself.
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowRightIcon, MessagesSquareIcon } from "lucide-react";
 
@@ -36,6 +37,16 @@ export function Briefing() {
   const status = forced ?? "ready";
 
   const meetings = inSpace(MEETINGS, space);
+
+  // The audit log links a denial here, at #needs-you. The region renders only
+  // once its read answers, so by then the browser has already looked for that
+  // fragment and found nothing. Scroll to it when the rows arrive, which is
+  // what the link promises.
+  useEffect(() => {
+    if (needsStatus !== "ready") return;
+    if (window.location.hash !== "#needs-you") return;
+    document.getElementById("needs-you")?.scrollIntoView({ block: "start" });
+  }, [needsStatus]);
   const proposed = inSpace(facts, space).filter(isProposed);
   const stale = inSpace(facts, space).filter(isStale);
 

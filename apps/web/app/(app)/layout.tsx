@@ -9,6 +9,7 @@ import { AppShell } from "@/components/blocks/app-shell-1/components/app-shell";
 import { DetailPanelProvider } from "@/components/detail-panel";
 import { SearchProvider } from "@/components/search/search-provider";
 import { Shortcuts } from "@/components/shortcuts";
+import { AuditProvider } from "@/lib/audit-context";
 import { NeedsYouProvider } from "@/lib/needs-you-context";
 import { ReviewProvider } from "@/lib/review-context";
 import { SpaceProvider } from "@/lib/space-context";
@@ -72,6 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SpaceProvider>
       <NeedsYouProvider>
+        <AuditProvider>
         <ReviewProvider>
           <DetailPanelProvider>
             <SearchProvider>
@@ -82,6 +84,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </SearchProvider>
           </DetailPanelProvider>
         </ReviewProvider>
+        </AuditProvider>
       </NeedsYouProvider>
     </SpaceProvider>
   );

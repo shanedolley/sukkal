@@ -19,7 +19,7 @@ import {
   EyeOffIcon,
 } from "lucide-react"
 
-import { AUDIT, CONVERSATIONS, MEETINGS } from "@/lib/fixtures"
+import { CONVERSATIONS, MEETINGS } from "@/lib/fixtures"
 import { inSpace, type SpaceFilter } from "@/lib/space-context"
 import { WORKSPACES } from "@/lib/workspaces"
 import type { Fact } from "@/lib/types"
@@ -135,6 +135,8 @@ export function navMain(
    *  stays off until it has: a confident number beside a spinner is worse
    *  than no number. */
   needsYou: number | null,
+  /** Denied audit entries, or null while the read has not answered. */
+  denied: number | null,
   known = true
 ): NavItem[] {
   const proposed = inSpace(facts, space).filter(
@@ -142,9 +144,6 @@ export function navMain(
   ).length
   const stale = inSpace(facts, space).filter((f) => f.state === "stale").length
   const meetings = inSpace(MEETINGS, space).length
-  const denied = inSpace(AUDIT, space).filter(
-    (e) => e.outcome === "denied"
-  ).length
 
   return [
     {
@@ -194,7 +193,7 @@ export function navMain(
       label: "Audit log",
       href: "/audit",
       icon: <ShieldCheckIcon aria-hidden="true" />,
-      badge: known && denied > 0 ? denied : undefined,
+      badge: denied !== null && denied > 0 ? denied : undefined,
     },
   ]
 }

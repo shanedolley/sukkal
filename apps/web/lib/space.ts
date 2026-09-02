@@ -9,6 +9,20 @@ import type { Space } from "./types";
 /** "all" means no filter. The brief flags a crossing rather than blocking it. */
 export type SpaceFilter = Space | "all";
 
+/**
+ * The spaces a filter reads, for a query that narrows in SQL.
+ *
+ * `shared` comes with every one of them. It is the space either side may
+ * cite, so narrowing to Collibra hides Koinon and keeps what belongs to both.
+ * ADR-0018 decides this, and it is why this is a list rather than an
+ * equality: `"all"` has no value in the enum to compare against.
+ */
+export function spacesFor(filter: SpaceFilter): Space[] {
+  return filter === "all"
+    ? ["collibra", "koinon", "personal", "shared"]
+    : [filter, "shared"];
+}
+
 /** Narrow any row that carries a space. */
 export function inSpace<T extends { space: Space }>(
   rows: T[],

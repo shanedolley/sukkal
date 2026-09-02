@@ -306,8 +306,20 @@ export interface AuditEntry {
   /** How to reverse it. */
   reverse: string;
   space: Space;
-  /** Present only on a denial: the policy rule that denied it. */
+  /** Present only on a denial: the policy rule that denied it, by key. */
   rule?: string;
+  /**
+   * The rule's own words, read from `policies` rather than copied here. The
+   * key names the policy so its wording can change without rewriting every
+   * entry that cited it, which is exactly why the words are read.
+   */
+  policy?: { governs: string; effect: string };
+  /**
+   * The Needs you row a denial raised, while it is still open. A denial is
+   * queued for Shane's decision, so the log says which decision waits and
+   * which one is closed.
+   */
+  decision?: { id: string; title: string };
 }
 
 export const SPACE_LABELS: Record<Space, string> = {

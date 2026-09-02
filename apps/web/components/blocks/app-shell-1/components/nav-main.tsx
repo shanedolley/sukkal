@@ -33,6 +33,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useAudit } from "@/lib/audit-context"
 import { useNeedsYou } from "@/lib/needs-you-context"
 import { navMain, type NavChild, type NavItem } from "./data"
 import { ChevronRightIcon } from "lucide-react"
@@ -294,10 +295,20 @@ export function NavMain() {
   const { space } = useSpace()
   const { facts } = useReview()
   const { items, status } = useNeedsYou()
+  const { entries, status: auditStatus } = useAudit()
+  const denied =
+    auditStatus === "ready"
+      ? entries.filter((entry) => entry.outcome === "denied").length
+      : null
   return (
     <NavGroup
       label="Assistant"
-      items={navMain(space, facts, status === "ready" ? items.length : null)}
+      items={navMain(
+        space,
+        facts,
+        status === "ready" ? items.length : null,
+        denied
+      )}
     />
   )
 }

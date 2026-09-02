@@ -18,7 +18,8 @@
 
 import assert from "node:assert/strict";
 
-import { spacesFor, toItem, type NeedsYouRow } from "../lib/needs-you.ts";
+import { toItem, type NeedsYouRow } from "../lib/needs-you.ts";
+import { spacesFor } from "../lib/space.ts";
 import type { Space } from "../lib/types.ts";
 
 const RAISED = new Date("2026-08-25T07:42:00+10:00");

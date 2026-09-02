@@ -11,8 +11,9 @@
 // fields are prose, so they open in a panel instead of becoming columns.
 
 import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
 import { useTable, type ColumnDef } from "@tanstack/react-table";
-import { CheckCircle2Icon, ShieldXIcon } from "lucide-react";
+import { ArrowUpRightIcon, CheckCircle2Icon, ShieldXIcon } from "lucide-react";
 
 import { Badge } from "@/components/reui/badge";
 import {
@@ -31,13 +32,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { AUDIT } from "@/lib/fixtures";
+import { useAudit } from "@/lib/audit-context";
 import { formatStamp } from "@/lib/format";
-import { useForcedStatus } from "@/lib/forced-state";
+import { useForcedState } from "@/lib/forced-state";
 import { PageError, PageLoading } from "@/components/page-status";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auditRows, type OutcomeFilter } from "@/lib/audit-view";
-import { inSpace, useSpace } from "@/lib/space-context";
 import { SPACE_LABELS, type AuditEntry, type AuditOutcome } from "@/lib/types";
 
 function OutcomeBadge({ outcome }: { outcome: AuditOutcome }) {
@@ -54,7 +54,7 @@ function OutcomeBadge({ outcome }: { outcome: AuditOutcome }) {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1 border-b pb-3 last:border-b-0">
       <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
@@ -63,17 +63,30 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** One of the four fields, in the grid. It is prose in a fixed column, so it
+ *  shortens here and stays whole in the panel. */
+function Prose({ children }: { children: string }) {
+  // block, not inline: truncate needs a box with a definite width.
+  return (
+    <div className="text-muted-foreground truncate text-sm" title={children}>
+      {children}
+    </div>
+  );
+}
+
 function AuditLog() {
-  const status = useForcedStatus();
-  const { space } = useSpace();
+  const { entries, status: live } = useAudit();
+  const forced = useForcedState();
+  const status = forced ?? live;
   const [outcome, setOutcome] = useState<OutcomeFilter>("all");
   const [selected, setSelected] = useState<AuditEntry | null>(null);
 
-  // The outcome filter and the newest-first order live in lib/audit-view.ts,
-  // so scripts/check-audit.ts can prove them. See KPA-43.
+  // The read narrows by space in SQL and orders newest first. The outcome
+  // filter stays here, in lib/audit-view.ts, so scripts/check-audit.ts can
+  // prove it, and so one read serves this page and the sidebar's count.
   const rows = useMemo(
-    () => (status === "empty" ? [] : auditRows(inSpace(AUDIT, space), outcome)),
-    [space, outcome, status]
+    () => (status === "empty" ? [] : auditRows(entries, outcome)),
+    [entries, outcome, status]
   );
 
   const columns = useMemo<ColumnDef<DataGridFeatures, AuditEntry>[]>(
@@ -99,24 +112,43 @@ function AuditLog() {
         ),
       },
       {
-        id: "intent",
-        accessorKey: "intent",
-        header: "Intent",
-        size: 330,
-        cell: ({ row }) => (
-          // block, not inline: truncate needs a box with a definite width, and
-          // a bare <span> has neither, so the text ran under the next column.
-          <div className="text-muted-foreground truncate text-sm">
-            {row.original.intent}
-          </div>
-        ),
-      },
-      {
         id: "outcome",
         accessorKey: "outcome",
         header: "Outcome",
         size: 105,
         cell: ({ row }) => <OutcomeBadge outcome={row.original.outcome} />,
+      },
+      // The four fields the brief requires, each in its own column. They were
+      // behind a click, and two of the four were not on the row at all, so
+      // the log could not be read without opening every entry in it. The
+      // panel keeps the full prose; these shorten and carry it as a tooltip.
+      {
+        id: "intent",
+        accessorKey: "intent",
+        header: "Intent",
+        size: 300,
+        cell: ({ row }) => <Prose>{row.original.intent}</Prose>,
+      },
+      {
+        id: "before",
+        accessorKey: "before",
+        header: "State before",
+        size: 240,
+        cell: ({ row }) => <Prose>{row.original.before}</Prose>,
+      },
+      {
+        id: "result",
+        accessorKey: "result",
+        header: "What happened",
+        size: 280,
+        cell: ({ row }) => <Prose>{row.original.result}</Prose>,
+      },
+      {
+        id: "reverse",
+        accessorKey: "reverse",
+        header: "How to reverse it",
+        size: 260,
+        cell: ({ row }) => <Prose>{row.original.reverse}</Prose>,
       },
       {
         id: "rule",
@@ -227,6 +259,50 @@ function AuditLog() {
                 <Field label="State before" value={selected.before} />
                 <Field label="Outcome" value={selected.result} />
                 <Field label="How to reverse it" value={selected.reverse} />
+
+                {/* The rule's own words, read from the policy rather than
+                    copied onto the entry. A key alone says which rule fired
+                    and nothing about what it governs. */}
+                {selected.policy && (
+                  <Field
+                    label="The rule"
+                    value={
+                      <>
+                        <span className="block">{selected.policy.governs}</span>
+                        <span className="text-muted-foreground block">
+                          {selected.policy.effect}
+                        </span>
+                      </>
+                    }
+                  />
+                )}
+
+                {/* Where a denial went. Nothing approves an action in advance,
+                    so a refusal is queued for Shane, and the log says whether
+                    that decision is still waiting. */}
+                {selected.outcome === "denied" && (
+                  <Field
+                    label="Your decision"
+                    value={
+                      selected.decision ? (
+                        <Link
+                          href="/dashboard#needs-you"
+                          className="text-primary focus-visible:ring-ring inline-flex w-fit items-center gap-1 rounded-sm font-medium underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
+                        >
+                          {selected.decision.title}
+                          <ArrowUpRightIcon
+                            className="size-3.5"
+                            aria-hidden="true"
+                          />
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Closed. Nothing is waiting on you for this one.
+                        </span>
+                      )
+                    }
+                  />
+                )}
               </dl>
             </>
           )}
