@@ -1,20 +1,21 @@
 "use client";
 
-// KPA-39. The day's meetings, each tied to the engagement it belongs to.
+// KPA-39, KPA-118. The day's meetings, each tied to the engagement it belongs
+// to. The rows come from the `meetings` table, for today, in start order.
 
 import { Suspense } from "react";
 
 import { MeetingsToday } from "@/components/dashboard/meetings-today";
 import { QueuePage } from "@/components/queue-page";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MEETINGS } from "@/lib/fixtures";
-import { useForcedStatus } from "@/lib/forced-state";
-import { inSpace, useSpace } from "@/lib/space-context";
+import { useForcedState } from "@/lib/forced-state";
+import { useMeetings } from "@/lib/meetings-context";
 
 function Meetings() {
-  const { space } = useSpace();
-  const status = useForcedStatus();
-  const meetings = inSpace(MEETINGS, space);
+  const { meetings, status: live } = useMeetings();
+  // This region reads a database, so it reports what happened. ?state= still
+  // forces it, which is how the other three states get looked at.
+  const status = useForcedState() ?? live;
 
   return (
     <QueuePage
