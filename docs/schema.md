@@ -38,6 +38,7 @@ check constraint here rather than an instruction in a prompt.
 | `connection_credentials` | The sealed secret for one connection, with the dates the provider named and the last verdict |
 | `workspaces` | One Jira tracker and the space it belongs to. The id is stable, the name is not, and nothing files anything under the name |
 | `projects` | One piece of work inside a workspace, and the one rule that matches its issues: a Jira label, or a Jira key prefix |
+| `workspace_fields` | The custom fields a workspace carries, and the Jira field each one writes |
 
 ## The enums
 
@@ -498,6 +499,48 @@ the same question a second way: it requires the rule at insert, and the seed
 gives every label-matched project a `match_label` equal to its `id`. `fallback`
 in `apps/web/lib/project-settings.ts` still guesses that, and KPA-127 is where
 it reads the row instead.
+
+## A workspace's custom fields
+
+`migrations/021_workspace_fields.sql` holds the fields a workspace carries and
+the Jira field each one writes. `apps/web/lib/workspace-fields.ts` kept the
+list in `localStorage` under the workspace name, so a rename orphaned it. Each
+field now files under `workspaces.id`, which migration 018 made stable for
+this.
+
+**Two identifiers, and neither derives the other.** `id` is the slug an issue
+files its value under, and `jira_id` is what a write to the tracker names. The
+Collibra site offers two custom fields called `Customer`, so a name chooses
+between them by luck and the losing choice writes to a field nobody reads.
+`fieldId()` lower-cased a name into an id, nothing called it, and KPA-97
+deleted it. `workspace_fields_jira_id_is_a_custom_field` refuses a slug in the
+column that has to hold the tracker's id, which is the one typo that would
+otherwise be silent. Two slugs pointing at one Jira field are refused as well:
+the second write would win and no screen would show which lost.
+
+**Required is a column, so the rule is a query.** `missingFields` filters a
+list the browser holds, and `issue-dialog.tsx` refuses to file an issue while
+it returns anything. The column answers the same question in SQL:
+
+```sql
+SELECT id FROM workspace_fields
+ WHERE workspace = $1 AND required
+   AND coalesce(btrim($2::jsonb ->> id), '') = '';
+```
+
+An absent key and a blank string both count as unfilled, which is what the
+browser's `.trim()` means. KPA-127 is where the interface asks this instead.
+
+**The seed is the fixture, and its two Jira ids are real.**
+`WORKSPACE_FIELDS` in `apps/web/lib/fixtures.ts` gives Collibra two fields and
+the other two workspaces none, and migration 018 seeded its tree on the same
+reasoning. The fixture carries no Jira id, so both were read from the Collibra
+site's own field list. A workspace with no row carries no fields.
+
+The reference removes the fields when the workspace goes, where `projects` has
+no `ON DELETE` clause at all. A project is work in its own right, so a
+workspace still holding one cannot be removed. A field list is a property of
+the workspace and means nothing without it.
 
 ## The queue lives in its own schema
 
