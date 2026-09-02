@@ -412,6 +412,10 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Mail triage rule | Carries forward unchanged | If a person composed the words it stays in the inbox, and the sending address proves nothing. The rule earned itself through use in `docs/mail-triage-method.md`. |
 | Identity | The installation owns its own account, created on the first boot | An installation somebody else runs has no Access in front of it and no WorkOS tenant behind it, so the application authenticates rather than assuming the network already did. Access and WorkOS stay in front of Shane's box as that deployment's own choice. Supersedes the WorkOS decision of 23 August 2026. ADR-0009. |
 | Fact state | Store the review position, derive the rest | `facts` already carries `verified`, `stale_after` and `valid_to`, so a status column repeating them holds one truth twice and the two eventually disagree. `candidate`, `proposed` and `rejected` are stored. `verified`, `stale` and `retired` are read from the dates. Replaces `fact_status`, whose three values described a vault note's maturity and had no word for a fact waiting on Shane. ADR-0010. |
+| Audit shape | An attempt and its outcome are two rows | The columns are `NOT NULL` and the table is append only, so one row cannot be started and finished. A crash between the call and the record would otherwise leave no trace that anything was attempted. An orphaned attempt is the row worth having. ADR-0015. |
+| Inference path | The subscription for scheduled work, the metered API for chat | *Risks accepted* already separates them: a few scheduled jobs a day is ordinary use of a coding tool, and an always-on screen is not. Both sit behind the seam `src/memory/inference.ts` already provides. ADR-0016. |
+| Review interval | A re-confirmed fact keeps its own | The sixteen dated facts in the vault carry sixteen different intervals, each chosen for that fact. A fixed horizon discards those judgements and lands the whole batch on one afternoon. ADR-0017. |
+| The fourth space | `shared` stays, and never counts as a crossing | It is the space either side may cite, so flagging it teaches Shane to ignore the flag that guards the only wall nothing else enforces. ADR-0018. |
 | Users | One owner per installation | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means the owner. On Shane's box that owner is Shane. |
 
 **A note on the memory store decision.** Row-level security enforcing the
@@ -569,8 +573,11 @@ project, custom field and connection sits in `apps/web/lib/fixtures.ts` or in
 of them holds the account. Nothing survives a second device, and nothing
 survives a cleared browser.
 
-**The `space` enum already carries a fourth value.** The database offers
-`shared`, and the interface knows three. Whichever wins, the other changes.
+**The `space` enum keeps its fourth value, and the interface learns it.**
+ADR-0018 settled this on 2 September 2026. `shared` holds how Shane works
+whatever hat he wears, and it is the space either side may cite, so it is the
+one space the wall does not divide. A shared citation therefore never counts as
+a crossing, which it does today.
 
 ### What sets `valid_to`
 
