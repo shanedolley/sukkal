@@ -1,6 +1,6 @@
 # The schema
 
-Twenty-six tables and twelve enums. `migrations/001_core_schema.sql` created
+Twenty-seven tables and thirteen enums. `migrations/001_core_schema.sql` created
 the first ten, and migrations 003 to 010 changed what follows. Migrations 011
 to 014, 017 and 026 add no table: 011 creates the schema the job queue lives
 in, 012 seeds one policy row, 013 adds one column to `facts`, 014 adds one
@@ -9,8 +9,9 @@ adds two more to `users` and a second policy row. Migration 016 adds a
 connection and its sealed secret, 018 adds the workspace and project tree, 021
 adds the fields a workspace carries, and 022 caches the issues a tracker owns.
 023 adds no table and says a connection may hold no credential, 024 carries a
-proved sign-in, and 025 adds the last one, which carries an outstanding
-password reset. The vault's own `CLAUDE.md` is the authority for every enum the
+proved sign-in, 025 carries an outstanding password reset, and 027 adds the
+last one, which holds the sprints a tracker runs and the reference 022 left
+for it. The vault's own `CLAUDE.md` is the authority for every enum the
 vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
@@ -47,6 +48,7 @@ check constraint here rather than an instruction in a prompt.
 | `workspace_fields` | The custom fields a workspace carries, and the Jira field each one writes |
 | `sessions` | One proved sign-in. The id is a SHA-256 of the token and never the token |
 | `password_resets` | One outstanding reset. The id is a SHA-256 of the token, one row per owner, and using it deletes the row |
+| `sprints` | The sprints a tracker runs, cached. One active per workspace, and `issues.sprint_id` points here |
 
 ## The enums
 
@@ -64,6 +66,7 @@ check constraint here rather than an instruction in a prompt.
 | `issue_status` | `backlog`, `todo`, `in-progress`, `in-review`, `done`, `cancelled` |
 | `issue_kind` | `epic`, `story`, `subtask` |
 | `issue_priority` | `none`, `low`, `medium`, `high`, `urgent` |
+| `sprint_state` | `active`, `future`, `closed` |
 
 `edge_kind` is enumerated in one place so no call site invents a sixth.
 `derived_from` comes from a `sources:` entry, `links_to` from a `[[wikilink]]`
@@ -682,6 +685,52 @@ compares the contract's two dates. Three rules are the exceptions, and each
 refuses a row KPA wrote wrong rather than a row Jira holds: the key is upper
 case in the shape `projects.match_key_prefix` compares, the title says
 something, and `fields` is a JSON object rather than an array.
+
+## The sprints a tracker runs
+
+`migrations/027_sprints.sql` holds them, and the reference migration 022 left
+for it. That migration cached an issue's `sprint_id` and said "no reference,
+because no table holds a sprint yet".
+
+**It is a cache, like `issues`, and never a master.** ADR-0007 leaves the
+tracker owning its own data, so `state` is the word Jira uses rather than
+something derived from the dates. A sprint closed early keeps a future end
+date, and one nobody has started keeps a past start date. Deriving the state
+would overrule the tracker on its own sprint.
+
+**A sprint is unique inside its workspace and nowhere else**, which is the rule
+`issues` already keeps for a key. Two Jira sites both number a sprint 41, and
+the fixture has all three workspaces running all three sprints for that reason.
+
+**One active sprint per workspace, held by a partial unique index.**
+`CURRENT_SPRINT` in `apps/web/lib/fixtures.ts` found the active one with
+`Array.find`, and KPA-99 asks that the same answer come from a query. A query
+returning two rows has nothing to give the screen, so the index is what makes
+the single row a fact rather than a hope:
+
+    CREATE UNIQUE INDEX sprints_one_active_per_workspace
+      ON sprints (workspace) WHERE state = 'active';
+
+Every other state repeats as often as the tracker likes, because a board holds
+many closed sprints and several planned ones.
+
+**Null is the backlog, and MATCH SIMPLE is what keeps it so.** The reference
+names two columns, and the default match rule satisfies a composite reference
+whose parts are not all set. `issues.workspace` is NOT NULL and `sprint_id` is
+not, so an issue in no sprint is checked against nothing. That behaviour is
+stated by the absence of MATCH FULL rather than by a second constraint.
+
+**The reference defers**, for the reason the parent reference in 022 already
+does. A poll returns issues and sprints in the tracker's own order, so one
+transaction writes both in any order and the check runs at COMMIT. Without it,
+whichever arrived second would decide whether the batch was refused.
+
+**`ON DELETE SET NULL` names its column.** A sprint that leaves the tracker
+returns its issues to the backlog rather than taking them with it, and a bare
+`SET NULL` would try `workspace` too, which is NOT NULL.
+
+**An end before a start is refused, and the same day is not.** A one-day sprint
+is a real thing, and refusing it would refuse a row the tracker holds.
 
 ## What carries a proved sign-in
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
-import { type Issue, PARENT_KIND } from '../apps/web/lib/types.ts';
+import { type Issue, PARENT_KIND, type Sprint } from '../apps/web/lib/types.ts';
 // The tree the seed holds, imported rather than retyped. An issue names its
 // workspace by name and the cache files it under `workspaces.id`, so this is
 // what turns one into the other.
@@ -19,7 +19,10 @@ const url = process.env['DATABASE_URL_TEST'];
 // a static import fails the root type check on all six.
 // `test/workspace-fields.test.ts` records the same thing.
 const FIXTURES = '../apps/web/lib/fixtures.ts';
-const { ISSUES } = (await import(FIXTURES)) as { ISSUES: Issue[] };
+const { ISSUES, SPRINTS } = (await import(FIXTURES)) as {
+  ISSUES: Issue[];
+  SPRINTS: Sprint[];
+};
 
 /** Every column, constraint and comment on the two tables, plus the values of
  *  the three enums. A rename of anything shows up here, which is what the down
@@ -189,6 +192,19 @@ describe('the issue cache', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
     // One transaction, so the parent reference defers and the fixture's order
     // decides nothing. A poll writes a batch the same way.
     await client.query('BEGIN');
+    // Every sprint the issues name, in every workspace that names it.
+    // Migration 027 gave `sprint_id` a reference, and the fixture has all
+    // three workspaces running all three sprints. `test/sprints.test.ts` owns
+    // the table; this is what makes the cache's rows legal.
+    for (const workspace of WORKSPACES) {
+      for (const sprint of SPRINTS) {
+        await client.query(
+          `INSERT INTO sprints (workspace, tracker_id, name, starts_on, ends_on, state)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [workspace.id, sprint.id, sprint.name, sprint.start, sprint.end, sprint.state],
+        );
+      }
+    }
     for (const issue of ISSUES) {
       await insert(issue);
     }
