@@ -4,24 +4,13 @@ import { after, before, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
 // The constants the interface reads, imported rather than retyped: a
 // transcription here would agree with itself and prove nothing about the seed.
+import { WORKSPACE_FIELDS } from '../apps/web/lib/fixtures.ts';
 import { WORKSPACES } from '../apps/web/lib/workspaces.ts';
 import { connect } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
-
-interface Constants {
-  WORKSPACE_FIELDS: Record<string, { id: string; name: string; required: boolean }[]>;
-}
-
-// `fixtures.ts` alone stays behind a variable specifier. The root type check
-// sets `noUncheckedIndexedAccess` and `apps/web/tsconfig.json` does not, so six
-// indexed reads in that file type as `T | undefined` here and as `T` there, and
-// a static import fails the root type check on all six. Node resolves the
-// specifier relative to this file and strips its types like any other.
-const FIXTURES = '../apps/web/lib/fixtures.ts';
-const { WORKSPACE_FIELDS } = (await import(FIXTURES)) as Constants;
 
 /** Every column, constraint and comment on the table, as text. */
 const SHAPE = `

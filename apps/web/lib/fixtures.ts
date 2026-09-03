@@ -18,7 +18,7 @@ import type {
   Source,
   SourceChunk,
   Sprint,
-} from "./types";
+} from "./types.ts";
 
 /** Resolve a provenance or a citation to the source it points at. */
 export function findSource(sourceId: string): Source | undefined {
@@ -423,7 +423,10 @@ export const MEETINGS: Meeting[] = [
   },
 ];
 
-export const CHAT_ANSWERS: ChatAnswer[] = [
+// Two at least, and the tuple says so. The conversations below read index 0
+// and index 1 directly, and `answerFor` in components/chat/conversation.tsx
+// falls back to a modulo index that needs one to be there.
+export const CHAT_ANSWERS: [ChatAnswer, ChatAnswer, ...ChatAnswer[]] = [
   {
     id: "chat-retention",
     question: "What did BHP agree about lineage retention?",
@@ -1044,13 +1047,23 @@ export const PROJECT_OVERVIEW: Record<string, ProjectOverview> = {
  * changelog replaces this whole map.
  */
 function weekly(open: number[], closed: number[]): ProjectActivity[] {
+  // The two arrays run week for week, and every caller passes seven of each.
+  // Nothing in the signature says so, so a shorter `closed` would have drawn a
+  // chart with a gap in it and reported nothing. It now fails here instead.
+  if (open.length !== closed.length) {
+    throw new Error(
+      `weekly() needs one closed count per open week: ${String(open.length)} open, ` +
+        `${String(closed.length)} closed.`,
+    );
+  }
+
   return open.map((count, week) => {
     const day = new Date(TODAY);
     day.setDate(day.getDate() - 7 * (open.length - 1 - week));
     return {
       date: day.toISOString().slice(0, 10),
       open: count,
-      closed: closed[week],
+      closed: closed[week] ?? 0,
     };
   });
 }

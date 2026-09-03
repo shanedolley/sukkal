@@ -87,7 +87,11 @@ function draw(seen: string[]): string[] {
   const rest = NAMES.filter((name) => !seen.includes(name));
   const picked: string[] = [];
   while (picked.length < SHOWN && rest.length > 0) {
-    picked.push(rest.splice(Math.floor(Math.random() * rest.length), 1)[0]);
+    // `rest.length > 0` is what makes the splice return a name, and it
+    // narrows nothing the compiler can read.
+    const [name] = rest.splice(Math.floor(Math.random() * rest.length), 1);
+    if (name === undefined) break;
+    picked.push(name);
   }
   return picked;
 }
@@ -214,7 +218,8 @@ export function SetupWizard() {
     1: ["assistant"],
     2: ["password", "again"],
   };
-  const ready = fields[at].every((field) => !faults[field]);
+  // A step this map does not name asks for no field, so nothing is unfilled.
+  const ready = (fields[at] ?? []).every((field) => !faults[field]);
   // A fault is shown once somebody has tried to move on, rather than while
   // they are still typing the first letter of their name.
   const fault = (field: string) => (tried ? faults[field] : undefined);

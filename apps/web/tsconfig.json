@@ -9,6 +9,11 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    // The root sets this too, so one indexed read types the same way under
+    // both checks. KPA-141 turned it on here on 3 September 2026, after the
+    // mismatch made a test import fail in the imported file rather than the
+    // importing one.
+    "noUncheckedIndexedAccess": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",

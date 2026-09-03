@@ -97,7 +97,10 @@ export type ItemAction = {
 // lib/workspaces.ts. The brief keeps Collibra and Koinon apart as a guideline
 // rather than a wall.
 
-export const SPACE_OPTIONS: SpaceOption[] = [
+// Non-empty, and the tuple says so. `SpaceSwitcher` falls back to the first
+// option when the chosen space matches none, and a list that could be empty
+// would leave that fallback undefined.
+export const SPACE_OPTIONS: [SpaceOption, ...SpaceOption[]] = [
   {
     id: "all",
     name: "All spaces",

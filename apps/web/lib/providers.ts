@@ -65,7 +65,15 @@ export interface Provider {
   blurb: string;
   /** What the account may be reached for. Empty when the provider is one thing. */
   services: Service[];
-  methods: Method[];
+  /**
+   * Every way in, and there is always at least one.
+   *
+   * The tuple says so, which is what lets a caller read `methods[0]` without
+   * asking whether it is there. `scripts/check-connections.ts` asserts the
+   * same rule over the catalogue, and a provider offering no way in is a card
+   * nobody can use.
+   */
+  methods: [Method, ...Method[]];
 }
 
 /** Sends you to the provider. No secret passes through the screen. */

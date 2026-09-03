@@ -919,7 +919,14 @@ function ArrangeDialog({
       const to = from + by;
       if (from < 0 || to < 0 || to >= current.length) return current;
       const next = [...current];
-      [next[from], next[to]] = [next[to], next[from]];
+      // Both reads sit inside the bounds check above, which narrows the index
+      // and not the value. Reading them out says the same thing to the
+      // compiler, and it costs one branch that never runs.
+      const moving = next[from];
+      const displaced = next[to];
+      if (moving === undefined || displaced === undefined) return current;
+      next[from] = displaced;
+      next[to] = moving;
       return next;
     });
   }

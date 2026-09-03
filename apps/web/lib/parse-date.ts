@@ -131,8 +131,11 @@ export function parseDate(text: string, today: string): string | null {
     return exact(Number(written[1]), Number(written[2]), Number(written[3]));
   }
 
-  if (Object.hasOwn(NAMED, said)) {
-    return iso(from + NAMED[said] * DAY);
+  // `Object.hasOwn` proves the key and narrows nothing, so the read happens
+  // once and its answer is what gets tested.
+  const named = NAMED[said];
+  if (named !== undefined) {
+    return iso(from + named * DAY);
   }
 
   if (said === "next week") return iso(nextMonday(from));
@@ -157,8 +160,9 @@ export function parseDate(text: string, today: string): string | null {
   // A weekday, with or without the word that adds nothing to it. "Next
   // Friday" and "Friday" both mean the Friday that has not happened yet.
   const weekday = /^(?:next |this |coming )?([a-z]+)$/.exec(said);
-  if (weekday) {
-    const index = whichOf(WEEKDAYS, weekday[1]);
+  const weekdayWord = weekday?.[1];
+  if (weekdayWord !== undefined) {
+    const index = whichOf(WEEKDAYS, weekdayWord);
     if (index >= 0) return iso(nextWeekday(from, index));
   }
 
@@ -168,10 +172,14 @@ export function parseDate(text: string, today: string): string | null {
     /^(\d{1,2})(?:st|nd|rd|th)? (?:of )?([a-z]+)(?: (\d{4}))?$/.exec(said);
   const monthFirst =
     /^([a-z]+) (\d{1,2})(?:st|nd|rd|th)?,?(?: (\d{4}))?$/.exec(said);
+  // Every group read below types as `string | undefined`, because a group can
+  // fail to participate in a match. The two word groups cannot: neither is
+  // optional in its pattern. `?? ""` says so without a cast, and `whichOf`
+  // answers -1 on a word shorter than three letters anyway.
   const spelt = dayFirst
-    ? { day: Number(dayFirst[1]), word: dayFirst[2], year: dayFirst[3] }
+    ? { day: Number(dayFirst[1]), word: dayFirst[2] ?? "", year: dayFirst[3] }
     : monthFirst
-      ? { day: Number(monthFirst[2]), word: monthFirst[1], year: monthFirst[3] }
+      ? { day: Number(monthFirst[2]), word: monthFirst[1] ?? "", year: monthFirst[3] }
       : null;
   if (spelt) {
     const month = whichOf(MONTHS, spelt.word) + 1;

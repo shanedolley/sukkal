@@ -244,16 +244,22 @@ specifier to dodge `TS1287`, which `tsc` reported in the imported file rather
 than the importing one, and fifteen of those scripts each printed
 `MODULE_TYPELESS_PACKAGE_JSON`. `test/workspaces.test.ts` shows the import.
 
-**The root type check judges every `apps/web` file a test imports, and it is
-stricter than the web tier's own.** Two settings differ, and each one bites.
-The root sets `moduleResolution: nodenext`, so a relative import inside a file
-it reaches names the `.ts` extension: `apps/web/lib/workspaces.ts` imports
+**The root type check judges every `apps/web` file a test imports, and one
+setting still differs.** The root sets `moduleResolution: nodenext`, so a
+relative import inside a file it reaches names the `.ts` extension:
+`apps/web/lib/workspaces.ts` and `apps/web/lib/fixtures.ts` both import
 `./types.ts` for that reason, where the rest of the web tier omits it under
-`bundler`. The root also sets `noUncheckedIndexedAccess`, which
-`apps/web/tsconfig.json` leaves off, so six indexed reads in
-`apps/web/lib/fixtures.ts` fail the root check and that one file still needs a
-variable specifier. `test/workspace-fields.test.ts` imports it that way and
-says why.
+`bundler`. It announces itself as `TS2835` and costs one character, and a
+resolution failure also makes a callback parameter implicitly `any`, so
+`TS7006` beside it is the same fault rather than a second one.
+
+**Both packages set `noUncheckedIndexedAccess`.** KPA-141 turned it on in
+`apps/web` on 3 September 2026 and fixed the 24 errors it found, so one indexed
+read now types the same way under both checks and a test imports any web module
+plainly. `list[0]` is `T | undefined`: guard it, or state the invariant in the
+type. `Provider.methods`, `SPACE_OPTIONS`, `LABEL_DOTS` and `CHAT_ANSWERS` are
+non-empty tuples for that reason, which is what makes index 0 a value rather
+than a maybe.
 
 **A gate's prompt is a file, never a string in code.** `src/memory/prompts/`
 holds them, and the gate reads its file on every call, so a renamed prompt

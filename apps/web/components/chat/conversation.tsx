@@ -39,7 +39,11 @@ export function answerFor(question: string, index: number): ChatAnswer {
   const match =
     CHAT_ANSWERS.find(
       (a) => a.question.toLowerCase() === question.toLowerCase()
-    ) ?? CHAT_ANSWERS[index % CHAT_ANSWERS.length];
+    ) ??
+    // In range by construction, and the compiler cannot see a modulo. The
+    // tuple in fixtures.ts makes index 0 known, so the fallback is free.
+    CHAT_ANSWERS[index % CHAT_ANSWERS.length] ??
+    CHAT_ANSWERS[0];
   return { ...match, question };
 }
 

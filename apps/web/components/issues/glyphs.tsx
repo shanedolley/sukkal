@@ -178,7 +178,9 @@ export function StatusGlyph({
   );
 }
 
-const LABEL_DOTS = [
+// Non-empty, and the tuple says so, which is what makes index 0 a `string`
+// rather than a `string | undefined` and lets `dotFor` fall back to it.
+const LABEL_DOTS: [string, ...string[]] = [
   "bg-info",
   "bg-primary",
   "bg-warning",
@@ -189,5 +191,7 @@ const LABEL_DOTS = [
 /** The same label keeps the same colour on every row. */
 export function dotFor(label: string): string {
   const sum = [...label].reduce((total, ch) => total + ch.charCodeAt(0), 0);
-  return LABEL_DOTS[sum % LABEL_DOTS.length];
+  // A modulo index is in range by construction, and the compiler cannot see
+  // that. The tuple above makes index 0 known, so the fallback is free.
+  return LABEL_DOTS[sum % LABEL_DOTS.length] ?? LABEL_DOTS[0];
 }

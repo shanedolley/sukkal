@@ -182,7 +182,10 @@ export function Provisioning({
     }
     before += stage.seconds;
   }
-  const into = at < STAGES.length ? (elapsed - before) / STAGES[at].seconds : 1;
+  // `at < STAGES.length` proves the read and narrows nothing, so the stage is
+  // read out and its absence answers the same way as a finished run.
+  const stageNow = STAGES[at];
+  const into = stageNow ? (elapsed - before) / stageNow.seconds : 1;
 
   useEffect(() => {
     if (finished) onDone();
