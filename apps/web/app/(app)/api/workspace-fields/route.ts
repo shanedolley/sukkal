@@ -12,9 +12,9 @@
  * tracker id out, rather than inventing one.
  *
  * A LIST FILES UNDER `workspaces.id`, NEVER UNDER A NAME. The table makes that
- * a foreign key, so an unknown key is a bad request. The project settings
- * screen still sends a project's display name, and KPA-140 asks Shane which
- * list that screen is meant to edit.
+ * a foreign key, so an unknown key is a bad request. KPA-140 ruled that a
+ * project route edits its workspace's list, so the settings screen resolves
+ * the key through `routeWorkspace` and sends a name that answers.
  *
  * This route authenticates nobody, because nothing does yet.
  */

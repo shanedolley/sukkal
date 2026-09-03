@@ -154,9 +154,10 @@ export async function readWorkspaceFields(
  * a field taken off it goes. Both statements run on one client, or a failed
  * insert would leave the workspace with no fields at all.
  *
- * It answers false when the workspace names no row. The settings screen still
- * passes a project's display name, which matches no workspace, and KPA-140
- * asks Shane which list that screen is meant to edit.
+ * It answers false when the workspace names no row. Every screen now sends a
+ * workspace name that resolves, because KPA-140 gave the settings route
+ * `routeWorkspace`, which turns a project key into the workspace holding it.
+ * The false answer guards a caller that has not learnt that yet.
  */
 export async function writeWorkspaceFields(
   pool: Pool,

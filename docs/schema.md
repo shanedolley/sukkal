@@ -567,6 +567,18 @@ no `ON DELETE` clause at all. A project is work in its own right, so a
 workspace still holding one cannot be removed. A field list is a property of
 the workspace and means nothing without it.
 
+**A project route edits its workspace's list.** KPA-140 ruled it on
+3 September 2026, and `apps/web/lib/route-workspace.ts` is the rule.
+`/projects/bhp-meridian/settings` resolves `bhp-meridian` to `collibra` and
+edits the two rows above. A project carries no field list of its own, so this
+table needs no project column and no rule for a field defined twice.
+
+The screen names the workspace it edits, in the heading and again in the lede,
+because a shared list edited from a page named after one project is what the
+ruling designs out. Before it, the screen passed the project's display name the
+whole way down: `workspaceNamed` answered nothing, the name passed through as
+the key, and the screen showed an empty list and wrote where nobody reads.
+
 ## The issues a tracker owns
 
 `migrations/022_issue_cache.sql` caches the issues the interface reads from
