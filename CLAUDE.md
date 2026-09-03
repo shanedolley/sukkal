@@ -106,6 +106,17 @@ Two databases on amaterasu at `192.168.20.110`, both owned by the `kpa` role.
 | `DATABASE_URL` | `kpa` | The migration. It holds the facts |
 | `DATABASE_URL_TEST` | `kpa_dev` | Every test and every rehearsal |
 
+**`npm run migrate` reads `DATABASE_URL` and ignores `DATABASE_URL_TEST`.**
+Writing `DATABASE_URL_TEST=... npm run migrate` points it AT production rather
+than away from it, which is the shape of the mistake: the prefix reads like a
+safety measure and is none. An agent did exactly that on 3 September 2026 and
+put all 21 migrations into `kpa`. Nothing was lost, because `kpa` was empty and
+the runner refuses a schema holding tables it did not create.
+
+The command now names the database before it acts and refuses `kpa` outright.
+`KPA_ALLOW_PRODUCTION=1 npm run migrate` migrates it deliberately. To reach any
+other database, set `DATABASE_URL` itself.
+
 **Never point a test at `kpa`.** Separating the two is the whole reason
 `kpa_dev` exists, and `test/migrate.test.ts` asserts the database it connected
 to is not `kpa`.

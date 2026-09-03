@@ -166,6 +166,38 @@ export async function down(client: ClientBase, dir: string): Promise<string[]> {
 
 const MIGRATIONS_DIR = path.join(import.meta.dirname, '..', '..', 'migrations');
 
+/**
+ * Refuses a database this command was probably not meant to reach.
+ *
+ * `npm run migrate` reads `DATABASE_URL` and nothing else, so writing
+ * `DATABASE_URL_TEST=... npm run migrate` points it AT production rather than
+ * away from it. An agent did that on 3 September 2026 and put all 21
+ * migrations into `kpa`. Nothing was lost, because `kpa` was empty and the
+ * runner refuses a schema holding tables it did not create, and the next one
+ * will not be so lucky.
+ *
+ * `kpa` is the one database this refuses, which is the rule the rest of the
+ * repository already keeps: `test/migrate.test.ts` asserts the database it
+ * reached is not `kpa`, and CLAUDE.md says never to point a test there. A
+ * prefix rule was the first attempt and it was worse, because it also refused
+ * a throwaway somebody named for the job rather than for the convention.
+ *
+ * `KPA_ALLOW_PRODUCTION=1` migrates it deliberately, and records the intent at
+ * the moment it is used, the way `KOTHAR_ALLOW_MAIN` does for a commit on the
+ * trunk.
+ */
+function checkTarget(database: string): void {
+  if (database !== 'kpa' || process.env['KPA_ALLOW_PRODUCTION'] === '1') {
+    return;
+  }
+  throw new Error(
+    'refusing to migrate "kpa": it holds the facts.\n' +
+      'This command reads DATABASE_URL, so putting DATABASE_URL_TEST in front ' +
+      'of it changes nothing.\n' +
+      'To migrate it deliberately: KPA_ALLOW_PRODUCTION=1 npm run migrate',
+  );
+}
+
 async function main(): Promise<void> {
   const direction = process.argv[2] ?? 'up';
   if (direction !== 'up' && direction !== 'down') {
@@ -174,6 +206,17 @@ async function main(): Promise<void> {
 
   const client = connect();
   await client.connect();
+  const current = await client.query<{ name: string }>('SELECT current_database() AS name');
+  const database = current.rows[0]?.name ?? '';
+  // Named out loud before anything runs, because the last question anybody
+  // asks after a migration is which database it reached.
+  console.log(`${direction}: ${database}, read from DATABASE_URL`);
+  try {
+    checkTarget(database);
+  } catch (error) {
+    await client.end();
+    throw error;
+  }
   try {
     const ran = direction === 'up'
       ? await up(client, MIGRATIONS_DIR)
