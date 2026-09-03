@@ -345,6 +345,34 @@ OAuth grant. `verified_on` and `verdict` are null together, and a check
 constraint enforces the pair: a verdict with no date says nothing about now.
 Retyping a secret clears both, because a new secret has never been tried.
 
+**A connection may hold no credential, and migration 023 says so.** Claude by
+subscription reaches Anthropic through the headless CLI, and every OAuth grant
+reaches its provider without a key, so both write a `connections` row with no
+matching row here at all. That absence is the statement: a row holding a null
+secret is refused by the `NOT NULL` on `ciphertext`, and an empty one by the
+length check. Read `hasSecret` rather than reading the absence as a fault. The
+comment exists because a reader meeting `LEFT JOIN connection_credentials` has
+no other way to tell a design from an oversight.
+
+**`src/connections/verify.ts` is what fills `verified_on` and `verdict`.** It
+names one authenticated call per provider, builds it as data, and takes its
+fetcher as an argument, so a test drives every answer a vendor can give without
+a network. The key travels in a header and never in a URL, which reaches the
+vendor's access log and this project's own. A vendor that is down, a refused
+key and a rate limit are three different verdicts, because the row is read by
+somebody deciding what to do about it.
+
+Three of the four probes cost nothing: they ask who the key belongs to.
+Voyage publishes no such endpoint, so its cheapest authenticated call is an
+embedding of one short string, and `Probe.cost` reads `metered` there. A
+schedule reads that before it decides to check nightly. KPA-107 is that
+schedule.
+
+**Where a vendor publishes no expiry, the form asks for a term.** All four key
+methods carry a `Review by` date beside the key, and the dialog refuses a blank
+one along with every other empty field. The brief's rule is that a credential
+nobody can date is a credential nobody renews.
+
 ## The account the installation signs in with
 
 `users` holds the account as well as the owner. Migration 017 adds four

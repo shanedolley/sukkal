@@ -88,6 +88,18 @@ function oauth(signIn: string, fields: Field[] = []): Method {
 }
 
 /** Takes a key instead. The warning is the reason to prefer OAuth. */
+/**
+ * A key, and the date its owner will look at it again.
+ *
+ * None of these four vendors publishes an expiry, and the brief's rule is that
+ * a credential nobody can date is a credential nobody renews. So the form asks
+ * for the term rather than leaving the row undated, and `filled` in the dialog
+ * refuses a blank one along with every other empty field.
+ *
+ * `src/connections/verify.ts` is what dates the other half. It asks each
+ * vendor whether the key still works, and writes the answer to the row beside
+ * this date.
+ */
 function apiKey(placeholder: string, hint: string): Method {
   return {
     id: "key",
@@ -95,6 +107,12 @@ function apiKey(placeholder: string, hint: string): Method {
     hint,
     fields: [
       { id: "key", label: "API key", placeholder, kind: "secret" },
+      {
+        id: "expires",
+        label: "Review by",
+        placeholder: "YYYY-MM-DD",
+        kind: "date",
+      },
     ],
   };
 }

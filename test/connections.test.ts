@@ -306,6 +306,29 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     await assert.rejects(secretFor(client, water));
   });
 
+  test('a subscription writes a connection and no credential at all', async () => {
+    // Claude's subscription reaches Anthropic through the headless CLI, so
+    // there is no key to seal. Migration 023 says the absence is deliberate,
+    // and this is what proves the store agrees.
+    const id = await addConnection(client, {
+      provider: 'claude',
+      name: 'Claude by subscription',
+      method: 'subscription',
+    });
+
+    const held = await client.query<{ n: string }>(
+      'SELECT count(*) AS n FROM connection_credentials WHERE connection = $1',
+      [id],
+    );
+    assert.equal(held.rows[0]?.n, '0');
+
+    const seen = (await listConnections(client)).find((one) => one.id === id);
+    assert.equal(seen?.hasSecret, false);
+    assert.equal(seen?.expiresOn, null);
+    assert.equal(seen?.verdict, null);
+    assert.equal(await secretFor(client, id), null);
+  });
+
   test('removing a connection removes its credential', async () => {
     await clear();
     const id = await addConnection(client, { provider: 'linear', name: 'Koinon Linear', method: 'key' });

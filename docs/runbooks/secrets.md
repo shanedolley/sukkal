@@ -21,8 +21,6 @@ is for, where it comes from, and what breaks without it.
 | `DATABASE_URL_TEST` | The suite, and `apps/web/scripts/check-review-rules.ts` | Every test that needs a database skips |
 | `NABIUM_WEBHOOK_SECRET` | `apps/web/app/(app)/api/webhooks/nabium/route.ts` | The receiver answers 503 and stores no delivery |
 | `KPA_SECRET_KEY` | `src/connections/crypto.ts` | No connection secret seals or opens |
-| `VOYAGE_API_KEY` | Nothing, today | Nothing, today |
-| `VOYAGE_PROJECT_ID` | Nothing, today | Nothing, today |
 | `VAULT_PATH` | `src/vault-mapping.ts` | Nothing. The reader falls back to a path under `$HOME` |
 
 `REUI_LICENSE_KEY` belongs to the web tier and sits in `apps/web/.env.example`.
@@ -83,20 +81,25 @@ KPA_SECRET_KEY is unset, so no connection secret can be sealed or read. See docs
 credential has to be entered again through the connections screen. Rotate it
 when the old key is compromised, and expect to retype every secret.
 
-### Voyage is metered
+### A vendor key is not in this file
 
-`VOYAGE_API_KEY` bills per call to the embeddings endpoint. It is a meter, not
-a login: a key left in a log or a history costs money as well as access. Make
-one at `dash.voyageai.com`. `VOYAGE_PROJECT_ID` attributes the spend, and the
-endpoint itself takes only the key.
+`VOYAGE_API_KEY` and `VOYAGE_PROJECT_ID` were named here and read by no code.
+KPA-104 settled where a vendor key lives on 3 September 2026, and the answer is
+a connection: the screen collects it, `src/connections/crypto.ts` seals it, and
+`connection_credentials` holds it beside the date it expires and the last
+verdict a vendor gave. An environment variable carries a string and no date,
+and the brief requires both of every credential.
 
-**No code reads either variable today.** Measured on 3 September 2026 by
-grepping `src/`, `apps/web/` and `scripts/` for both names. `src/embedding.ts`
-pins the model and the width and makes no request, and nothing else names them.
-`apps/web/lib/providers.ts` offers Voyage as a connection instead, which stores
-its key in the database under `KPA_SECRET_KEY`. One key with two homes is a
-decision nobody has made. Until somebody makes it, treat the two environment
-variables as reserved.
+So Voyage, OpenRouter, Claude and Linear are added on the connections screen
+and appear nowhere in `~/.config/kpa/env`. `KPA_SECRET_KEY` is what protects
+them all, which is why rotating it costs every one.
+
+**Voyage is metered, and verifying it costs a little.** It publishes no
+endpoint that names a key, so the cheapest authenticated call
+`src/connections/verify.ts` can make is an embedding of one short string.
+`Probe.cost` records that as `metered` where the other three read `free`, so a
+schedule can decide whether to pay for a nightly check. KPA-107 is that
+schedule.
 
 ### `VAULT_PATH` is not a secret
 
@@ -406,6 +409,5 @@ finding a key and assuming it still works.
 |---|---|---|
 | A database password | `ALTER ROLE kpa PASSWORD ...` on amaterasu | A restart |
 | `NABIUM_WEBHOOK_SECRET` | Both sides, by *Rotating one* above | A restart |
-| `VOYAGE_API_KEY` | Revoke and reissue at `dash.voyageai.com` | Whatever the old key was billed |
 | `KPA_SECRET_KEY` | A new `openssl rand -base64 32` | Every stored credential, retyped |
 | `REUI_LICENSE_KEY` | Reissue at `reui.io` | A premium block install |
