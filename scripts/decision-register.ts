@@ -161,10 +161,9 @@ async function read(): Promise<Entry[]> {
         }
       }
 
-      // A question with no ruling is still waiting, whether it reached the
-      // queue by the `decision-required` label or by the status. KPA is
-      // team-managed, so its workflow sits outside the public API and the
-      // label carries the queue until the status is wired in by hand.
+      // A question with no ruling is still waiting, and the `Decision
+      // required` status is where such an issue sits. Filter 10047 reads that
+      // status, which is the queue Shane works from.
       if (question || ruling) {
         entries.push({
           key: issue.key,
