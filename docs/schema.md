@@ -779,6 +779,62 @@ environment is a credential nobody can see on the Connections screen, nobody
 dates, and `src/connections/verify.ts` cannot check. Reaching Gmail or Graph
 needs an OAuth grant no installation holds today.
 
+## What a guessing attack costs
+
+`migrations/026_sign_in_attempts.sql` adds `users.sign_in_failures` and
+`users.sign_in_failed_at`, and one row to `policies`.
+
+**A delay, never a lock.** KPA-78 names the hazard running both ways: an
+attacker needs one password, and a lockout on the only account is a denial of
+service against the only person who can use the system, with nobody to lift it.
+So a run of failures buys a wait in front of the next attempt, the wait grows
+to a ceiling of eight seconds, and a correct password works at every point in
+the run. Nobody is ever shut out, so nothing has to expire before Shane can get
+in: the run is forgotten fifteen minutes after the last failure, which is a
+tidy-up rather than a release.
+
+**Why eight seconds is enough, measured rather than assumed.** One `verify`
+costs 171 ms at ADR-0020's cost, and eight in parallel take 378 ms because
+node's scrypt runs on a four-thread pool. The door already answers about six
+guesses a second and never runs more than four hashes at once. Against
+`lib/password.ts`'s rules, sixteen characters with a capital, a number and two
+marks, no online rate is a threat. The wait keeps a flood off that pool and
+puts every attempt in the log; it does not make a strong password stronger.
+
+**One counter for the installation, whatever address was typed.** An
+installation has one account, so a failure against an address nobody holds is a
+failure at this door. Counting only the known address would leave the throttle
+behind a name an attacker can simply not type, and it would tell them which
+name that is.
+
+**Two columns rather than a table.** KPA-78's file list guessed at a table, and
+a table keyed by `owner_id` as its primary key is a second row that exists
+whenever the first does, reached through a join and inserted before it can be
+updated. `sessions` and `password_resets` earn their own tables because there
+are many of each. There is exactly one counter.
+
+**The pair moves together.** `users_a_failure_run_carries_its_moment` makes the
+count and the moment both set or both null, because a count with no moment
+cannot be forgotten and would slow every sign-in for good.
+
+**Every sign-in reaches the audit log.** KPA-78 asks for it and gives the
+reason: a sign-in is the highest-value event on the box. `audit` refuses a
+denial that names no rule, so authentication gets a row in `policies`, the way
+the engine's own default did in migration 012. `auth.sign-in` is a sixth row
+and not a sixth rule: the four the brief names describe what KPA may do, and
+`src/policy/engine.ts` never reads this one, because `decide` matches a
+proposal and nothing proposes a sign-in.
+
+**The log may name what the answer may not.** A refused sign-in says one
+sentence to the browser, and the row says whether the address existed and how
+long the run is. The typed address is kept, trimmed to 200 characters, because
+an address nobody holds tried a hundred times is the shape of an attack, and
+the log is where that shape shows.
+
+**`src/auth/attempts.ts` writes those rows, and `src/policy/act.ts` names it.**
+`act` is the one path to an *outbound* action, and a sign-in reaches nothing
+outbound, so it needs no Permit and no verdict.
+
 ## The queue lives in its own schema
 
 Migration 011 creates the schema `pgboss` and nothing inside it. pg-boss owns

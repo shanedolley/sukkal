@@ -28,6 +28,13 @@
  *
  * `engine.ts` returns a verdict and writes nothing, so there is one path from
  * a decision to a row rather than two.
+ *
+ * **This is the one path to an outbound action, and not the one writer of the
+ * log.** `record` in `src/auth/attempts.ts` writes a row for every sign-in,
+ * because KPA-78 asks for it and a sign-in is not an outbound action: it
+ * reaches nothing, and no rule judges whether somebody may try to prove who
+ * they are, so `decide` would deny every one by default. It cites the
+ * `auth.sign-in` row migration 026 writes, the way this cites `deny-by-default`.
  */
 import type { ClientBase } from 'pg';
 import { decide, DENY_BY_DEFAULT, FORBIDDEN, PERMITTED, type Proposal } from './engine.ts';

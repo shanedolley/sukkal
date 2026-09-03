@@ -10,13 +10,16 @@
  * they type, and pipes it here, so the password never reaches `ps` or a shell
  * history. This file holds the part that needs the database and the hash.
  *
- * TWO WAYS OUT, AND THE FIRST NEEDS NO BROWSER.
+ * THREE WAYS OUT, AND THE FIRST NEEDS NO BROWSER.
  *
  *   1. The default sets the password. It reads one line on stdin, holds it to
  *      the same four rules the setup wizard states, and ends every session.
  *   2. `--link` mints a reset token and prints the address that spends it.
  *      That is how `/reset` is reachable on a box with no mail, and it is the
  *      same token the mail would have carried.
+ *   3. `--unlock` ends a run of failed sign-ins, which is the recovery path
+ *      KPA-78 asks for. Nobody is locked out, because the run buys a wait and
+ *      never a lock, so this shortens a wait rather than opening a door.
  *
  * BEING AT THIS SHELL IS THE PROOF. Somebody who can run this can already read
  * the database and the key that opens every stored credential, so asking them
@@ -26,6 +29,7 @@ import { createInterface } from 'node:readline';
 
 import { check, passes } from '../../apps/web/lib/password.ts';
 import { connect } from '../db/connect.ts';
+import { cleared, standing } from './attempts.ts';
 import { issueFor, LIFETIME_MINUTES, OWNER, setPassword } from './reset.ts';
 
 /** Where the link points when nobody says otherwise. */
@@ -34,14 +38,16 @@ const DEFAULT_URL = 'http://localhost:3000';
 /** What the arguments came to. */
 interface Asked {
   link: boolean;
+  unlock: boolean;
   url: string;
 }
 
 function read(argv: string[]): Asked {
-  const asked: Asked = { link: false, url: DEFAULT_URL };
+  const asked: Asked = { link: false, unlock: false, url: DEFAULT_URL };
   for (let at = 0; at < argv.length; at += 1) {
     const arg = argv[at];
     if (arg === '--link') asked.link = true;
+    else if (arg === '--unlock') asked.unlock = true;
     else if (arg === '--url') {
       const value = argv[at + 1];
       if (value === undefined) throw new Error('--url needs an address after it.');
@@ -80,6 +86,18 @@ async function main(): Promise<void> {
         'No account on this installation yet. Open /setup in a browser instead.',
       );
       process.exitCode = 1;
+      return;
+    }
+
+    if (asked.unlock) {
+      const run = await standing(client, new Date());
+      await cleared(client);
+      console.log(
+        run.failures === 0
+          ? 'No run of failed sign-ins to end. The door was already answering at once.'
+          : `Ended a run of ${String(run.failures)} failed sign-ins. The next attempt waits nothing, ` +
+            `rather than ${String(run.waitSeconds)}s.`,
+      );
       return;
     }
 

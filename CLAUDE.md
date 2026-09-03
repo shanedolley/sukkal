@@ -69,7 +69,7 @@ Shane and never Claude Code, and end with the `Claude-Session` line.
 | `npm run migrate` | Applies pending migrations. `npm run migrate down` reverses every one |
 | `npm run worker` | Runs the worker and its pg-boss queue. `docs/runbooks/worker.md` |
 | `./scripts/scan-history.sh` | Scans every commit for a credential. Run it before you push |
-| `./scripts/reset-password.sh` | Sets the owner's password on the box itself. `--link` prints a reset link instead |
+| `./scripts/reset-password.sh` | Sets the owner's password on the box itself. `--link` prints a reset link, `--unlock` ends a run of failed sign-ins |
 | `npm run decisions` | Rebuilds `docs/decisions.md` from the decision blocks in Jira |
 
 Run the lint, the build and the tests before you report anything finished, and

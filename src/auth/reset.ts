@@ -162,16 +162,24 @@ export async function spend(
  * Both routes to a new password end here, and the command line calls it with
  * no token at all. It answers how many sessions it closed, because that is
  * the sentence the command line prints and the number a person checks.
+ *
+ * IT ENDS THE RUN OF FAILED SIGN-INS TOO, in the same statement. Somebody
+ * resetting a password is exactly the person who has just failed to sign in
+ * several times, and KPA-78's wait would meet them on the way back. Clearing
+ * it here rather than importing `attempts.ts` keeps the two modules from
+ * importing each other, and the columns belong to the row this already writes.
  */
 export async function setPassword(
   client: ClientBase,
   ownerId: string,
   password: string,
 ): Promise<number> {
-  await client.query('UPDATE users SET password_hash = $2 WHERE id = $1', [
-    ownerId,
-    await hash(password),
-  ]);
+  await client.query(
+    `UPDATE users
+        SET password_hash = $2, sign_in_failures = 0, sign_in_failed_at = NULL
+      WHERE id = $1`,
+    [ownerId, await hash(password)],
+  );
   return endAll(client, ownerId);
 }
 

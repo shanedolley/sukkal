@@ -9,6 +9,11 @@
 #   scripts/reset-password.sh                 ask for a new password and set it
 #   scripts/reset-password.sh --link          print a link that sets one
 #   scripts/reset-password.sh --link --url https://kpa.example
+#   scripts/reset-password.sh --unlock        end a run of failed sign-ins
+#
+# `--unlock` is KPA-78's recovery path. Nobody is ever locked out, because a
+# run of failures buys a wait and never a lock, so it shortens a wait rather
+# than opening a door.
 #
 # THE PASSWORD IS TYPED, NEVER PASSED. `read -s` hides it and the pipe carries
 # it, so it reaches neither `ps` nor a shell history. An option holding a
@@ -27,10 +32,10 @@ if [ -f "$env_file" ]; then
   node_args+=("--env-file=$env_file")
 fi
 
-# --link mints a token and prints where to spend it. Nothing is typed, so the
-# prompt below is skipped and the arguments go straight through.
+# --link and --unlock ask for nothing, so the prompt below is skipped and the
+# arguments go straight through.
 for arg in "$@"; do
-  if [ "$arg" = "--link" ]; then
+  if [ "$arg" = "--link" ] || [ "$arg" = "--unlock" ]; then
     exec node "${node_args[@]}" src/auth/reset-cli.ts "$@"
   fi
 done

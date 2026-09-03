@@ -8,9 +8,26 @@
  * ADR-0023 makes this the only way in on any installation. There is no header
  * to read and no second path, so what happens here is the whole of
  * authentication.
+ *
+ * A RUN OF FAILURES BUYS A WAIT, AND NEVER A LOCK. KPA-78 names the hazard
+ * running both ways: an attacker needs one password, and a lockout on the only
+ * account is a denial of service against the only person who can use the
+ * system. So a run costs a growing pause in front of the next attempt, capped
+ * at eight seconds, and a correct password works at every point in the run.
+ * `src/auth/attempts.ts` holds the sums and the measurement behind them.
+ *
+ * EVERY ATTEMPT REACHES THE AUDIT LOG, allowed and refused. KPA-78 asks for it
+ * and gives the reason: a sign-in is the highest-value event on the box.
  */
 import { NextResponse } from "next/server";
 
+import {
+  cleared,
+  failed,
+  record,
+  sleep,
+  standing,
+} from "../../../../../src/auth/attempts.ts";
 import { verify } from "../../../../../src/auth/password.ts";
 import { COOKIE, end, issue, LIFETIME_DAYS } from "../../../../../src/auth/session.ts";
 import { db } from "@/lib/db";
@@ -54,11 +71,38 @@ export async function POST(request: Request): Promise<Response> {
   > | null;
   const email = typeof body?.["email"] === "string" ? body["email"] : "";
   const password = typeof body?.["password"] === "string" ? body["password"] : "";
-
-  if (email.trim() === "" || password === "") return refuse();
+  const from =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
 
   const client = await db().connect();
   try {
+    const now = new Date();
+
+    // An empty box counts as a failure and reaches the log, because a hundred
+    // of them is an attack whether or not anything was typed. It skips the
+    // hash, which nothing can learn from: the wait was already served.
+    if (email.trim() === "" || password === "") {
+      await sleep((await standing(client, now)).waitSeconds);
+      const run = await failed(client, now);
+      await record(
+        client,
+        {
+          email,
+          from,
+          ok: false,
+          result: `Refused. The form was incomplete. ${String(run.failures)} in a row, so the next attempt waits ${String(run.waitSeconds)}s.`,
+        },
+        now,
+      );
+      return refuse();
+    }
+
+    // THE WAIT COMES FIRST, so a run of failures costs the time whether the
+    // password turns out to be right or wrong. Waiting only on a failure would
+    // let an attacker measure the difference and read it as "that one was
+    // closer", and it would leave the hash running at full rate meanwhile.
+    await sleep((await standing(client, now)).waitSeconds);
+
     // `lower(email)` is what migration 017 indexes, so this read matches the
     // way the row is unique and a capital letter signs the same person in.
     const found = await client.query<{ id: string; password_hash: string | null }>(
@@ -71,12 +115,42 @@ export async function POST(request: Request): Promise<Response> {
     // account costs the same time as a wrong password. Answering early here
     // would tell somebody which addresses exist.
     const ok = await verify(password, row?.password_hash ?? null);
-    if (!ok || !row) return refuse();
+    if (!ok || !row) {
+      const run = await failed(client, now);
+      await record(
+        client,
+        {
+          email,
+          from,
+          ok: false,
+          // The log may name what the answer may not. Nothing here reaches the
+          // browser: `refuse` says one sentence for every failure.
+          result: `Refused. ${row ? "The password did not match." : "No account holds that address."} ${String(run.failures)} in a row, so the next attempt waits ${String(run.waitSeconds)}s.`,
+        },
+        now,
+      );
+      return refuse();
+    }
 
-    const { token } = await issue(client, row.id, new Date(), {
+    // The run ends here, so a person who mistyped twice and then got it right
+    // pays nothing on the next sign-in.
+    await cleared(client);
+
+    const { token } = await issue(client, row.id, now, {
       userAgent: request.headers.get("user-agent"),
-      from: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      from,
     });
+
+    await record(
+      client,
+      {
+        email,
+        from,
+        ok: true,
+        result: `Signed in. The session lasts ${String(LIFETIME_DAYS)} days.`,
+      },
+      now,
+    );
 
     const answer = NextResponse.json({ ok: true });
     answer.cookies.set(COOKIE, token, {
