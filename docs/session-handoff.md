@@ -1,21 +1,21 @@
-# Where the work stands, 3 September 2026
+# Where the work stands, 4 September 2026
 
 Written to hand one session to the next. It records what is true rather than
 what was intended, and every number here was measured rather than quoted.
 
 ## The tree
 
-`main` is at `a744f90`, pushed, and CI passed on all three commits. The working
-tree is clean. Twenty-six migrations, twenty-six ADRs.
+`main` is at `88f4e73`, pushed, and CI passed on every commit. The working tree
+is clean. Twenty-seven migrations, twenty-six ADRs.
 
-The suite runs 517 tests with the vault and 499 without it. One test skips in
+The suite runs 547 tests with the vault and 529 without it. One test skips in
 both, and it is meant to: `test/connect.test.ts` skips its TLS case because a
 loopback database needs none.
 
 ## The board, and a correction to the last handoff
 
-**113 stories. 75 have shipped, which is 66%, and 60% by points.** Fifty-nine
-are Done and sixteen are In Review.
+**113 stories. 78 have shipped, which is 69%, and 63% by points.** Fifty-nine
+are Done and nineteen are In Review.
 
 The previous handoff read 62 of 100 and 52% by points, and both numbers were
 wrong for one reason: `/rest/api/3/search/jql` returns 100 issues a page and
@@ -24,12 +24,13 @@ token reads one page and reports it as the whole project. **Page it.** The
 project has never had exactly a hundred stories, and a round number that
 matches a page size is the shape of this mistake.
 
-**In Review means shipped.** Each of those sixteen is on `main`, pushed, and CI
-green. They wait on Shane reading them and nothing else, so a story blocked by
+**In Review means shipped.** Each of those nineteen is on `main`, pushed, and
+CI green. They wait on Shane reading them and nothing else, so a story blocked by
 one is not really blocked.
 
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
-    KPA-97  KPA-98  KPA-104 KPA-127 KPA-128 KPA-137 KPA-138 KPA-139
+    KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
+    KPA-138 KPA-139 KPA-144
 
 ## Sign-in works, end to end
 
@@ -57,7 +58,11 @@ wizard to do and nothing was enforcing.
 
 `docs/decisions.md` reads nine decided and one waiting. **[KPA-143] is the open
 question**, and it is in filter 10047: how does a self-hosted box send the
-reset link?
+reset link? KPA-79 mints the token and names which connection would carry it,
+and nothing carries it, so the shell is the only way to a link. The comment
+weighs an OAuth mail connection, an SMTP provider card, and no mail at all, and
+recommends SMTP with the measurement behind it: nodemailer 9.1.1 declares no
+dependencies and unpacks to 617 KB, against a root that runs two.
 
 **The register only sees a comment written in its own shape**, and this one was
 not, first time. `scripts/decision-register.ts` looks for a warning panel whose
@@ -66,20 +71,35 @@ paragraph starting `MY RECOMMENDATION`. A comment that says the same things in
 other words reads as no decision at all, and `npm run decisions` then reports
 nothing waiting while something is. Run it after posting one, and read the
 count.
-KPA-79 mints the token and names which connection would carry it, and nothing
-carries it, so the shell is the only way to a link. The comment weighs an OAuth
-mail connection, an SMTP provider card, and no mail at all, and recommends
-SMTP with the measurement behind it: nodemailer 9.1.1 declares no dependencies
-and unpacks to 617 KB, against a root that runs two.
 
-KPA-144 also came out of this session: the sidebar user menu names Shane Dolley
-and his address in code, which is wrong on anybody else's installation, and
-four of its items go nowhere.
+## Three more, on the tracker side
+
+- **KPA-144.** The sidebar named Shane Dolley in code, which ADR-0009 made
+  wrong on every installation but his. It reads the account row now, paints
+  nothing until that read answers, and four dead menu items are gone.
+- **KPA-99.** `migrations/027` holds the sprints a tracker runs, and the
+  reference migration 022 left for it. One active sprint per workspace, held by
+  a partial unique index rather than by whoever writes the rows.
+- **KPA-100.** `migrations/028` holds a write the tracker has not accepted.
+  ADR-0007 asked for it. A conflict keeps both stamps, and a comment is refused
+  outright, because nothing about one can conflict.
+
+**One trap is written down and not solved, on purpose.** Three edits from one
+screen all carry the stamp that screen read, so the first succeeds and the
+other two conflict against a change KPA itself made. Whatever sends these has
+to carry the new stamp forward to the issue's remaining queued rows. A
+constraint cannot: it would have to know which writes were the same person's,
+and that is the guess ADR-0007 refuses. `docs/schema.md` says so where the
+sender's story will find it.
 
 ## What to build next
 
-Nothing is blocked on the decision above. The auth epic is finished apart from
-sending the mail.
+Nothing is blocked on the decision above. Every unblocked story left needs a
+live tracker, a real OAuth grant, metered money, or somebody at both ends,
+except **KPA-50** and **KPA-124**. KPA-50 adds a TipTap editor and its
+dependencies, which is a choice worth making on purpose rather than in passing.
+KPA-124 reads the issue cache instead of the fixture and is blocked by KPA-49,
+which needs a live tracker.
 
 ## What is still nobody's to touch alone
 
@@ -96,8 +116,8 @@ accident on 3 September 2026 by writing `DATABASE_URL_TEST=... npm run migrate`,
 which reads `DATABASE_URL` and so pointed at production rather than away from
 it. Nothing was lost, and Shane chose to leave it. The command now names the
 database before it acts and refuses `kpa` outright, and
-`KPA_ALLOW_PRODUCTION=1` migrates it deliberately. **025 and 026 are not there**,
-so production is two behind the repository.
+`KPA_ALLOW_PRODUCTION=1` migrates it deliberately. **025 through 028 are not
+there**, so production is four behind the repository.
 
 `GET /api/account` now answers a stranger the way a fresh box does. That means
 a signed-out visitor to `/setup` on a configured box sees the wizard's
