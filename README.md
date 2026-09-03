@@ -50,7 +50,8 @@ Real values live outside the repository, so no commit can carry one.
 | `npm run migrate down` | Reverses every migration, newest first, and leaves the database empty |
 | `npm run worker` | Runs the worker. `docs/runbooks/worker.md` says what it does |
 | `npm test` | Runs the suite against `DATABASE_URL_TEST` |
-| `npm run lint` | Lints `src` and `test`. A warning fails the run |
+| `npm run lint` | Lints `src`, `test` and `scripts`. A warning fails the run |
+| `npm run decisions` | Rebuilds `docs/decisions.md` from Jira |
 | `npm run lint` in `apps/web` | Lints the web tier with the same linter. A warning fails the run |
 | `npm run build` | Checks types. It emits nothing, because Node runs the TypeScript |
 

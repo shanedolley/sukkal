@@ -62,13 +62,14 @@ Shane and never Claude Code, and end with the `Claude-Session` line.
 
 | Command | What it does |
 |---|---|
-| `npm run lint` | `oxlint` over `src` and `test`. A warning fails the run |
+| `npm run lint` | `oxlint` over `src`, `test` and `scripts`. A warning fails the run |
 | `npm run lint` in `apps/web` | The same `oxlint`, with the react, nextjs, jsx-a11y and import plugins on. `apps/web/.oxlintrc.json` carries every suppression and its reason |
 | `npm run build` | `tsc --noEmit`. It checks types and emits nothing |
 | `npm test` | `node --test` over `test/**/*.test.ts` |
 | `npm run migrate` | Applies pending migrations. `npm run migrate down` reverses every one |
 | `npm run worker` | Runs the worker and its pg-boss queue. `docs/runbooks/worker.md` |
 | `./scripts/scan-history.sh` | Scans every commit for a credential. Run it before you push |
+| `npm run decisions` | Rebuilds `docs/decisions.md` from the decision blocks in Jira |
 
 Run the lint, the build and the tests before you report anything finished, and
 watch the run afterwards with `gh run list --limit 1`. A push nobody watches is
@@ -140,8 +141,9 @@ src/webhooks/   What an inbound delivery is authenticated and stored by
 src/worker/     The worker process, and the jobs pg-boss runs in it
 test/           The suite, and its fixtures under test/fixtures/
 docs/adr/       Decisions that were hard to reverse
+docs/decisions.md  Every lighter ruling, generated from Jira by npm run decisions
 docs/runbooks/  Operating the server, and where the secrets live
-scripts/        Provisioning and checks, all bash
+scripts/        Provisioning and checks. Bash, plus the decision register
 ```
 
 **A `date` comes back as a string, not a `Date`.** `src/db/connect.ts` says so
