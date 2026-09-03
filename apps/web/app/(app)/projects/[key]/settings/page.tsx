@@ -4,17 +4,26 @@
 //
 // The project page shows the same three sections under a tab. This route is
 // what the sidebar links to, and what a bookmark holds.
+//
+// THE KEY IS A WORKSPACE OR A PROJECT INSIDE ONE, and the custom fields
+// belong to the workspace either way. `routeWorkspace` is what resolves the
+// one to the other, so `/projects/bhp-meridian/settings` edits Collibra's
+// list and names Collibra while it does. KPA-140 ruled that.
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 
 import { ProjectSettings } from "@/components/projects/project-settings";
+import { routeWorkspace } from "@/lib/route-workspace";
 import { projectName } from "../project-name";
 
 export default function ProjectSettingsPage() {
   const { key } = useParams<{ key: string }>();
   const name = projectName(key);
+  // The heading stays the project's, because the page is. The fields below
+  // are the workspace's, and the section that edits them says so.
+  const workspace = routeWorkspace(key)?.name ?? name;
 
   return (
     <div className="flex flex-col gap-6">
@@ -34,7 +43,7 @@ export default function ProjectSettingsPage() {
         </p>
       </header>
 
-      <ProjectSettings name={name} />
+      <ProjectSettings workspace={workspace} />
     </div>
   );
 }

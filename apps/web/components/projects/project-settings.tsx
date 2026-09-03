@@ -11,6 +11,11 @@
 // /projects/[key]/settings address the sidebar links to. The strip below
 // reads as a line rather than a block of pills, so a reader inside the tab
 // can tell which of the two strips is the one they came in on.
+//
+// IT TAKES THE WORKSPACE, NOT THE PROJECT. The custom fields belong to the
+// workspace, and both callers resolve the route key to one before they get
+// here. Defaults names it in the heading and again in the lede, so a reader
+// on the BHP Meridian page reads that the list is Collibra's. KPA-140.
 
 import Link from "next/link";
 
@@ -38,7 +43,7 @@ function Section({
   );
 }
 
-export function ProjectSettings({ name }: { name: string }) {
+export function ProjectSettings({ workspace }: { workspace: string }) {
   return (
     <Tabs defaultValue="connections">
       <TabsList variant="line" aria-label="Settings sections">
@@ -58,10 +63,10 @@ export function ProjectSettings({ name }: { name: string }) {
 
       <TabsContent value="defaults" className="flex flex-col gap-6 pt-4">
         <Section
-          title="Custom fields"
-          lede="Fields Jira carries that this assistant does not name. They appear on every issue in this project, new and existing. A required one has to be filled in before a new issue can be filed."
+          title={`${workspace}'s custom fields`}
+          lede={`Fields Jira carries that this assistant does not name. ${workspace} holds one list, and every project in it carries the same fields. A required one has to be filled in before a new issue can be filed.`}
         >
-          <CustomFields project={name} />
+          <CustomFields workspace={workspace} />
         </Section>
       </TabsContent>
 

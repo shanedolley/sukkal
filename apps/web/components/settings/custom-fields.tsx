@@ -1,10 +1,18 @@
 "use client";
 
-// The custom fields one project carries.
+// The custom fields one workspace carries.
 //
 // Jira lets a project hold fields this model never names. Collibra's board
 // has two, and an issue filed without Customer on it is an issue nobody can
 // bill. So the list lives here, and both issue forms read it.
+//
+// THE LIST IS THE WORKSPACE'S, AND EVERY PROJECT IN IT SHARES ONE COPY. A
+// custom field belongs to a Jira project's field configuration, and Collibra
+// runs every engagement through one Jira project, so no project carries a
+// list of its own. KPA-140 ruled that, and `route-workspace.ts` is what
+// resolves a project route to the workspace whose list this edits. The copy
+// below names the workspace, because a shared list edited from a page named
+// after one project is the confusion the ruling designs out.
 //
 // A field is picked from what the site offers rather than typed. A typed name
 // is a name that agrees with Jira only by luck, and the day it does not, the
@@ -69,10 +77,12 @@ import type { CustomField } from "@/lib/types";
  */
 function FieldPill({
   field,
+  workspace,
   onRequired,
   onRemove,
 }: {
   field: CustomField;
+  workspace: string;
   onRequired: (required: boolean) => void;
   onRemove: () => void;
 }) {
@@ -112,7 +122,7 @@ function FieldPill({
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={onRemove}>
             <XIcon aria-hidden="true" />
-            Take it off this project
+            Take it off {workspace}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
@@ -186,14 +196,14 @@ function AddField({
   );
 }
 
-export function CustomFields({ project }: { project: string }) {
-  const fields = useWorkspaceFields(project);
+export function CustomFields({ workspace }: { workspace: string }) {
+  const fields = useWorkspaceFields(workspace);
   const [scan, setScan] = useState<{ at: string; running: boolean }>({
     at: FIELDS_SCANNED_AT,
     running: false,
   });
 
-  const write = (next: WorkspaceField[]) => setWorkspaceFields(project, next);
+  const write = (next: WorkspaceField[]) => setWorkspaceFields(workspace, next);
 
   function rescan() {
     setScan((current) => ({ ...current, running: true }));
@@ -232,6 +242,7 @@ export function CustomFields({ project }: { project: string }) {
           <FieldPill
             key={field.id}
             field={field}
+            workspace={workspace}
             onRequired={(required) =>
               write(
                 fields.map((one) =>
@@ -253,8 +264,8 @@ export function CustomFields({ project }: { project: string }) {
 
       {fields.length === 0 ? (
         <p className="text-muted-foreground text-xs">
-          {project} carries no custom fields. Add one and it appears on every
-          issue in this project.
+          {workspace} carries no custom fields. Add one and every issue in the
+          workspace shows it.
         </p>
       ) : (
         <p className="text-muted-foreground flex items-start gap-2 text-xs">

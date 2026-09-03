@@ -87,7 +87,7 @@ function Project() {
             nothing else. Two different screens under one tab. */}
         <TabsContent value="settings" className="pt-4">
           {isWorkspace(key) ? (
-            <ProjectSettings name={name} />
+            <ProjectSettings workspace={name} />
           ) : (
             <ProjectDetailSettings projectKey={key} name={name} />
           )}
