@@ -1,14 +1,16 @@
 # The schema
 
-Twenty-four tables and twelve enums. `migrations/001_core_schema.sql` created
+Twenty-five tables and twelve enums. `migrations/001_core_schema.sql` created
 the first ten, and migrations 003 to 010 changed what follows. Migrations 011
 to 014 and 017 add no table: 011 creates the schema the job queue lives in,
 012 seeds one policy row, 013 adds one column to `facts`, 014 adds one column
 and one enum value to `audit`, and 017 adds four columns to `users`. Migration
 016 adds a connection and its sealed secret, 018 adds the workspace and
 project tree, 021 adds the fields a workspace carries, and 022 adds the last
-two, which cache the issues a tracker owns. The vault's own `CLAUDE.md` is the
-authority for every enum the vault writes.
+two, which cache the issues a tracker owns. 023 adds no table and says a
+connection may hold no credential, and 024 adds the last one, which carries a
+proved sign-in. The vault's own `CLAUDE.md` is the authority for every enum the
+vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
 `valid_to`. And **a machine never marks its own work verified**, which is a
@@ -42,6 +44,7 @@ check constraint here rather than an instruction in a prompt.
 | `workspaces` | One Jira tracker and the space it belongs to. The id is stable, the name is not, and nothing files anything under the name |
 | `projects` | One piece of work inside a workspace, and the one rule that matches its issues: a Jira label, or a Jira key prefix |
 | `workspace_fields` | The custom fields a workspace carries, and the Jira field each one writes |
+| `sessions` | One proved sign-in. The id is a SHA-256 of the token and never the token |
 
 ## The enums
 
@@ -677,6 +680,61 @@ compares the contract's two dates. Three rules are the exceptions, and each
 refuses a row KPA wrote wrong rather than a row Jira holds: the key is upper
 case in the shape `projects.match_key_prefix` compares, the title says
 something, and `fields` is a JSON object rather than an array.
+
+## What carries a proved sign-in
+
+`migrations/024_sessions.sql` holds one row per sign-in. ADR-0023 makes the
+application the only gate on every installation, so this row is the whole of
+what stands between somebody and three mailboxes holding employer customer
+material.
+
+**The token is not in the table.** `id` holds a SHA-256 of the token the
+browser carries, so a copy of this table signs nobody in. That is the rule
+`docs/runbooks/secrets.md` keeps for every other secret, and KPA-79 states it
+again for a reset token.
+
+**SHA-256 rather than scrypt, and the reason is not speed.** ADR-0020 chose
+scrypt at 128 MiB for a password, because a person picks one and picks badly,
+so an attacker holding the hash runs a dictionary. A session token is 32 bytes
+from `randomBytes`. There is no dictionary, and no work factor makes 256 bits
+easier or harder to guess. Hashing defends the stolen-database case, which is
+the only case there is.
+
+**The lifetime is absolute and it does not slide.** `LIFETIME_DAYS` in
+`src/auth/session.ts` is fourteen, and KPA-77 required that number to be chosen
+rather than defaulted. Nothing moves `expires_at` after the row is written,
+because a sliding window renews a session on use and use is exactly what a
+thief does. A fortnight is long enough that nobody types a password often, and
+short enough that a stolen cookie dies inside one.
+
+**Revocation is a delete.** Signing out removes the row, so a browser that
+keeps the cookie finds nothing behind it. There is no `revoked_at`, because a
+row that must be read to be known dead is a row somebody forgets to read.
+`endAll` removes every session an owner holds, which is what a password reset
+calls: KPA-79 is a thing somebody does after losing control of the account, and
+leaving the thief's session open would make it theatre.
+
+**`sessions.owner_id` carries no default, where four other tables do.** ADR-0009's
+hedge defaults `owner_id` on `facts`, `meetings`, `sources` and `tasks`,
+because those rows belong to the one owner and the default saves every writer
+naming them. A session is created by one sign-in for one person, so `issue`
+always names whose it is. A default there would let a bug write somebody else's
+session as the owner's.
+
+**`apps/web/proxy.ts` is the gate, and it denies by default.**
+`lib/public-paths.ts` names what a request reaches without a session, and every
+path absent from that list is refused, so a route added next month is guarded
+by having been added. `test/routes-are-guarded.test.ts` walks the routes on
+disk against that rule and fails on one that is neither guarded nor listed.
+Next.js 16 renamed the convention from `middleware.ts`, and Proxy defaults to
+the Node.js runtime, which is what lets the gate ask the database rather than
+merely notice a cookie.
+
+**The gate is not the only check.** Next's own documentation warns that a
+matcher change or a moved Server Function can silently remove Proxy coverage,
+and says to verify inside the handler. `requireOwner` in `lib/session.ts` is
+that second check. Two gates, and neither assumes the other held, which is the
+shape ADR-0023 chose for Access and for the same reason.
 
 ## The queue lives in its own schema
 

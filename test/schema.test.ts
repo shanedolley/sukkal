@@ -71,8 +71,8 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
       'answers', 'audit', 'citations', 'connection_credentials', 'connections',
       'conversations', 'edges', 'entities', 'facts', 'inbound_deliveries',
       'issue_blocks', 'issues', 'meetings', 'needs_you', 'nodes', 'policies',
-      'projects', 'rejections', 'source_chunks', 'sources', 'tasks', 'users',
-      'workspace_fields', 'workspaces',
+      'projects', 'rejections', 'sessions', 'source_chunks', 'sources',
+      'tasks', 'users', 'workspace_fields', 'workspaces',
     ]);
   });
 
@@ -84,9 +84,22 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
       SELECT table_name, column_default FROM information_schema.columns
        WHERE table_schema = 'public' AND column_name = 'owner_id' ORDER BY table_name
     `);
-    assert.deepEqual(defaults.rows.map((row) => row.table_name), ['facts', 'meetings', 'sources', 'tasks']);
+    assert.deepEqual(defaults.rows.map((row) => row.table_name), [
+      'facts', 'meetings', 'sessions', 'sources', 'tasks',
+    ]);
+
+    // Four tables default the column, which is ADR-0009's hedge: a fact, a
+    // meeting, a source and a task belong to the one owner, and the default
+    // saves every writer naming them.
+    //
+    // `sessions` does not, and the difference is deliberate. A session is
+    // created by one sign-in for one person, so `issue` in
+    // `src/auth/session.ts` always names whose it is. A default there would
+    // let a bug write somebody else's session as the owner's, which is the
+    // one row where that matters most.
     for (const row of defaults.rows) {
-      assert.equal(row.column_default, '1', row.table_name);
+      const expected = row.table_name === 'sessions' ? null : '1';
+      assert.equal(row.column_default, expected, row.table_name);
     }
   });
 
