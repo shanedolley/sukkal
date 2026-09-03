@@ -1,14 +1,17 @@
 // The frame every door into the application shares: the mark, the two lines
-// that say where you are, the card, and the line under it that leads to the
-// other door.
+// that say where you are, the card, and the line under it that leads on.
 //
-// Sign in, create an account and forget your password are three questions
-// asked in one shape. The shape lives here, or the three drift apart the day
-// one of them is touched.
+// Sign in and forget your password are two questions asked in one shape. The
+// shape lives here, or the two drift apart the day one of them is touched.
+// KPA-79 adds the third, where a reset token sets a new password.
+//
+// THE PROTOTYPE NOTICE IS GONE, and KPA-128 is why. It read that Cloudflare
+// Access and WorkOS authenticate before the application sees the request, so
+// this screen never appears in production. ADR-0023 refused that: KPA reads no
+// identity header on any installation, so this card is the only gate there is.
 
 import { AuthLogo } from "@/components/blocks/auth-20/components/auth-logo";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ShieldCheckIcon } from "lucide-react";
 
 export function AuthCard({
   title,
@@ -39,20 +42,6 @@ export function AuthCard({
       </Card>
 
       <p className="text-muted-foreground text-center text-sm">{footer}</p>
-
-      {/* The page exists because Shane asked for it, not because the design
-          needs it. Saying so on the screen keeps the prototype honest. */}
-      <p className="text-muted-foreground mx-auto flex max-w-[26rem] items-start gap-2 text-center text-xs">
-        <ShieldCheckIcon
-          className="mt-0.5 size-3.5 shrink-0"
-          aria-hidden="true"
-        />
-        <span className="text-left">
-          Prototype only. In production Cloudflare Access and WorkOS AuthKit
-          authenticate you before the application sees the request, so this
-          screen never appears.
-        </span>
-      </p>
     </div>
   );
 }

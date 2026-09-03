@@ -78,7 +78,6 @@ describe('the gate over every route', () => {
       '/forgot-password',
       '/setup',
       '/sign-in',
-      '/sign-up',
     ]);
   });
 
@@ -124,6 +123,10 @@ describe('the gate over every route', () => {
       '/api/webhook',
       '/setupsomething',
       '/sign-in-elsewhere',
+      // KPA-128 removed the sign-up page. One installation holds one account
+      // and the wizard writes it, so a second door onto the same row was a
+      // door onto nothing. It is public no longer, and it is not a route.
+      '/sign-up',
     ]) {
       assert.equal(isPublic(invented), false, `${invented} is public and should not be`);
     }

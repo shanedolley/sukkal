@@ -21,7 +21,6 @@ export interface PublicPath {
 export const PUBLIC: PublicPath[] = [
   // Somewhere to sign in, or there is no way in at all.
   { prefix: '/sign-in', because: 'the gate itself' },
-  { prefix: '/sign-up', because: 'the gate itself' },
   { prefix: '/forgot-password', because: 'somebody who cannot sign in asks here' },
   { prefix: '/reset', because: 'a reset token authenticates instead. KPA-79' },
 

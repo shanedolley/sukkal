@@ -15,6 +15,21 @@
 // there: `POST /api/account` hashes the password and writes all four columns in
 // one statement, because `users_the_account_is_whole` refuses a subset.
 //
+// THE WIZARD STAYS, AND IT IS THE ONLY WAY AN ACCOUNT IS MADE. KPA-128 asked
+// the question and this is the answer: ADR-0009 gives one installation one
+// owner, so a sign-up page was a second door onto the same row and it is gone.
+// The sign-in page links here instead, for a box nobody has set up.
+//
+// WRITING THE ACCOUNT NOW SIGNS THE PERSON IN, so the line below about being
+// signed in says something true and the two buttons at the end reach screens
+// the gate would otherwise refuse. The route issues the session, because the
+// password it would ask for was typed in the request that made the account.
+//
+// THE SECOND RUN IS REFUSED BY THE SERVER, not only by this screen. A stranger
+// on a configured box is told nothing by the read, so they see these questions
+// rather than the "already set up" card, and `POST /api/account` answers 401.
+// The card below is what the owner sees, because the owner holds a session.
+//
 // THE WIZARD ASKS FRESH. A browser that already held an account under
 // `kpa.account` is not read here, so nothing is pre-filled from it. ADR-0022
 // states the half that follows from ADR-0009: that account carried no password,

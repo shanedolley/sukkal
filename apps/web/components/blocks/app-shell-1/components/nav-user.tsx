@@ -112,6 +112,31 @@ function ThemeSegmentedToggle() {
   )
 }
 
+// ── Signing out ──
+
+/**
+ * Ends the session on the server, then leaves.
+ *
+ * KPA-77 built `DELETE /api/session`, which removes the row, and this item sat
+ * over nothing until KPA-128. Clearing the cookie is not what ends a session:
+ * the delete is, which is why this waits for the answer before it navigates.
+ *
+ * A hard navigation rather than the router, for the reason `sign-in-form.tsx`
+ * gives. The module-level store in `lib/account.ts` holds the account this
+ * browser was just shown, and a full load is what empties it.
+ */
+function signOut() {
+  void fetch("/api/session", { method: "DELETE" })
+    .catch((cause: unknown) => {
+      // The row may still stand. Leaving anyway is right: the person asked to
+      // go, and the cookie dies with the session it names inside a fortnight.
+      console.error("sign out:", cause)
+    })
+    .finally(() => {
+      window.location.assign("/sign-in")
+    })
+}
+
 // ── Menu Sections ──
 
 function UserMenuHeader() {
@@ -210,7 +235,7 @@ function UserMenuContent() {
         <DropdownMenuSeparator />
         <UserMenuTheme />
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={signOut}>
           <LogOutIcon aria-hidden="true" />
           Sign Out
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>

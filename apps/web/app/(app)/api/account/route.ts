@@ -15,9 +15,17 @@
  * than the only callers possible. The rules come from `lib/password.ts` and
  * `lib/email.ts`, which the forms use, so the two cannot state different rules.
  *
- * This route authenticates nobody, because nothing does yet. ADR-0009 gives the
- * installation a password and a hash to check it against; the session that
- * would gate this handler belongs to the story that builds sign-in.
+ * IT IS PUBLIC ON A BOX WITH NO ACCOUNT, AND GUARDED THE MOMENT ONE EXISTS.
+ * `proxy.ts` cannot make that distinction, because the answer is a row rather
+ * than a path, so the rule lives here. ADR-0009 requires the wizard to refuse a
+ * second run and put that refusal on a screen; the screen is what a person
+ * reads, and this is what a stranger meets. Without it a single unauthenticated
+ * POST rewrites the owner's password and takes the installation, which would
+ * make the gate ADR-0023 built a picture of one.
+ *
+ * WRITING THE ACCOUNT SIGNS THE PERSON IN. They chose the password one line
+ * above, so asking for it again proves nothing, and every screen the wizard
+ * offers at the end is behind the gate.
  */
 import { NextResponse } from "next/server";
 
@@ -26,12 +34,20 @@ import { db } from "@/lib/db";
 import { looksLikeEmail } from "@/lib/email";
 import { passes } from "@/lib/password";
 import {
+  OWNER,
   readAccount,
   readAppearance,
   writeAccount,
   writeAppearance,
 } from "@/lib/owner";
+import { currentSession } from "@/lib/session";
 import { hash } from "../../../../../../src/auth/password.ts";
+import {
+  COOKIE,
+  endAll,
+  issue,
+  LIFETIME_DAYS,
+} from "../../../../../../src/auth/session.ts";
 
 /** The reason goes to the server's log and never to the browser: a connection
  *  error names the host, the database and the user. */
@@ -46,8 +62,24 @@ function refused(what: string, cause: unknown): Response {
 const named = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length >= 2;
 
+/**
+ * The account, to whoever proved they own it.
+ *
+ * A stranger gets the same answer a fresh box gives: nothing is set up here.
+ * The row holds the owner's name, their email and the colours they chose, and
+ * the email is half of what KPA-78's guessing attack needs. Handing it to
+ * anybody who can reach the door saves the attacker the first half.
+ *
+ * The sign-in form asks nothing of this route, so nothing on the way in breaks
+ * by being told null. `app/(app)/layout.tsx` reads it behind the gate, where a
+ * session always exists.
+ */
 export async function GET(): Promise<Response> {
   try {
+    if (!(await currentSession())) {
+      return NextResponse.json({ account: null, appearance: null });
+    }
+
     const pool = db();
     const [account, appearance] = await Promise.all([
       readAccount(pool),
@@ -94,20 +126,63 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  const pool = db();
   try {
     // The wizard overwrites, and it asks first. ADR-0009 makes it the only
     // writer of the account and requires it to refuse a second run; the screen
-    // is where that refusal lives, because only the screen can ask.
-    await writeAccount(db(), {
+    // is where that refusal is worded, and this is where it is enforced.
+    //
+    // ONE ACCOUNT MEANS ONE CLAIM. On a box nobody has set up, whoever reaches
+    // it first owns it, which is what "created on first boot" means and what
+    // ADR-0009 accepted. Once the row is written, only the owner may write it
+    // again, and the owner is whoever holds a session.
+    const existing = await readAccount(pool);
+    if (existing && !(await currentSession())) {
+      return NextResponse.json(
+        { error: "This installation is already set up. Sign in first." },
+        { status: 401 }
+      );
+    }
+
+    await writeAccount(pool, {
       name: name.trim(),
       email: email.trim(),
       assistant: assistant.trim(),
       passwordHash: await hash(password),
     });
-    return NextResponse.json({ ok: true });
+
+    // The password was chosen in the request that just landed, so this is the
+    // one place a session may be issued without one being typed again.
+    const client = await pool.connect();
+    let token: string;
+    try {
+      // Setting a password ends every session that was open under the old one.
+      // `endAll` says why: a password changes when somebody thinks control of
+      // the account was lost, and leaving the other browser signed in would
+      // make the change theatre. The caller's own session goes with them and
+      // the one issued below replaces it.
+      await endAll(client, String(OWNER));
+      ({ token } = await issue(client, String(OWNER), new Date(), {
+        userAgent: request.headers.get("user-agent"),
+        from:
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      }));
+    } finally {
+      client.release();
+    }
+
+    const answer = NextResponse.json({ ok: true });
+    answer.cookies.set(COOKIE, token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: LIFETIME_DAYS * 24 * 60 * 60,
+    });
+    return answer;
   } catch (cause) {
     // The password is never in `cause`: `hash` takes it and returns a hash, and
-    // the statement below carries only that hash.
+    // the statement above carries only that hash.
     return refused("account write", cause);
   }
 }

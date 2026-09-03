@@ -44,8 +44,13 @@ export interface NewAccount {
   passwordHash: string;
 }
 
-/** The one row. `users_one_owner_per_installation` holds the table at id 1. */
-const OWNER = 1;
+/**
+ * The one row. `users_one_owner_per_installation` holds the table at id 1.
+ *
+ * Exported because a session names whose it is, and there is one whose. The
+ * account route issues one the moment the first boot writes this row.
+ */
+export const OWNER = 1;
 
 interface AccountRow {
   name: string;

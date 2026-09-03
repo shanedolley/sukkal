@@ -210,6 +210,14 @@ answer to a prop that changes. Every screen that moves off `localStorage` meets
 this, and nothing fails: the form simply shows the wrong value. Found on
 3 September 2026 in KPA-127.
 
+**Removing a page fails `npm run build` until the generated types go.** Next
+writes `apps/web/.next/dev/types/validator.ts` naming every route it has seen,
+and `tsc` reads it, so a deleted page reports `TS2307: Cannot find module
+'../../../app/(auth)/sign-up/page.js'` in a file nobody wrote. Remove
+`apps/web/.next/dev/types` and build again. The error names the page you
+removed, which reads like the removal was wrong and is the opposite. KPA-128,
+3 September 2026.
+
 **This shell has `noclobber` on, so `>` onto a file that exists fails.** The
 redirect writes nothing and the command after it runs on the stale file, which
 is how a run reported 360 tests when the true count was 407. It cost an agent
