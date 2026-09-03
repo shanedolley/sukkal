@@ -12,22 +12,21 @@ prose, so nothing here reads an answer out of a sentence.
 the lighter rulings. A decision that meets the three tests in `CLAUDE.md`
 graduates to an ADR, and this register then cites it.
 
-Generated 2026-09-03. 1 decided, 7 waiting.
+Generated 2026-09-03. 8 decided, 0 waiting.
 
 ## Decided
 
 | On | Ticket | The question | The ruling |
 |---|---|---|---|
-| 2026-09-03 | [KPA-96](https://koinon.atlassian.net/browse/KPA-96) | Does the fourth criterion close as met by migration 018, or does a trigger enforce it? | Proceed with Option A |
+| 2026-09-03 | [KPA-96](https://koinon.atlassian.net/browse/KPA-96) | Does the fourth criterion close as met by migration 018, or does a trigger enforce it? | Option A. Close criterion 4 as met a different way. A column default cannot start a label as the project key, because PostgreSQL refuses a default naming another column and a constant default breaks every project matched by a key prefix. Migration 018 requires a match rule at insert instead, and KPA-127 removed the browser-side guess. No trigger, so test/workspaces.test.ts keeps its assertion that a project carrying neither match is refused. |
+| 2026-09-03 | [KPA-104](https://koinon.atlassian.net/browse/KPA-104) | Where does the Voyage key live: the environment, or a connection? | Option A. The Voyage key lives in a connection, sealed by the credential store, rather than in the environment. VOYAGE_API_KEY and VOYAGE_PROJECT_ID leave .env.example and docs/runbooks/secrets.md, and this story takes Voyage through the connections screen with OpenRouter, Claude and Linear. KPA-12 reads the key from the store when it makes the first embedding call. Only a credential row carries the expiry and the verification the brief requires of every credential. |
+| 2026-09-03 | [KPA-126](https://koinon.atlassian.net/browse/KPA-126) | Should the setup wizard pre-fill the name, the email and the assistant name from the browser copy before this story deletes it? | Option A. The setup wizard asks for all four account fields fresh, which is what shipped. It does not pre-fill the name, the email or the assistant name from kpa.account, so no code reads a store this story deletes. ADR-0022 already settles the half that follows from ADR-0009: the browser account held no password, so it could not sign anybody in. |
+| 2026-09-03 | [KPA-135](https://koinon.atlassian.net/browse/KPA-135) | Do the ten autoFocus placements stay? | Option A. All ten autoFocus placements stay, and jsx-a11y/no-autofocus stays off in apps/web/.oxlintrc.json with the reason recorded there. Eight of the ten move focus after somebody acts, which is the behaviour WCAG asks of a dialog. The two on a first paint are single-purpose forms, the forgotten password form and the wizard's first step, where the field is the only thing on the page to do. |
+| 2026-09-03 | [KPA-136](https://koinon.atlassian.net/browse/KPA-136) | When you dismiss a deadline item without re-confirming the fact, does that review settle or defer? | Option A. Dismissing a deadline item settles that staleness. The fact returns only when its stale_after moves, which re-confirming or a hand edit does, and the thirty day snooze stays gone. Nothing is lost: factState derives stale from the dates and reads no needs_you row, so a dismissed stale fact still reads stale on the review screen. Only the briefing stops asking. docs/schema.md and docs/runbooks/worker.md say so. |
+| 2026-09-03 | [KPA-140](https://koinon.atlassian.net/browse/KPA-140) | Does the project settings screen edit the workspace's custom fields, or does a project carry fields of its own? | Option A. The project settings screen edits the workspace's custom fields. It resolves a project route to its workspace and names that workspace on screen, so nobody edits a shared list from a page named after one project. A project carries no field list of its own, so no schema changes and no merge rule is needed. A custom field belongs to a Jira project's field configuration, and Collibra runs every engagement through one Jira project. |
+| 2026-09-03 | [KPA-141](https://koinon.atlassian.net/browse/KPA-141) | Should apps/web run noUncheckedIndexedAccess, matching the root? | Option A. apps/web turns on noUncheckedIndexedAccess, matching the root, and the 24 errors it reports get fixed. Measured on 3 September 2026: 24 across nine files, five in lib/fixtures.ts, five in the connections screen, three in lib/parse-date.ts, and the rest in ones and twos. The last workaround in test/workspace-fields.test.ts then becomes a plain static import. Two of the errors sit in vendored ReUI, so a re-install returns them and a tsconfig override for that directory is the answer if it does. |
+| 2026-09-03 | [KPA-142](https://koinon.atlassian.net/browse/KPA-142) | Where does a custom field's tracker id come from: a scan, or one reading by hand? | Option A. A scan fills the custom field catalogue, per connection, in the worker, and it becomes work inside KPA-105. Nobody types tracker ids into apps/web/lib/fixtures.ts, which KPA-129 deletes anyway, and one site's ids would serve a catalogue two sites read. The custom fields screen cannot add a field until KPA-105 lands, and it should say plainly that a field needs a connected site. Inventing an id is refused outright: a wrong id writes to a field nobody reads, and the write succeeds. |
 
 ## Waiting on a ruling
 
-| Ticket | The question | Recommended |
-|---|---|---|
-| [KPA-104](https://koinon.atlassian.net/browse/KPA-104) | Where does the Voyage key live: the environment, or a connection? | A |
-| [KPA-126](https://koinon.atlassian.net/browse/KPA-126) | Should the setup wizard pre-fill the name, the email and the assistant name from the browser copy before this story deletes it? | A, which is what is built |
-| [KPA-135](https://koinon.atlassian.net/browse/KPA-135) | Do the ten autoFocus placements stay? | A |
-| [KPA-136](https://koinon.atlassian.net/browse/KPA-136) | When you dismiss a deadline item without re-confirming the fact, does that review settle or defer? | A |
-| [KPA-140](https://koinon.atlassian.net/browse/KPA-140) | Does the project settings screen edit the workspace's custom fields, or does a project carry fields of its own? | A |
-| [KPA-141](https://koinon.atlassian.net/browse/KPA-141) | Should apps/web run noUncheckedIndexedAccess, matching the root? | A |
-| [KPA-142](https://koinon.atlassian.net/browse/KPA-142) | Where does a custom field's tracker id come from: a scan, or one reading by hand? | A |
+Nothing waiting.

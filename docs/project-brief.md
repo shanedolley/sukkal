@@ -427,6 +427,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | The fourth space | `shared` stays, and never counts as a crossing | It is the space either side may cite, so flagging it teaches Shane to ignore the flag that guards the only wall nothing else enforces. ADR-0018. |
 | A link to a root page | It resolves to no row, and the two orphan advisories that costs KPA-13 are recorded rather than removed | A root page belongs to none of the memory's three layers, and both orphans are true findings. The nine `[[index]]` citations cost no report line at all: the drift runs the other way, from links out of `log.md` and `index.md`. ADR-0019. |
 | What leaves the browser | Eight keys move, eleven stay | The test is whether a value belongs to the person or to the device. An accent follows the person. A resolved pre-paint blob and a table's own furniture belong to the machine that paints them. ADR-0022. |
+| The Voyage key | A connection, not the environment | Every other vendor key already goes through the connections screen, and only a credential row carries the expiry and the verification the brief requires of every credential. `VOYAGE_API_KEY` and `VOYAGE_PROJECT_ID` were read by no code, measured on 3 September 2026, and KPA-104 removes them. |
 | Users | One owner per installation | No permission model, no per-user partitioning, no sharing. The memory model assumes one person throughout: one set of facts, one inbox, one voice, one review queue, and a `verified_by` that means the owner. On Shane's box that owner is Shane. |
 
 **A note on the memory store decision.** Row-level security enforcing the
@@ -986,9 +987,4 @@ push over the LAN, rather than inventing a second mechanism.
 4. Does the Microsoft card serve a tenant Shane owns? *Every connection the
    product offers* names the contradiction: the catalogue offers Microsoft and
    the brief rules out customer-tenant Graph access.
-5. Where does the Voyage key live? `VOYAGE_API_KEY` and `VOYAGE_PROJECT_ID` are
-   named in `.env.example` and read by no code, measured on 3 September 2026.
-   `apps/web/lib/providers.ts` offers Voyage as a connection instead, whose key
-   the credential store now seals. One key with two homes. If the connection
-   wins, the two variables go; if the environment wins, the card stops offering
-   Voyage.
+

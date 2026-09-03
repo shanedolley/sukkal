@@ -136,6 +136,11 @@ open or closed. So closing an item settles that one review, and the fact
 returns the night its `stale_after` moves past. Re-confirming moves it, and so
 does an edit by hand. Nothing else does.
 
+**A dismissed fact is not a lost fact.** `factState` derives `stale` from the
+dates and reads no `needs_you` row, so a fact whose item you closed still reads
+stale on the review screen. Only the briefing stops asking. Shane ruled on that
+in KPA-136 on 3 September 2026.
+
 Re-confirming needs no special case. ADR-0017 gives the fact a new
 `stale_after`, the fact stops being stale, and the sweep closes the open item.
 A fresh item opens the night that new date passes, however short the interval.
