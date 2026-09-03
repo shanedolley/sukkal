@@ -1,14 +1,33 @@
 "use client"
 
+// The corner of the screen that says who you are.
+//
+// IT READS THE ACCOUNT ROW, and KPA-144 is why. The ReUI block KPA-37 adapted
+// named Shane Dolley and his address in code, and that was true while the brief
+// gave the system one user called Shane. ADR-0009 changed it to one owner per
+// installation, so somebody who pulls the container down and sets it up was
+// reading Shane's name in the corner they look at most.
+//
+// NOTHING IS SHOWN UNTIL THE READ ANSWERS. `lib/account.ts` reports "loading"
+// before the fetch lands and "error" when it fails, and neither may paint a
+// name. A wrong name here is worse than no name, because this is the one place
+// a person checks whose box they are on.
+//
+// FOUR ITEMS ARE GONE. Profile, Billing and Usage, Help and Support and API
+// Reference came from the block and did nothing. Profile said the same thing
+// Preferences says on a box with one account, Billing describes a product this
+// is not, and the other two point at documentation nobody wrote. What is left
+// goes somewhere: Preferences opens /settings, the theme toggle works, and
+// Sign Out ends the session.
+
 import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
+import Link from "next/link"
 
+import { useOwner } from "@/lib/account"
+import { initialsOf } from "@/lib/initials"
 import { cn } from "@/lib/utils"
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -26,19 +45,24 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { SunIcon, MoonIcon, MonitorIcon, UserIcon, CreditCardIcon, SettingsIcon, LifeBuoyIcon, BookOpenIcon, PaletteIcon, LogOutIcon, MoreHorizontalIcon } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { SunIcon, MoonIcon, MonitorIcon, SettingsIcon, PaletteIcon, LogOutIcon, MoreHorizontalIcon } from "lucide-react"
 
-// ── Constants ──
+// ── Who is signed in ──
 
-// The brief's "Users" decision: one user, Shane. No permission model.
-// No avatar URL: the box is on a home LAN behind Cloudflare Access, and the
-// initials fallback is what renders when a remote image cannot load.
-const USER = {
-  name: "Shane Dolley",
-  email: "shane@koinon.com.au",
-  avatar: "",
-  initials: "SD",
-} as const
+/** What the menu shows, and whether it may be shown yet. */
+function useIdentity() {
+  const { status, account } = useOwner()
+  if (status !== "ready" || account === null) {
+    return { ready: false, name: "", email: "", initials: "" }
+  }
+  return {
+    ready: true,
+    name: account.name,
+    email: account.email,
+    initials: initialsOf(account.name),
+  }
+}
 
 const THEMES = [
   {
@@ -140,23 +164,29 @@ function signOut() {
 // ── Menu Sections ──
 
 function UserMenuHeader() {
+  const { ready, name, email, initials } = useIdentity()
+
   return (
     <DropdownMenuLabel className="flex items-center gap-2.5 py-2">
       <Avatar className="size-8 rounded-md">
-        <AvatarImage
-          src={USER.avatar}
-          alt={USER.name}
-          className="rounded-md!"
-        />
-        <AvatarFallback>{USER.initials}</AvatarFallback>
+        <AvatarFallback>{ready ? initials : "?"}</AvatarFallback>
       </Avatar>
-      <div className="flex min-w-0 flex-col">
-        <span className="text-foreground text-sm font-semibold">
-          {USER.name}
-        </span>
-        <span className="text-muted-foreground truncate text-xs font-normal">
-          {USER.email}
-        </span>
+      <div className="flex min-w-0 flex-col gap-1">
+        {ready ? (
+          <>
+            <span className="text-foreground text-sm font-semibold">
+              {name}
+            </span>
+            <span className="text-muted-foreground truncate text-xs font-normal">
+              {email}
+            </span>
+          </>
+        ) : (
+          <>
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-3 w-36" />
+          </>
+        )}
       </div>
     </DropdownMenuLabel>
   )
@@ -165,36 +195,15 @@ function UserMenuHeader() {
 function UserMenuAccount() {
   return (
     <DropdownMenuGroup>
-      {/* Row */}
-      <DropdownMenuItem>
-        <UserIcon aria-hidden="true" />
-        Profile
-        <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-      </DropdownMenuItem>
-      <DropdownMenuItem>
-        <CreditCardIcon aria-hidden="true" />
-        Billing & Usage
-      </DropdownMenuItem>
-      <DropdownMenuItem>
+      {/* The shortcut is real. `components/shortcuts.tsx` registers the comma
+          and pushes the same route, so the hint and the key agree. */}
+      <DropdownMenuItem
+        render={<Link href="/settings" />}
+        nativeButton={false}
+      >
         <SettingsIcon aria-hidden="true" />
         Preferences
-        <DropdownMenuShortcut>⌘</DropdownMenuShortcut>
-      </DropdownMenuItem>
-    </DropdownMenuGroup>
-  )
-}
-
-function UserMenuSupport() {
-  return (
-    <DropdownMenuGroup>
-      {/* Row */}
-      <DropdownMenuItem>
-        <LifeBuoyIcon aria-hidden="true" />
-        Help & Support
-      </DropdownMenuItem>
-      <DropdownMenuItem>
-        <BookOpenIcon aria-hidden="true" />
-        API Reference
+        <DropdownMenuShortcut>⌘,</DropdownMenuShortcut>
       </DropdownMenuItem>
     </DropdownMenuGroup>
   )
@@ -231,14 +240,13 @@ function UserMenuContent() {
         <DropdownMenuSeparator />
         <UserMenuAccount />
         <DropdownMenuSeparator />
-        <UserMenuSupport />
-        <DropdownMenuSeparator />
         <UserMenuTheme />
         <DropdownMenuSeparator />
+        {/* No shortcut hint. The block printed ⇧⌘Q, which nothing registers
+            and which macOS itself uses to log the whole machine out. */}
         <DropdownMenuItem onClick={signOut}>
           <LogOutIcon aria-hidden="true" />
           Sign Out
-          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuGroup>
     </DropdownMenuContent>
@@ -248,6 +256,8 @@ function UserMenuContent() {
 // ── Nav User ──
 
 export function NavUser() {
+  const { ready, name, initials } = useIdentity()
+
   return (
     <SidebarMenu>
       {/* Sidebar */}
@@ -257,16 +267,18 @@ export function NavUser() {
             className="bg-background border-border h-auto shrink-0 border p-1.5 text-sm shadow-sm shadow-black/5 group-data-[collapsible=icon]:justify-center"
             render={<SidebarMenuButton size="lg" aria-label="Open user menu" />}
           >
+            {/* No AvatarImage. Nothing anywhere holds a picture of the owner,
+                so the fallback was the only thing that ever rendered and the
+                empty src fetched the current page. */}
             <Avatar className="size-6 transition-all duration-300 ease-in-out in-data-[state=collapsed]:size-7!">
-              <AvatarImage
-                src={USER.avatar}
-                alt={USER.name}
-                className="rounded-md"
-              />
-              <AvatarFallback>{USER.initials}</AvatarFallback>
+              <AvatarFallback>{ready ? initials : "?"}</AvatarFallback>
             </Avatar>
             <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-              <span className="truncate font-semibold">{USER.name}</span>
+              {ready ? (
+                <span className="truncate font-semibold">{name}</span>
+              ) : (
+                <Skeleton className="h-4 w-24" />
+              )}
             </div>
             <MoreHorizontalIcon className="mr-1 ml-auto size-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" aria-hidden="true" />
           </DropdownMenuTrigger>

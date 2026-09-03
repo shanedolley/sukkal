@@ -37,6 +37,7 @@ import {
   resolveAppearance,
 } from "../lib/appearance.ts";
 import { db } from "../lib/db.ts";
+import { initialsOf } from "../lib/initials.ts";
 import {
   readAccount,
   readAppearance,
@@ -45,6 +46,41 @@ import {
 } from "../lib/owner.ts";
 
 const WEB = path.join(import.meta.dirname, "..");
+
+// ══ The initials ════════════════════════════════════════════════════════════
+//
+// KPA-144. The sidebar drew `SD` from a constant until the account row
+// answered for it, so these letters are now derived on every installation and
+// a name shape nobody anticipated has to produce something a font can draw.
+
+for (const [name, expected] of [
+  ["Shane Dolley", "SD"],
+  // One word is one letter, which is what a person with one name gets
+  // everywhere else.
+  ["Ada", "A"],
+  ["shane dolley", "SD"],
+  // The middle name is skipped: the first and the last are what a person is
+  // called, and three letters do not fit the circle.
+  ["Mary Jane Watson", "MW"],
+  ["  Shane   Dolley  ", "SD"],
+  ["O'Brien", "O"],
+  // A letter outside the basic plane is two code units. Indexing would cut it
+  // in half and draw a glyph no font has.
+  ["Ünal Çöl", "ÜÇ"],
+  ["日向 翔陽", "日翔"],
+] as const) {
+  assert.equal(initialsOf(name), expected, `"${name}" gave the wrong initials`);
+}
+
+// Nothing usable still draws something. An avatar with no glyph reads as a
+// rendering fault rather than as a box nobody has named.
+for (const nothing of ["", "   ", "\t\n"]) {
+  assert.equal(initialsOf(nothing), "?", "an empty name drew nothing");
+}
+
+console.log(
+  "initials OK: two names give two letters, one gives one, and nothing gives a question mark",
+);
 
 // ══ The validator ═══════════════════════════════════════════════════════════
 
