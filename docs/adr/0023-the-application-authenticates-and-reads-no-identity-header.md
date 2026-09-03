@@ -10,17 +10,22 @@ open: what a box that *does* have Access in front of it should do with the
 identity Access already established. This settles that, and the answer is
 nothing.
 
-## What Access still does
+## KPA requires no Access
 
-**It stays in front of Shane's box, and it stays a network gate.** Access
-refuses everyone but Shane before a request reaches the tunnel at all. Nothing
-here removes it or weakens it.
+**Whether a deployment runs Access is that deployment's own choice.** KPA
+depends on it for nothing, which is the point: ADR-0009 made this software
+somebody else installs, and that person has no Cloudflare account. Shane
+recorded the same thing about his own box on 3 September 2026.
 
-What changes is that KPA stops treating it as an identity. Two gates now stand
-in series and neither assumes the other held, which is the whole value of the
-arrangement. A tunnel misrouted, a port published to the LAN, a container
-reachable on a network somebody trusted: each is survivable, because the
-application still asks who is knocking.
+**Where a deployment does run it, it is a network gate.** Access refuses
+everyone but the owner before a request reaches the tunnel, and KPA still asks
+who is knocking. Two gates stand in series and neither assumes the other held,
+which is the whole value of running both. A tunnel misrouted, a port published
+to the LAN, a container reachable on a network somebody trusted: each is
+survivable, because the application authenticates on its own.
+
+That is also what makes dropping Access safe. The application was never leaning
+on it.
 
 ## Considered Options
 
@@ -69,6 +74,9 @@ session lapses. The friction is whatever KPA-77 chooses, and it is not daily.
   self-hosted box, and the working gate on Shane's.
 - **KPA-77 is unblocked, and it owns the session lifetime.** A box holding
   employer customer material is not a shopping site, and that story says so.
+- **Access becomes removable.** Nothing in KPA reads it, so taking it down
+  costs the network gate and no application behaviour. The brief's *Remote
+  access* row is now a deployment choice rather than a dependency.
 - **Nothing is foreclosed.** Option 2 is an addition rather than a replacement,
   because a local account is exactly what it falls back to. So is OIDC, which
   ADR-0009 already left open for an organisation that runs an identity
