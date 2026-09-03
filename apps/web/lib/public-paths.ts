@@ -31,6 +31,11 @@ export const PUBLIC: PublicPath[] = [
 
   { prefix: '/api/session', because: 'signing in and out' },
 
+  // KPA-79. Asking for a reset is what somebody who cannot sign in does, and
+  // spending the token is authenticated by the token: it is 256 bits, single
+  // use, and it dies in an hour.
+  { prefix: '/api/reset', because: 'the reset itself, which no session can gate' },
+
   // ADR-0013: nabium signs its deliveries and `src/webhooks/receive.ts`
   // verifies the HMAC. It carries no cookie and never will, because it is not
   // a browser.

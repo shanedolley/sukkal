@@ -45,6 +45,7 @@ check constraint here rather than an instruction in a prompt.
 | `projects` | One piece of work inside a workspace, and the one rule that matches its issues: a Jira label, or a Jira key prefix |
 | `workspace_fields` | The custom fields a workspace carries, and the Jira field each one writes |
 | `sessions` | One proved sign-in. The id is a SHA-256 of the token and never the token |
+| `password_resets` | One outstanding reset. The id is a SHA-256 of the token, one row per owner, and using it deletes the row |
 
 ## The enums
 
@@ -735,6 +736,48 @@ matcher change or a moved Server Function can silently remove Proxy coverage,
 and says to verify inside the handler. `requireOwner` in `lib/session.ts` is
 that second check. Two gates, and neither assumes the other held, which is the
 shape ADR-0023 chose for Access and for the same reason.
+
+## What carries a forgotten password back
+
+`migrations/025_password_resets.sql` holds one outstanding reset. ADR-0023
+makes the application the only gate, so no second gate can let anybody back in,
+and ADR-0009 named the harder half: a fresh installation has no mail relay, so
+a link has nowhere to go.
+
+**The token is not in the table**, for the reason `sessions` gives above. A
+token readable in the database is a password readable in the database, and the
+reset flow exists because the password was lost.
+
+**Single use is a delete, and the delete is the claim.** `spend` in
+`src/auth/reset.ts` runs `DELETE ... RETURNING`, so two requests carrying one
+token race for a row only one of them gets. A `used_at` column would have to be
+read to be known spent, and a read somebody forgets is a token that works
+twice.
+
+**One live token per owner**, held by `password_resets_one_per_owner` rather
+than by remembering to delete first. Asking twice replaces the key rather than
+leaving two under the mat, so a stranger asking repeatedly leaves one row and
+never more. That is also why there is no sweep and no index: the next request
+replaces what expired, and `spend` refuses it in the meantime.
+
+**An hour**, which is what `forgot-password-form.tsx` has promised since
+KPA-37. `LIFETIME_MINUTES` in `src/auth/reset.ts` holds the number. It is short
+because the account is already in a state where control is in question.
+
+**Spending one ends every session.** `setPassword` calls `endAll`, so a reset
+closes the browser somebody else was signed in on. `POST /api/account` calls it
+too when the wizard writes a password again.
+
+**The way in on a box with no mail is `scripts/reset-password.sh`.** It sets a
+password directly, or `--link` mints a token and prints the address that spends
+it. Being at that shell is the proof: somebody who can run it can already read
+this database and the key that opens every stored credential.
+
+**Nothing sends mail yet.** `mailSender` names which configured connection
+would carry it, which is what KPA-79 asks for: a relay read out of the
+environment is a credential nobody can see on the Connections screen, nobody
+dates, and `src/connections/verify.ts` cannot check. Reaching Gmail or Graph
+needs an OAuth grant no installation holds today.
 
 ## The queue lives in its own schema
 

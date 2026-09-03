@@ -69,6 +69,7 @@ Shane and never Claude Code, and end with the `Claude-Session` line.
 | `npm run migrate` | Applies pending migrations. `npm run migrate down` reverses every one |
 | `npm run worker` | Runs the worker and its pg-boss queue. `docs/runbooks/worker.md` |
 | `./scripts/scan-history.sh` | Scans every commit for a credential. Run it before you push |
+| `./scripts/reset-password.sh` | Sets the owner's password on the box itself. `--link` prints a reset link instead |
 | `npm run decisions` | Rebuilds `docs/decisions.md` from the decision blocks in Jira |
 
 Run the lint, the build and the tests before you report anything finished, and
@@ -144,6 +145,8 @@ DATABASE_URL_TEST="postgresql://$(whoami)@localhost:5432/kpa_dev" npm test
 ```
 migrations/     One .sql file per migration, applied in filename order
 apps/web/       The Next.js interface. A workspace of the root package
+src/auth/       Hashing a password, holding a session, and resetting one
+src/connections/  Sealing a provider's credential, and reading it back
 src/db/         The connection module and the migration runner
 src/memory/     The four gates, the inference seam, the state rule and the sweep
 src/migrate/    The vault reader, and what it turns notes into

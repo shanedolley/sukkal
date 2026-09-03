@@ -73,9 +73,11 @@ describe('the gate over every route', () => {
     // added later is guarded by default and needs no entry.
     assert.deepEqual(open.sort(), [
       '/api/account',
+      '/api/reset',
       '/api/session',
       '/api/webhooks/nabium',
       '/forgot-password',
+      '/reset',
       '/setup',
       '/sign-in',
     ]);

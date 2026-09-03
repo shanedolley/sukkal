@@ -8,9 +8,16 @@
 // having if you are the wrong sort of person. Every reset flow worth copying
 // answers the same way.
 //
-// ponytail: nothing sends the mail, and no page takes the link at the other
-// end. The reset screen arrives with the worker that can issue a token, and a
-// token nobody issues is a screen nobody can reach.
+// KPA-79 gave it something to ask. `POST /api/reset` issues a token when the
+// address holds the account, and answers the same either way, so the promise
+// this screen has always made is now one the server keeps.
+//
+// NOTHING SENDS THE MAIL YET, and `src/auth/reset.ts` says why: reaching Gmail
+// or Graph needs an OAuth grant this installation does not hold. The token is
+// real and the way to it is `scripts/reset-password.sh --link` on the server,
+// which is the escape hatch ADR-0009 named. The wording below says so, because
+// a screen that promised mail nobody sends would be the lie this one avoided
+// everywhere else.
 
 import { useState, type ComponentProps } from "react";
 import Link from "next/link";
@@ -28,6 +35,7 @@ type FormSubmitEvent = Parameters<FormSubmitHandler>[0];
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
 
   function handleSubmit(event: FormSubmitEvent) {
@@ -37,7 +45,21 @@ export function ForgotPasswordForm() {
       return;
     }
     setError("");
-    setSent(true);
+    setBusy(true);
+
+    // The screen shows the same card whatever the server says, including when
+    // it says nothing. A failure that changed the wording would tell somebody
+    // which address reached a real account.
+    fetch("/api/reset", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    })
+      .catch((cause: unknown) => console.error("reset request:", cause))
+      .finally(() => {
+        setBusy(false);
+        setSent(true);
+      });
   }
 
   const footer = (
@@ -55,15 +77,20 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <AuthCard
-        title="Check your mail"
-        lead="A link to set a new password is on its way, if that address holds an account."
+        title="That is asked"
+        lead="A link to set a new password is waiting, if that address holds an account."
         footer={footer}
       >
         <div className="text-muted-foreground flex flex-col items-center gap-3 text-center text-sm">
           <MailCheckIcon className="text-primary size-8" aria-hidden="true" />
+          {/* True on a box with mail and on one without, because the browser
+              cannot tell which this is and must not be told. */}
           <p>
-            The link lasts an hour. Nothing has been sent yet, because no
-            worker exists to send it.
+            The link lasts an hour and works once. If nothing arrives, run{" "}
+            <code className="text-foreground">
+              scripts/reset-password.sh --link
+            </code>{" "}
+            on the server to reach it.
           </p>
         </div>
 
@@ -108,8 +135,8 @@ export function ForgotPasswordForm() {
           </Field>
         </FieldGroup>
 
-        <Button type="submit" className="w-full">
-          Send the link
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy ? "Asking..." : "Send the link"}
         </Button>
       </form>
     </AuthCard>
