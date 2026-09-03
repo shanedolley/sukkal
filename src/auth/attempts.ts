@@ -5,13 +5,14 @@
  * whoever can reach the box, and one account means an attacker needs one
  * password and has as many tries as the box will answer.
  *
- * A DELAY, NEVER A LOCK, and KPA-78 is why. A lockout on the only account is a
- * denial of service against the only person who can use the system, and there
- * is nobody to lift it. So a run of failures buys a wait in front of the next
- * attempt, the wait grows to a ceiling of eight seconds, and a correct
- * password works at every point in the run. Shane is never shut out, so
- * nothing has to expire before he can get in: the run is forgotten fifteen
- * minutes after the last failure, and that is a tidy-up rather than a release.
+ * A DELAY, NEVER A LOCK. ADR-0024 decided it and KPA-78 is why. A lockout on
+ * the only account is a denial of service against the only person who can use
+ * the system, and there is nobody to lift it. So a run of failures buys a wait
+ * in front of the next attempt, the wait grows to a ceiling of eight seconds,
+ * and a correct password works at every point in the run. Shane is never shut
+ * out, so nothing has to expire before he can get in: the run is forgotten
+ * fifteen minutes after the last failure, which is a tidy-up rather than a
+ * release.
  *
  * WHY EIGHT SECONDS IS ENOUGH, measured rather than assumed. One `verify`
  * costs 171 ms on this Mac at ADR-0020's cost, and eight in parallel take

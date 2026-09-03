@@ -852,7 +852,17 @@ LAN. Every layer has to hold, not just the tunnel.
 is the only gate there, so its own login carries weight that Access used to
 carry on Shane's box. That is why the password rules are strict and why the
 reset path needs a command line escape hatch on the server. ADR-0009,
-and ADR-0020 for what a stored password costs to guess.
+and ADR-0020 for what a stored password costs to guess. Both are built:
+`scripts/reset-password.sh` sets a password on the box, and KPA-79 gives a
+token the same handling every other secret gets.
+
+**Locking the one account would be the outage, not the defence.** Anybody who
+can reach the box could hold the only account closed by failing on purpose, and
+there is nobody to ring. So a run of failed sign-ins buys a growing wait capped
+at eight seconds and never a refusal, and every attempt reaches the audit log.
+The measurement behind the ceiling is in ADR-0024: one hash costs 171 ms and
+node runs four at a time, so the rules ADR-0020 sets already put the password
+out of reach at any online rate.
 
 **The Collibra OAuth grant is revocable.** It works because no administrator
 blocked it. A tenant policy change removes KPA's access to that mailbox without

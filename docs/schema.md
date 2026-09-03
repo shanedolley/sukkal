@@ -1,15 +1,16 @@
 # The schema
 
-Twenty-five tables and twelve enums. `migrations/001_core_schema.sql` created
+Twenty-six tables and twelve enums. `migrations/001_core_schema.sql` created
 the first ten, and migrations 003 to 010 changed what follows. Migrations 011
-to 014 and 017 add no table: 011 creates the schema the job queue lives in,
-012 seeds one policy row, 013 adds one column to `facts`, 014 adds one column
-and one enum value to `audit`, and 017 adds four columns to `users`. Migration
-016 adds a connection and its sealed secret, 018 adds the workspace and
-project tree, 021 adds the fields a workspace carries, and 022 adds the last
-two, which cache the issues a tracker owns. 023 adds no table and says a
-connection may hold no credential, and 024 adds the last one, which carries a
-proved sign-in. The vault's own `CLAUDE.md` is the authority for every enum the
+to 014, 017 and 026 add no table: 011 creates the schema the job queue lives
+in, 012 seeds one policy row, 013 adds one column to `facts`, 014 adds one
+column and one enum value to `audit`, 017 adds four columns to `users`, and 026
+adds two more to `users` and a second policy row. Migration 016 adds a
+connection and its sealed secret, 018 adds the workspace and project tree, 021
+adds the fields a workspace carries, and 022 caches the issues a tracker owns.
+023 adds no table and says a connection may hold no credential, 024 carries a
+proved sign-in, and 025 adds the last one, which carries an outstanding
+password reset. The vault's own `CLAUDE.md` is the authority for every enum the
 vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
@@ -784,7 +785,8 @@ needs an OAuth grant no installation holds today.
 `migrations/026_sign_in_attempts.sql` adds `users.sign_in_failures` and
 `users.sign_in_failed_at`, and one row to `policies`.
 
-**A delay, never a lock.** KPA-78 names the hazard running both ways: an
+**A delay, never a lock.** ADR-0024 decided it. KPA-78 names the hazard
+running both ways: an
 attacker needs one password, and a lockout on the only account is a denial of
 service against the only person who can use the system, with nobody to lift it.
 So a run of failures buys a wait in front of the next attempt, the wait grows

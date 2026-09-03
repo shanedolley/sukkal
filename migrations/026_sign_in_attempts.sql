@@ -4,7 +4,8 @@
 -- whoever can reach the box. One account means an attacker needs one password
 -- and has as many tries as the box will answer.
 --
--- KPA-78 names the hazard running the other way, and it is the larger one: a
+-- ADR-0024 decided what this does. KPA-78 names the hazard running the other
+-- way, and it is the larger one: a
 -- lockout on the only account is a denial of service against the only person
 -- who can use the system, and there is no administrator to lift it. So this
 -- carries a delay rather than a lock. The counter grows, the wait in front of

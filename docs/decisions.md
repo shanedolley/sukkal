@@ -12,7 +12,7 @@ prose, so nothing here reads an answer out of a sentence.
 the lighter rulings. A decision that meets the three tests in `CLAUDE.md`
 graduates to an ADR, and this register then cites it.
 
-Generated 2026-09-03. 9 decided, 0 waiting.
+Generated 2026-09-03. 9 decided, 1 waiting.
 
 ## Decided
 
@@ -30,4 +30,6 @@ Generated 2026-09-03. 9 decided, 0 waiting.
 
 ## Waiting on a ruling
 
-Nothing waiting.
+| Ticket | The question | Recommended |
+|---|---|---|
+| [KPA-143](https://koinon.atlassian.net/browse/KPA-143) | How does a self-hosted box send the reset link? | option A. It is the only one that works on the box ADR-0009 describes, and the measurement is what decides it: one dependency with no dependencies of its own, against an OAuth setup the installer has to complete before they are locked out rather than after. SMTP is also the shape a self-hoster already has, because every relay speaks it and no relay speaks Graph. It forecloses nothing: mailSender already prefers a Google or Microsoft connection, so an OAuth grant arriving later is a second sender rather than a replacement |
