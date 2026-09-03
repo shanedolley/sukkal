@@ -1,6 +1,6 @@
 # The schema
 
-Twenty-seven tables and thirteen enums. `migrations/001_core_schema.sql` created
+Twenty-eight tables and fourteen enums. `migrations/001_core_schema.sql` created
 the first ten, and migrations 003 to 010 changed what follows. Migrations 011
 to 014, 017 and 026 add no table: 011 creates the schema the job queue lives
 in, 012 seeds one policy row, 013 adds one column to `facts`, 014 adds one
@@ -9,10 +9,10 @@ adds two more to `users` and a second policy row. Migration 016 adds a
 connection and its sealed secret, 018 adds the workspace and project tree, 021
 adds the fields a workspace carries, and 022 caches the issues a tracker owns.
 023 adds no table and says a connection may hold no credential, 024 carries a
-proved sign-in, 025 carries an outstanding password reset, and 027 adds the
-last one, which holds the sprints a tracker runs and the reference 022 left
-for it. The vault's own `CLAUDE.md` is the authority for every enum the
-vault writes.
+proved sign-in, 025 carries an outstanding password reset, 027 holds the
+sprints a tracker runs and the reference 022 left for it, and 028 adds the last
+one, which holds a write the tracker has not accepted. The vault's own
+`CLAUDE.md` is the authority for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
 `valid_to`. And **a machine never marks its own work verified**, which is a
@@ -41,6 +41,7 @@ check constraint here rather than an instruction in a prompt.
 | `inbound_deliveries` | A webhook body, verbatim, waiting for a worker |
 | `issues` | A cache of the issues a tracker owns, keyed by workspace and key, carrying the tracker's own `updated` stamp |
 | `issue_blocks` | One blocking link, stored once from the blocker |
+| `issue_writes` | A write the tracker has not accepted, with the stamp it expected and, on a conflict, the one it found |
 | `connections` | One account on one provider. Provider, name, method, and the services it may be reached for |
 | `connection_credentials` | The sealed secret for one connection, with the dates the provider named and the last verdict |
 | `workspaces` | One Jira tracker and the space it belongs to. The id is stable, the name is not, and nothing files anything under the name |
@@ -67,6 +68,7 @@ check constraint here rather than an instruction in a prompt.
 | `issue_kind` | `epic`, `story`, `subtask` |
 | `issue_priority` | `none`, `low`, `medium`, `high`, `urgent` |
 | `sprint_state` | `active`, `future`, `closed` |
+| `issue_write_state` | `queued`, `sent`, `conflict`, `failed` |
 
 `edge_kind` is enumerated in one place so no call site invents a sixth.
 `derived_from` comes from a `sources:` entry, `links_to` from a `[[wikilink]]`
@@ -685,6 +687,48 @@ compares the contract's two dates. Three rules are the exceptions, and each
 refuses a row KPA wrote wrong rather than a row Jira holds: the key is upper
 case in the shape `projects.match_key_prefix` compares, the title says
 something, and `fields` is a JSON object rather than an array.
+
+## A write the tracker has not accepted
+
+`migrations/028_issue_write_queue.sql` holds it. ADR-0007 asks for it in as
+many words: Postgres gains no issues table anything treats as true, but a cache
+carrying the tracker's own stamp and a queue for writes the tracker has not yet
+accepted.
+
+**Why a queue at all.** Every field on the issue detail page lands as it is
+made, with no save button, and the bulk bar writes many rows at once. A dropped
+connection with no queue loses the edit in silence, and the screen then shows a
+value Jira never received.
+
+**A conflict keeps both stamps.** ADR-0007 leaves the merge to a person,
+because KPA cannot guess how two descriptions combine, and a person deciding
+needs to see what the write expected and what the tracker actually had. One
+number says a write was refused; two say why.
+`issue_writes_a_conflict_names_both_stamps` refuses the first without the
+second, and `issue_writes_only_a_conflict_observed_a_stamp` refuses the second
+without a conflict.
+
+**A successful write moves to `sent` rather than being deleted.** The row is
+the record that KPA changed somebody else's issue, and a queue that empties
+itself on success can only ever show failures. Old rows are prunable, which is
+where this differs from `audit`.
+
+**A comment never comes through here.** ADR-0007 writes one straight through,
+because a comment is append-only in practice: nothing about it can conflict, so
+nothing about it needs a stamp. `issue_writes_carry_no_comment` refuses a patch
+naming one rather than leaving that to whoever writes the next caller.
+
+**One issue may hold several queued writes**, in the order they were made,
+which is what the identity key gives. A unique row per issue would drop the
+second edit of the same field.
+
+**A trap the sender owns, and the schema cannot close.** Three edits made from
+one screen all carry the stamp that screen read. The first succeeds and the
+tracker's stamp moves, so the other two now expect a stamp that has passed and
+both conflict, against a change KPA itself made. Whatever sends these has to
+carry the new stamp forward to the issue's remaining queued rows. A constraint
+cannot: it would have to know which writes were the same person's, and a
+conflict is exactly the case where guessing is what ADR-0007 refuses.
 
 ## The sprints a tracker runs
 

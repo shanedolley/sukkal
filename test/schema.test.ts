@@ -70,7 +70,7 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
     assert.deepEqual(tables.rows.map((row) => row.relname), [
       'answers', 'audit', 'citations', 'connection_credentials', 'connections',
       'conversations', 'edges', 'entities', 'facts', 'inbound_deliveries',
-      'issue_blocks', 'issues', 'meetings', 'needs_you', 'nodes',
+      'issue_blocks', 'issue_writes', 'issues', 'meetings', 'needs_you', 'nodes',
       'password_resets', 'policies', 'projects', 'rejections', 'sessions',
       'source_chunks', 'sources', 'sprints', 'tasks', 'users',
       'workspace_fields', 'workspaces',
