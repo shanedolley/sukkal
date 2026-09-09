@@ -71,8 +71,8 @@ describe('the core schema', { skip: url ? false : 'DATABASE_URL_TEST is unset' }
       'answers', 'audit', 'citations', 'connection_credentials', 'connections',
       'conversations', 'edges', 'entities', 'facts', 'inbound_deliveries',
       'issue_blocks', 'issue_writes', 'issues', 'meetings', 'needs_you', 'nodes',
-      'password_resets', 'policies', 'projects', 'rejections', 'sessions',
-      'source_chunks', 'sources', 'sprints', 'tasks', 'users',
+      'oauth_grants', 'password_resets', 'policies', 'projects', 'rejections',
+      'sessions', 'source_chunks', 'sources', 'sprints', 'tasks', 'users',
       'workspace_fields', 'workspaces',
     ]);
   });

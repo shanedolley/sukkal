@@ -21,6 +21,8 @@ is for, where it comes from, and what breaks without it.
 | `DATABASE_URL_TEST` | The suite, and `apps/web/scripts/check-review-rules.ts` | Every test that needs a database skips |
 | `NABIUM_WEBHOOK_SECRET` | `apps/web/app/(app)/api/webhooks/nabium/route.ts` | The receiver answers 503 and stores no delivery |
 | `KPA_SECRET_KEY` | `src/connections/crypto.ts` | No connection secret seals or opens |
+| `GOOGLE_OAUTH_CLIENT_ID` | `src/connections/oauth.ts` | The Google grant cannot start |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | `src/connections/oauth.ts` | The callback cannot exchange a code |
 | `VAULT_PATH` | `src/vault-mapping.ts` | Nothing. The reader falls back to a path under `$HOME` |
 
 `REUI_LICENSE_KEY` belongs to the web tier and sits in `apps/web/.env.example`.
@@ -100,6 +102,28 @@ endpoint that names a key, so the cheapest authenticated call
 `Probe.cost` records that as `metered` where the other three read `free`, so a
 schedule can decide whether to pay for a nightly check. KPA-107 is that
 schedule.
+
+### An OAuth client is not a vendor key, and it does live here
+
+`GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` sit in this file,
+where the section above sends every vendor key to a connection instead. The two
+are different things.
+
+A vendor key belongs to one account and expires on a date, which is the shape
+`connection_credentials` holds. An OAuth client identifies the application to
+Google. One client serves all three Google accounts, so it fits no single row,
+and the callback route needs it to exchange an authorization code before any
+connection row exists. `KPA_SECRET_KEY` sets the same precedent: what the
+application needs before it can open a sealed secret cannot itself be one.
+
+What the grant returns is a vendor credential and follows the rule above. The
+refresh token for each account goes through `src/connections/crypto.ts` into
+`connection_credentials`, beside the expiry Google names.
+
+The client came from Google Cloud project `personal-assistant-506014`, which
+`workspace-mcp` already used. KPA inherits it rather than registering a second
+one, so revoking one client revokes both. The redirect URIs are registered in
+that project's console.
 
 ### `VAULT_PATH` is not a secret
 

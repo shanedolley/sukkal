@@ -1,6 +1,6 @@
 # The schema
 
-Twenty-eight tables and fourteen enums. `migrations/001_core_schema.sql` created
+Twenty-nine tables and fourteen enums. `migrations/001_core_schema.sql` created
 the first ten, and migrations 003 to 010 changed what follows. Migrations 011
 to 014, 017 and 026 add no table: 011 creates the schema the job queue lives
 in, 012 seeds one policy row, 013 adds one column to `facts`, 014 adds one
@@ -10,9 +10,10 @@ connection and its sealed secret, 018 adds the workspace and project tree, 021
 adds the fields a workspace carries, and 022 caches the issues a tracker owns.
 023 adds no table and says a connection may hold no credential, 024 carries a
 proved sign-in, 025 carries an outstanding password reset, 027 holds the
-sprints a tracker runs and the reference 022 left for it, and 028 adds the last
-one, which holds a write the tracker has not accepted. The vault's own
-`CLAUDE.md` is the authority for every enum the vault writes.
+sprints a tracker runs and the reference 022 left for it, 028 holds a write the
+tracker has not accepted, and 029 adds the last one, which holds a grant that
+has left for a provider and has not come back. The vault's own `CLAUDE.md` is
+the authority for every enum the vault writes.
 
 Two rules shape all of it. **Nothing is ever deleted**: retiring a fact sets
 `valid_to`. And **a machine never marks its own work verified**, which is a
@@ -49,6 +50,7 @@ check constraint here rather than an instruction in a prompt.
 | `workspace_fields` | The custom fields a workspace carries, and the Jira field each one writes |
 | `sessions` | One proved sign-in. The id is a SHA-256 of the token and never the token |
 | `password_resets` | One outstanding reset. The id is a SHA-256 of the token, one row per owner, and using it deletes the row |
+| `oauth_grants` | A grant in flight. The id is a SHA-256 of the state, and the PKCE verifier waits beside it for ten minutes |
 | `sprints` | The sprints a tracker runs, cached. One active per workspace, and `issues.sprint_id` points here |
 
 ## The enums
@@ -830,6 +832,45 @@ matcher change or a moved Server Function can silently remove Proxy coverage,
 and says to verify inside the handler. `requireOwner` in `lib/session.ts` is
 that second check. Two gates, and neither assumes the other held, which is the
 shape ADR-0023 chose for Access and for the same reason.
+
+## A grant that has left and not come back
+
+`migrations/029_oauth_grants.sql` holds it. KPA-103 runs one grant for every
+provider that offers one, from a record in `src/connections/oauth.ts` holding
+the urls and the scopes, so a fourth provider is a record rather than a route.
+Two values have to survive on the server between the moment the browser leaves
+and the moment the provider redirects it back.
+
+**Neither may wait in the browser.** The state proves the answer belongs to the
+request that asked, and a state the browser holds is a state an attacker can
+plant. The verifier is worse: PKCE exists because the authorization code alone
+can be stolen, so a verifier stored beside the code protects nothing.
+
+**The state is not in the table.** `id` holds a SHA-256 of it, the rule
+`sessions` and `password_resets` already keep. A copy of this table completes
+no grant, because the reader learns a hash and the provider redirects with the
+value.
+
+**The verifier is stored as it is**, because the token request has to send it
+and nothing recovers it from a hash. It is safe beside a hashed state: whoever
+reads this table cannot produce the state, so the verifier reaches no exchange.
+The row also dies in ten minutes.
+
+**Single use is a delete.** `claim` runs `DELETE ... RETURNING`, so two
+callbacks carrying one state race for a row only one of them gets. A replayed
+callback is exactly what the state exists to refuse.
+
+**Two secrets meet here and they live apart.** `GOOGLE_OAUTH_CLIENT_ID` and
+`GOOGLE_OAUTH_CLIENT_SECRET` identify KPA to Google and sit in the environment,
+because the callback needs them before any connection row exists. What the
+grant returns belongs to one account, so it goes through
+`src/connections/crypto.ts` into `connection_credentials`.
+`docs/runbooks/secrets.md` records the split.
+
+**Microsoft has no record, and the brief is why.** All three mailboxes are
+Google, so the Microsoft surface is customer tenants where Shane is a guest,
+and the brief rules that access out. A record for a grant nobody may run is a
+button that fails on press.
 
 ## What carries a forgotten password back
 
