@@ -13,6 +13,7 @@ import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
 import { fingerprint } from '../src/auth/session.ts';
 import {
+  CALLBACK_PATH,
   GRANTS,
   LIFETIME_MINUTES,
   begin,
@@ -21,9 +22,13 @@ import {
   clientFor,
   exchange,
   grantFor,
+  installationUrl,
+  redirectUri,
   renew,
   revoke,
+  scopesFor,
   sweepExpired,
+  whoami,
   type Fetcher,
 } from '../src/connections/oauth.ts';
 import { connect } from '../src/db/connect.ts';
@@ -32,7 +37,10 @@ import { down, up } from '../src/db/migrate.ts';
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
 
-const REDIRECT = 'http://localhost:3000/api/connections/callback';
+const REDIRECT = `http://localhost:3000${CALLBACK_PATH}`;
+/** Every service the Google card offers, which is what the old flat list
+ *  asked for on every grant. */
+const ALL = ['gmail', 'calendar', 'meet', 'drive', 'keep'];
 const NOW = new Date('2026-09-09T00:00:00Z');
 
 /** `minutes` after `NOW`, for a test that has to outlive a grant. */
@@ -83,22 +91,66 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
   });
 
   describe('the provider record', () => {
-    test('google asks for the scopes the existing grant already holds', () => {
-      const google = grantFor('google');
-      // The fourteen workspace-mcp holds. A re-grant that asked for more would
-      // show a consent screen naming permissions nobody agreed to before.
-      assert.equal(google.scopes.length, 14);
+    test('every service asks the whole grant asked, and no more', () => {
+      // The fourteen `workspace-mcp` holds. Every one is reachable, so a
+      // person who chooses everything sees the consent screen they saw before.
+      const whole = scopesFor(grantFor('google'), ALL);
+      assert.equal(whole.length, 14);
       for (const needed of [
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.send',
         'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/drive',
       ]) {
-        assert.ok(google.scopes.includes(needed), `${needed} is missing`);
+        assert.ok(whole.includes(needed), `${needed} is unreachable`);
       }
-      // The email scope is what lets the callback name the connection, so
-      // three accounts become three rows rather than one overwritten twice.
-      assert.ok(google.scopes.includes('https://www.googleapis.com/auth/userinfo.email'));
+    });
+
+    test('the address is asked for on every grant, whatever was chosen', () => {
+      // It is what tells three Google accounts apart. A grant without it
+      // produces one connection nobody can name.
+      const email = 'https://www.googleapis.com/auth/userinfo.email';
+      assert.ok(scopesFor(grantFor('google'), []).includes(email));
+      assert.ok(scopesFor(grantFor('google'), ['gmail']).includes(email));
+      assert.ok(scopesFor(grantFor('google'), ALL).includes(email));
+    });
+
+    test('mail alone asks for mail alone', () => {
+      const mail = scopesFor(grantFor('google'), ['gmail']);
+      assert.equal(mail.length, 8, 'three base scopes and five for mail');
+      assert.equal(
+        mail.some((scope) => scope.includes('/drive')),
+        false,
+        'choosing mail asked for Drive',
+      );
+      assert.equal(
+        mail.some((scope) => scope.includes('/calendar')),
+        false,
+        'choosing mail asked for Calendar',
+      );
+    });
+
+    test('two services sharing a scope ask for it once', () => {
+      // Meet is reached through the event that held it, so it and Calendar
+      // both name the calendar read.
+      const both = scopesFor(grantFor('google'), ['calendar', 'meet']);
+      assert.equal(new Set(both).size, both.length, 'a scope was asked for twice');
+      assert.deepEqual(both, [...both].sort(), 'the list is unsorted, so two equal asks differ');
+    });
+
+    test('a service the record does not answer for adds nothing and throws nothing', () => {
+      // A card gaining a service must not break the grant for the four beside
+      // it. `check-connections.ts` is what catches the gap instead.
+      assert.deepEqual(
+        scopesFor(grantFor('google'), ['gmail', 'a-service-nobody-mapped']),
+        scopesFor(grantFor('google'), ['gmail']),
+      );
+    });
+
+    test('keep is mapped and empty, rather than missing', () => {
+      // Google restricts `keep.readonly` to Workspace Enterprise and
+      // workspace-mcp holds none, so asking would fail the whole grant.
+      assert.deepEqual(grantFor('google').scopesByService['keep'], []);
     });
 
     test('google asks for a refresh token, which it returns to nobody who does not', () => {
@@ -115,6 +167,28 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
 
     test('a provider nobody configured throws by name', () => {
       assert.throws(() => grantFor('friendface'), /friendface/);
+    });
+
+    test('the redirect is built from KPA_URL and one path', () => {
+      // A provider compares this to its console character for character, so
+      // the two routes read it from here rather than each building a string.
+      const held = process.env['KPA_URL'];
+      process.env['KPA_URL'] = 'https://kpa.example/';
+      assert.equal(redirectUri(), `https://kpa.example${CALLBACK_PATH}`);
+      assert.equal(installationUrl(), 'https://kpa.example', 'a trailing slash survived');
+
+      delete process.env['KPA_URL'];
+      assert.equal(redirectUri(), `http://localhost:3000${CALLBACK_PATH}`);
+
+      if (held === undefined) delete process.env['KPA_URL'];
+      else process.env['KPA_URL'] = held;
+    });
+
+    test('the callback path is what the route file answers at', () => {
+      // `apps/web/app/(app)/oauth2/callback/route.ts` is the file. A rename
+      // that misses one of the two leaves the provider redirecting to a 404,
+      // which reads as the grant failing for no reason anybody can see.
+      assert.equal(CALLBACK_PATH, '/oauth2/callback');
     });
 
     test('the client comes from the environment, and says which variable is missing', () => {
@@ -150,7 +224,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
 
   describe('the start', () => {
     test('builds a url carrying everything the provider needs', async () => {
-      const started = await begin(client, 'google', REDIRECT, NOW);
+      const started = await begin(client, 'google', REDIRECT, ALL, NOW);
       const url = new URL(started.url);
 
       assert.equal(url.origin + url.pathname, grantFor('google').authorize);
@@ -161,21 +235,28 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
       assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
       assert.equal(url.searchParams.get('access_type'), 'offline');
       assert.equal(url.searchParams.get('prompt'), 'consent');
-      assert.equal(
-        url.searchParams.get('scope')?.split(' ').length,
-        grantFor('google').scopes.length,
+      assert.deepEqual(
+        url.searchParams.get('scope')?.split(' '),
+        scopesFor(grantFor('google'), ALL),
       );
+    });
+
+    test('the url asks only for what was chosen', async () => {
+      const started = await begin(client, 'google', REDIRECT, ['gmail'], NOW);
+      const scope = new URL(started.url).searchParams.get('scope') ?? '';
+      assert.equal(scope.includes('/auth/drive'), false, 'a mail grant asked for Drive');
+      assert.ok(scope.includes('/auth/gmail.send'));
     });
 
     test('carries no client secret to the browser', async () => {
       // The authorize url is opened in the browser and lands in history, so
       // the secret may not be on it. The exchange is where it belongs.
-      const started = await begin(client, 'google', REDIRECT, NOW);
+      const started = await begin(client, 'google', REDIRECT, ALL, NOW);
       assert.equal(started.url.includes('a-client-secret'), false);
     });
 
     test('stores the state as a fingerprint and never as the state', async () => {
-      const started = await begin(client, 'google', REDIRECT, NOW);
+      const started = await begin(client, 'google', REDIRECT, ALL, NOW);
 
       const { rows } = await client.query<{ id: string; verifier: string }>(
         'SELECT id, verifier FROM oauth_grants',
@@ -187,7 +268,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
     });
 
     test('stores the verifier as it is, and the url carries only its challenge', async () => {
-      const started = await begin(client, 'google', REDIRECT, NOW);
+      const started = await begin(client, 'google', REDIRECT, ALL, NOW);
       const { rows } = await client.query<{ verifier: string }>(
         'SELECT verifier FROM oauth_grants',
       );
@@ -202,7 +283,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
     });
 
     test('lasts ten minutes', async () => {
-      const started = await begin(client, 'google', REDIRECT, NOW);
+      const started = await begin(client, 'google', REDIRECT, ALL, NOW);
       assert.equal(
         started.expiresAt.getTime() - NOW.getTime(),
         LIFETIME_MINUTES * 60 * 1000,
@@ -211,8 +292,8 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
     });
 
     test('two grants never share a state', async () => {
-      const first = await begin(client, 'google', REDIRECT, NOW);
-      const second = await begin(client, 'google', REDIRECT, NOW);
+      const first = await begin(client, 'google', REDIRECT, ALL, NOW);
+      const second = await begin(client, 'google', REDIRECT, ALL, NOW);
       assert.notEqual(first.state, second.state);
 
       const { rows } = await client.query('SELECT id FROM oauth_grants');
@@ -223,7 +304,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
       // The constraint is the backstop. This proves the generator clears it,
       // so the check fires on a caller that invents its own rather than on
       // this one.
-      await begin(client, 'google', REDIRECT, NOW);
+      await begin(client, 'google', REDIRECT, ALL, NOW);
       // `created_at` is named rather than defaulted. The default is `now()`,
       // which sits years after this suite's fixed clock, so the expiry check
       // would fire first and prove the wrong thing.
@@ -241,7 +322,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
 
   describe('the claim', () => {
     test('returns what was waiting, once', async () => {
-      const started = await begin(client, 'google', REDIRECT, NOW, '/connections');
+      const started = await begin(client, 'google', REDIRECT, ALL, NOW, '/connections');
 
       const first = await claim(client, started.state, NOW);
       assert.ok(!('refused' in first));
@@ -254,7 +335,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
     });
 
     test('an expired grant is refused, one minute after its ten', async () => {
-      const started = await begin(client, 'google', REDIRECT, NOW);
+      const started = await begin(client, 'google', REDIRECT, ALL, NOW);
       assert.deepEqual(
         await claim(client, started.state, later(LIFETIME_MINUTES + 1)),
         { refused: 'expired' },
@@ -262,10 +343,10 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
     });
 
     test('the last minute still works, and the first minute after does not', async () => {
-      const inTime = await begin(client, 'google', REDIRECT, NOW);
+      const inTime = await begin(client, 'google', REDIRECT, ALL, NOW);
       assert.ok(!('refused' in (await claim(client, inTime.state, later(LIFETIME_MINUTES - 1)))));
 
-      const onTheMinute = await begin(client, 'google', REDIRECT, NOW);
+      const onTheMinute = await begin(client, 'google', REDIRECT, ALL, NOW);
       assert.deepEqual(
         await claim(client, onTheMinute.state, later(LIFETIME_MINUTES)),
         { refused: 'expired' },
@@ -279,8 +360,8 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
     });
 
     test('one grant does not claim another', async () => {
-      const mine = await begin(client, 'google', REDIRECT, NOW);
-      const other = await begin(client, 'google', REDIRECT, NOW);
+      const mine = await begin(client, 'google', REDIRECT, ALL, NOW);
+      const other = await begin(client, 'google', REDIRECT, ALL, NOW);
 
       await claim(client, mine.state, NOW);
       assert.ok(!('refused' in (await claim(client, other.state, NOW))), 'the wrong row went');
@@ -442,8 +523,54 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
     });
   });
 
+  describe('who consented', () => {
+    test('is the address, read with the token in the header', async () => {
+      const { fetcher, asked } = answers(200, {
+        sub: '1',
+        email: 'shane@koinon.com.au',
+        email_verified: true,
+      });
+      assert.equal(
+        await whoami(grantFor('google'), 'an-access-token', fetcher),
+        'shane@koinon.com.au',
+      );
+      assert.equal(asked[0]?.url, 'https://openidconnect.googleapis.com/v1/userinfo');
+    });
+
+    test('the token never reaches the url', async () => {
+      // A URL reaches the vendor's access log and this project's own.
+      const seen: string[] = [];
+      const fetcher: Fetcher = (where, init) => {
+        seen.push(where);
+        assert.equal(
+          (init.headers as Record<string, string>)['authorization'],
+          'Bearer an-access-token',
+        );
+        return Promise.resolve(new Response(JSON.stringify({ email: 'a@b.co' }), { status: 200 }));
+      };
+      await whoami(grantFor('google'), 'an-access-token', fetcher);
+      assert.equal(seen[0]?.includes('an-access-token'), false);
+    });
+
+    test('an answer naming no account throws', async () => {
+      const { fetcher } = answers(200, { sub: '1' });
+      await assert.rejects(
+        () => whoami(grantFor('google'), 'a-token', fetcher),
+        /carried no email/,
+      );
+    });
+
+    test('a refused read throws and names the status', async () => {
+      const { fetcher } = answers(401, { error: 'invalid_token' });
+      await assert.rejects(
+        () => whoami(grantFor('google'), 'a-token', fetcher),
+        /answered 401 and named no account/,
+      );
+    });
+  });
+
   test('the sweep clears what has run out and leaves what has not', async () => {
-    await begin(client, 'google', REDIRECT, NOW);
+    await begin(client, 'google', REDIRECT, ALL, NOW);
     assert.equal(await sweepExpired(client, later(LIFETIME_MINUTES - 1)), 0);
     assert.equal(await sweepExpired(client, later(LIFETIME_MINUTES + 1)), 1);
     assert.equal(await sweepExpired(client, later(LIFETIME_MINUTES + 1)), 0);

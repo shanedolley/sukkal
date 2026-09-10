@@ -57,6 +57,17 @@ export interface Method {
   signIn?: string;
   /** What the method asks for. A method that only sends you out asks nothing. */
   fields?: Field[];
+  /**
+   * Whether KPA can run a real grant, rather than open the provider's front
+   * door and store nothing.
+   *
+   * `GRANTS` in `src/connections/oauth.ts` is what decides it, and
+   * `scripts/check-connections.ts` fails when the two disagree. The flag is
+   * here rather than imported because this file runs under plain node and a
+   * client component bundles it: reaching into `src/` would carry
+   * `node:crypto` into the browser.
+   */
+  grant?: boolean;
 }
 
 export interface Provider {
@@ -76,14 +87,23 @@ export interface Provider {
   methods: [Method, ...Method[]];
 }
 
-/** Sends you to the provider. No secret passes through the screen. */
-function oauth(signIn: string, fields: Field[] = []): Method {
+/**
+ * Sends you to the provider. No secret passes through the screen.
+ *
+ * `grant` says whether pressing the button runs a real OAuth grant or only
+ * opens the provider's front door. The hint follows it, because the two do
+ * different things and a person deserves to know which they are about to get.
+ */
+function oauth(signIn: string, fields: Field[] = [], grant = false): Method {
   return {
     id: "oauth",
     label: "OAuth",
-    hint: "The button opens the provider's own sign-in page, so no secret passes through this screen.",
+    hint: grant
+      ? "The button sends you to the provider to consent. The token comes back to the server and never to this screen."
+      : "The button opens the provider's own sign-in page, so no secret passes through this screen.",
     signIn,
     fields,
+    grant,
   };
 }
 
@@ -136,7 +156,10 @@ export const PROVIDERS: Provider[] = [
       { id: "drive", label: "Drive" },
       { id: "keep", label: "Keep" },
     ],
-    methods: [oauth("https://accounts.google.com/signin")],
+    // The one provider KPA runs a real grant for. `src/connections/oauth.ts`
+    // holds the urls and the scopes, and the sign-in address here is what a
+    // person reads rather than where the grant goes.
+    methods: [oauth("https://accounts.google.com/signin", [], true)],
   },
   {
     id: "microsoft",

@@ -46,8 +46,25 @@ export interface Grant {
   token: string;
   /** Where a token is revoked, or null when the provider offers no endpoint. */
   revoke: string | null;
-  /** What KPA asks for. The list is the whole of what it may then do. */
-  scopes: string[];
+  /**
+   * Asked on every grant, whatever the person chose.
+   *
+   * These three name the account rather than open anything. The callback
+   * needs the address to tell three Google accounts apart, so a grant that
+   * omitted them would produce one connection nobody could name.
+   */
+  baseScopes: string[];
+  /**
+   * What each service on the card adds, keyed by the service id
+   * `apps/web/lib/providers.ts` gives it.
+   *
+   * A person who asks for mail alone consents to mail alone. Asking for
+   * everything and using a third of it puts the difference on the consent
+   * screen, where it reads as a demand rather than a default.
+   */
+  scopesByService: Record<string, string[]>;
+  /** Where to ask which account just consented, and which field holds it. */
+  identity: { url: string; field: string };
   /**
    * Parameters this provider needs on the authorize url beyond the standard
    * ones. Google returns no refresh token without `access_type=offline`, and
@@ -78,29 +95,88 @@ export const GRANTS: Record<string, Grant> = {
     authorize: 'https://accounts.google.com/o/oauth2/v2/auth',
     token: 'https://oauth2.googleapis.com/token',
     revoke: 'https://oauth2.googleapis.com/revoke',
-    // The fourteen `workspace-mcp` already holds, so a re-grant asks for
-    // nothing new and the consent screen reads the same as it did.
-    scopes: [
+    baseScopes: [
       'openid',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
-      'https://www.googleapis.com/auth/gmail.readonly',
-      'https://www.googleapis.com/auth/gmail.modify',
-      'https://www.googleapis.com/auth/gmail.labels',
-      'https://www.googleapis.com/auth/gmail.compose',
-      'https://www.googleapis.com/auth/gmail.send',
-      'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/calendar.events',
-      'https://www.googleapis.com/auth/calendar.readonly',
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/drive.readonly',
     ],
+    // The keys are the service ids on the Google card in
+    // `apps/web/lib/providers.ts`. Every one appears, and
+    // `apps/web/scripts/check-connections.ts` fails when a card gains a
+    // service this map does not answer for.
+    scopesByService: {
+      gmail: [
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/gmail.modify',
+        'https://www.googleapis.com/auth/gmail.labels',
+        'https://www.googleapis.com/auth/gmail.compose',
+        'https://www.googleapis.com/auth/gmail.send',
+      ],
+      calendar: [
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/calendar.readonly',
+      ],
+      // A Meet recording is reached through the event that held it, so this
+      // adds the calendar read and no scope of its own.
+      meet: ['https://www.googleapis.com/auth/calendar.readonly'],
+      drive: [
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive.readonly',
+      ],
+      // Deliberately empty. The Keep API needs `keep.readonly`, which Google
+      // restricts to Workspace Enterprise, and `workspace-mcp` holds no such
+      // scope on any of the three accounts. Choosing Keep therefore grants
+      // nothing today, and asking for a scope Google would refuse would fail
+      // the whole grant rather than one service.
+      keep: [],
+    },
+    identity: { url: 'https://openidconnect.googleapis.com/v1/userinfo', field: 'email' },
     extra: { access_type: 'offline', prompt: 'consent' },
     clientIdVariable: 'GOOGLE_OAUTH_CLIENT_ID',
     clientSecretVariable: 'GOOGLE_OAUTH_CLIENT_SECRET',
   },
 };
+
+/**
+ * Where this installation answers, without a trailing slash.
+ *
+ * Configured rather than guessed. The value has to match a redirect URI the
+ * provider's console holds, character for character, and a value read off the
+ * request would be whatever `x-forwarded-host` said. Trusting a header is the
+ * class of defect ADR-0023 refused for identity, and it fails here in a way
+ * nobody can read: the provider answers `redirect_uri_mismatch` and names
+ * neither value.
+ *
+ * The default suits `next dev` and nothing else. A tunnel sets this.
+ */
+export function installationUrl(): string {
+  return (process.env['KPA_URL'] ?? 'http://localhost:3000').replace(/\/+$/, '');
+}
+
+/**
+ * The path a provider redirects to, and the one its console must hold.
+ *
+ * It sits outside `/api/` where every other machine endpoint lives, because
+ * this address is typed into a console once and is then near permanent: the
+ * provider compares it character for character, and moving it means editing
+ * every console that holds it. `/oauth2/callback` names the protocol rather
+ * than the screen it returns to, which is what a route serving every provider
+ * should say. The route file is still under `(app)`, so the gate covers it.
+ */
+export const CALLBACK_PATH = '/oauth2/callback';
+
+/**
+ * Where a provider sends the browser back.
+ *
+ * Both routes call this rather than each building the string. The authorize
+ * request and the token request must send the same value, and a provider that
+ * sees two rejects the second with an error naming neither.
+ */
+export function redirectUri(): string {
+  return `${installationUrl()}${CALLBACK_PATH}`;
+}
 
 /** The record for `provider`, or a throw naming it. */
 export function grantFor(provider: string): Grant {
@@ -122,6 +198,25 @@ export function clientFor(grant: Grant): { id: string; secret: string } {
     );
   }
   return { id, secret };
+}
+
+/**
+ * What to ask for, given the services somebody chose.
+ *
+ * The base scopes always go. Each chosen service adds its own, and a service
+ * the record does not answer for adds nothing rather than throwing: a card
+ * gaining a service must not break the grant for the four beside it.
+ * `apps/web/scripts/check-connections.ts` is what catches the gap instead.
+ *
+ * The result is sorted and holds no duplicate, so two services sharing a scope
+ * ask for it once and two identical requests build one string.
+ */
+export function scopesFor(grant: Grant, services: readonly string[]): string[] {
+  const asked = new Set(grant.baseScopes);
+  for (const service of services) {
+    for (const scope of grant.scopesByService[service] ?? []) asked.add(scope);
+  }
+  return [...asked].sort();
 }
 
 /**
@@ -156,6 +251,7 @@ export async function begin(
   client: ClientBase,
   provider: string,
   redirectUri: string,
+  services: readonly string[],
   now: Date,
   returnsTo: string | null = null,
 ): Promise<Started> {
@@ -176,7 +272,7 @@ export async function begin(
   url.searchParams.set('client_id', id);
   url.searchParams.set('redirect_uri', redirectUri);
   url.searchParams.set('response_type', 'code');
-  url.searchParams.set('scope', grant.scopes.join(' '));
+  url.searchParams.set('scope', scopesFor(grant, services).join(' '));
   url.searchParams.set('state', state);
   url.searchParams.set('code_challenge', challengeFor(verifier));
   url.searchParams.set('code_challenge_method', 'S256');
@@ -388,6 +484,41 @@ export async function revoke(
       said: cause instanceof Error ? cause.message : 'the request did not complete.',
     };
   }
+}
+
+/**
+ * Which account consented, by its address.
+ *
+ * The callback needs this and nothing else about the person. Three Google
+ * accounts each produce a connection, and the address is what tells them
+ * apart, so a grant that could not answer would overwrite one row three times.
+ *
+ * The token goes in the header rather than the query, for the reason
+ * `src/connections/verify.ts` gives: a URL reaches the vendor's access log and
+ * this project's own.
+ */
+export async function whoami(
+  grant: Grant,
+  accessToken: string,
+  fetcher: Fetcher,
+): Promise<string> {
+  const answer = await fetcher(grant.identity.url, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!answer.ok) {
+    throw new Error(
+      `${grant.identity.url} answered ${String(answer.status)} and named no account.`,
+    );
+  }
+
+  const parsed = (await answer.json()) as Record<string, unknown>;
+  const who = parsed[grant.identity.field];
+  if (typeof who !== 'string' || who.trim() === '') {
+    throw new Error(`${grant.identity.url} carried no ${grant.identity.field}.`);
+  }
+  return who.trim();
 }
 
 /**

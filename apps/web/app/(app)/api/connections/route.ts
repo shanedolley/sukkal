@@ -22,14 +22,18 @@
  * caller possible. `PROVIDERS` is the catalogue the screen draws from, so the
  * two cannot name different providers.
  *
- * This route authenticates nobody, because nothing does yet. ADR-0009 gives
- * the installation a password; the session that would gate this handler
- * belongs to the story that builds sign-in.
+ * IT SITS UNDER `(app)`, SO THE GATE ALREADY REFUSED A STRANGER. `proxy.ts`
+ * denies by default and `lib/public-paths.ts` names this path nowhere.
+ * `requireOwner` is the second check, which Next's own documentation asks for:
+ * a matcher change can silently remove the proxy's coverage. This file said
+ * the route authenticated nobody until KPA-103, which was true when KPA-127
+ * wrote it and stopped being true when KPA-128 built the gate.
  */
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { PROVIDERS } from "@/lib/providers";
+import { requireOwner } from "@/lib/session";
 import {
   addConnection,
   listConnections,
@@ -66,6 +70,15 @@ function refusedByTable(cause: unknown): boolean {
 }
 
 export async function GET(): Promise<Response> {
+  // The proxy already refused a stranger. This is the second check Next's
+  // documentation asks for, because a matcher change removes the first
+  // silently.
+  try {
+    await requireOwner();
+  } catch {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+
   // `src/connections/store.ts` takes a client rather than a pool, because a
   // write there spans two statements. So every call here checks one out.
   const client = await db().connect();
@@ -79,6 +92,15 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // The proxy already refused a stranger. This is the second check Next's
+  // documentation asks for, because a matcher change removes the first
+  // silently.
+  try {
+    await requireOwner();
+  } catch {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+
   const body = (await request.json().catch(() => null)) as Record<
     string,
     unknown
@@ -143,6 +165,15 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 export async function DELETE(request: Request): Promise<Response> {
+  // The proxy already refused a stranger. This is the second check Next's
+  // documentation asks for, because a matcher change removes the first
+  // silently.
+  try {
+    await requireOwner();
+  } catch {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+
   const id = new URL(request.url).searchParams.get("id");
   // The column is a bigint, so anything else is a request Postgres would
   // refuse for its syntax rather than a connection nobody holds.

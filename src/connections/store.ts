@@ -87,6 +87,32 @@ export async function addConnection(
 }
 
 /**
+ * The connection `provider` holds under `name`, or null.
+ *
+ * The OAuth callback calls it. A provider names the account that consented,
+ * and three Google accounts have to become three rows rather than one row
+ * written over twice. Nothing else makes the pair unique: two connections may
+ * share a name on purpose, because a person naming two Jira sites the same
+ * thing has made a mess rather than an error.
+ *
+ * It answers the oldest match, so a grant repeated against a name somebody
+ * duplicated by hand refreshes the row that was there first.
+ */
+export async function connectionNamed(
+  client: ClientBase,
+  provider: string,
+  name: string,
+): Promise<string | null> {
+  const found = await client.query<{ id: string }>(
+    `SELECT id FROM connections
+      WHERE provider = $1 AND lower(name) = lower($2)
+      ORDER BY created_at, id LIMIT 1`,
+    [provider, name.trim()],
+  );
+  return found.rows[0]?.id ?? null;
+}
+
+/**
  * Seals `secret` and stores it against `id`, replacing whatever was there.
  *
  * Retyping a key is the ordinary case, so this replaces rather than refuses.

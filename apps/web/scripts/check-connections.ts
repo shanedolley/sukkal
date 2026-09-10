@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 
 import { KEY_VARIABLE } from "../../../src/connections/crypto.ts";
+import { GRANTS } from "../../../src/connections/oauth.ts";
 import {
   addConnection,
   listConnections,
@@ -109,6 +110,51 @@ assert.ok(
   !PROVIDERS.some((entry) => entry.name.toLowerCase().includes("certinia")),
   "Certinia is a Salesforce service, not a provider of its own"
 );
+
+// 6b. The grant flag on a card and the record behind it say the same thing.
+//
+//     `providers.ts` carries a boolean because a client component bundles it
+//     and reaching into `src/` would carry `node:crypto` into the browser. So
+//     the two are separate, and this is what stops them drifting: a card
+//     promising a grant KPA cannot run is a button that fails on press, and a
+//     record nobody can reach is code nothing calls.
+const granted = new Set(
+  PROVIDERS.filter((entry) => entry.methods.some((method) => method.grant)).map(
+    (entry) => entry.id
+  )
+);
+assert.deepEqual(
+  [...granted].sort(),
+  Object.keys(GRANTS).sort(),
+  "a card and src/connections/oauth.ts disagree about which providers KPA can grant"
+);
+
+// Every service on a card KPA grants has an answer in the record, even when
+// the answer is no scope at all. A card gaining a service otherwise grants
+// nothing for it and says nothing about why.
+for (const id of granted) {
+  const card = PROVIDERS.find((entry) => entry.id === id)!;
+  const grant = GRANTS[id]!;
+  for (const service of card.services) {
+    assert.ok(
+      service.id in grant.scopesByService,
+      `${id} offers ${service.id} and the grant record does not answer for it`
+    );
+  }
+  for (const service of Object.keys(grant.scopesByService)) {
+    assert.ok(
+      card.services.some((offered) => offered.id === service),
+      `the grant record answers for ${id}'s ${service}, which no card offers`
+    );
+  }
+  // The address is asked for on every grant. It is what tells three accounts
+  // on one provider apart, so a record without it produces one connection
+  // nobody can name.
+  assert.ok(
+    grant.baseScopes.some((scope) => scope.includes("userinfo.email")),
+    `${id} asks for no address, so its accounts cannot be told apart`
+  );
+}
 
 // 7. Voyage names the model and the width src/embedding.ts pins, so a
 //    migration that changes either one fails here rather than leaving the

@@ -74,7 +74,22 @@ if [ -r "$env_file" ]; then
     # value on purpose: a rule skipping every value that starts with a slash
     # would also skip a base64 key beginning with one, and base64 starts with a
     # slash one time in 64.
+    # A path names a place on this machine and a url names where this
+    # installation answers. Neither is a secret, and both belong in the
+    # repository: KPA_URL is http://localhost:3000 in .env.example and in four
+    # source files, so comparing it fails every run and teaches a reader to
+    # ignore this check. KPA-103 added it and this line with it.
     case "$name" in *_PATH|*_DIR) continue ;; esac
+    # The two database URLs carry a password and are what this check exists
+    # for, so they are named rather than matched by shape. Every other *_URL
+    # names where something answers, which is not a secret and does belong in
+    # the repository: KPA_URL is http://localhost:3000 in .env.example and in
+    # four source files, so comparing it fails every run and teaches a reader
+    # to ignore this check. KPA-103 added it and this line with it.
+    case "$name" in
+      DATABASE_URL|DATABASE_URL_TEST) ;;
+      *_URL) continue ;;
+    esac
     search_history "the value of $name" "$value"
     # A connection string leaks whole, and its password also leaks alone. So
     # both are searched. The password is what this check found before KPA-137.

@@ -17,12 +17,17 @@
 // stored. KPA-127 moved the whole record onto the server, for the reason
 // ADR-0022 gives.
 //
-// ponytail: the sign-in opens the provider's own page rather than an OAuth
-// grant, because a grant needs a client id and a redirect the worker has not
-// registered. Nothing has asked a provider whether a stored key works either,
-// so a card reads "Key stored" rather than "Connected". Wire both to the
-// worker when it lands. The Jira card in
-// components/settings/jira-connection.tsx shows the shape they take.
+// A METHOD MARKED `grant` RUNS A REAL ONE. KPA-103 built the pair of routes,
+// so pressing the button on such a card posts to /api/connections/authorize
+// and leaves for the provider. The connection is written by the callback,
+// under the address the provider says consented, so this screen sends no name
+// and receives no token.
+//
+// ponytail: every other card still opens the provider's own page and stores
+// nothing, because only Google has a record in src/connections/oauth.ts. A
+// fourth provider is a key in that object and a flag on this card. Nothing has
+// asked a provider whether a stored key works either, so a card reads "Key
+// stored" rather than "Connected".
 
 import { useId, useState } from "react";
 import { PlusIcon, Trash2Icon } from "lucide-react";
@@ -44,6 +49,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { looksLikeEmail } from "@/lib/email";
 import {
   addConnection,
   removeConnection,
@@ -147,10 +153,18 @@ function ConnectionForm({
   const [services, setServices] = useState<string[]>(
     chosen.services.map((service) => service.id)
   );
+  // A real grant leaves the page, so the button has to say it is working and
+  // a refusal has somewhere to appear. Nothing else on this form can fail
+  // before it submits.
+  const [busy, setBusy] = useState(false);
+  const [fault, setFault] = useState("");
 
   const chosenMethod =
     chosen.methods.find((entry) => entry.id === method) ?? chosen.methods[0];
   const fields = chosenMethod.fields ?? [];
+  // The provider names the account that consented, so a grant asks for no
+  // name and the box would be a question with no use for the answer.
+  const grant = chosenMethod.grant === true;
 
   function value(id: string): string {
     return (values[id] ?? "").trim();
@@ -162,7 +176,7 @@ function ConnectionForm({
       : value(field.id).length > 0
   );
   const ready =
-    name.trim().length > 0 &&
+    (grant || name.trim().length > 0) &&
     filled &&
     (chosen.services.length === 0 || services.length > 0);
 
@@ -175,6 +189,44 @@ function ConnectionForm({
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!ready) return;
+
+    // A real grant leaves this page rather than opening a tab. The provider
+    // redirects back to the callback, which writes the connection, so nothing
+    // is added here and the name box was never shown.
+    if (chosenMethod.grant) {
+      setBusy(true);
+      setFault("");
+      fetch("/api/connections/authorize", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          provider: chosen.id,
+          services,
+          returnsTo: "/connections",
+        }),
+      })
+        .then(async (response) => {
+          const body = (await response.json().catch(() => null)) as {
+            url?: string;
+            error?: string;
+          } | null;
+          if (response.ok && body?.url) {
+            // The whole page goes. A new tab would leave the person watching
+            // a dialog that never closes.
+            window.location.assign(body.url);
+            return;
+          }
+          setFault(body?.error ?? "The grant could not start.");
+          setBusy(false);
+        })
+        .catch((cause: unknown) => {
+          console.error("authorize:", cause);
+          setFault("The server did not answer. Try again.");
+          setBusy(false);
+        });
+      return;
+    }
+
     const target = signInTarget(chosenMethod, values);
     // noopener, or the page opened gets a handle on this one.
     if (target) window.open(target, "_blank", "noopener,noreferrer");
@@ -212,20 +264,22 @@ function ConnectionForm({
         </Button>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={nameId}>Name</Label>
-        <Input
-          id={nameId}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={`BHP ${chosen.name}`}
-          autoComplete="off"
-          autoFocus
-        />
-        <p className="text-muted-foreground text-xs">
-          What tells this account from the next one on the same provider.
-        </p>
-      </div>
+      {!grant && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={nameId}>Name</Label>
+          <Input
+            id={nameId}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={`BHP ${chosen.name}`}
+            autoComplete="off"
+            autoFocus
+          />
+          <p className="text-muted-foreground text-xs">
+            What tells this account from the next one on the same provider.
+          </p>
+        </div>
+      )}
 
       {chosen.methods.length > 1 && (
         <div className="flex flex-col gap-2">
@@ -300,17 +354,32 @@ function ConnectionForm({
             })}
           </div>
           <p className="text-muted-foreground text-xs">
-            The assistant reaches what is ticked here and nothing else.
+            {grant
+              ? "The consent screen asks for what is ticked here and nothing else, so a box left clear is access the provider never grants."
+              : "The assistant reaches what is ticked here and nothing else."}
           </p>
         </div>
+      )}
+
+      {fault && (
+        <p
+          role="alert"
+          className="border-destructive/40 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm"
+        >
+          {fault}
+        </p>
       )}
 
       <DialogFooter>
         <DialogClose render={<Button variant="outline" type="button" />}>
           Cancel
         </DialogClose>
-        <Button type="submit" disabled={!ready}>
-          {chosenMethod.signIn ? `Sign in to ${chosen.name}` : "Add connection"}
+        <Button type="submit" disabled={!ready || busy}>
+          {busy
+            ? `Opening ${chosen.name}...`
+            : chosenMethod.signIn
+              ? `Sign in to ${chosen.name}`
+              : "Add connection"}
         </Button>
       </DialogFooter>
     </form>
@@ -352,7 +421,9 @@ function AddConnection() {
           </DialogTitle>
           <DialogDescription>
             {chosen
-              ? "The card is added either way. Signing in opens the provider in a new tab, and a key typed here goes to the server and is sealed there."
+              ? chosen.methods.some((one) => one.grant)
+                ? "The provider asks you to consent, then names the account. The card is written under that name, and the token is sealed on the server."
+                : "The card is added either way. Signing in opens the provider in a new tab, and a key typed here goes to the server and is sealed there."
               : "Pick the provider. The same one can be added as often as you hold accounts on it."}
           </DialogDescription>
         </DialogHeader>
@@ -416,6 +487,71 @@ function ConnectionCard({ connection }: { connection: Connection }) {
         </Badge>
       </CardContent>
     </Card>
+  );
+}
+
+/** What an OAuth error code looks like. RFC 6749 gives every one this shape. */
+const ERROR_CODE = /^[a-z_]{1,40}$/;
+
+/**
+ * What the last grant did, if the browser has just come back from one.
+ *
+ * The callback redirects here with an outcome in the query, and the page reads
+ * it on the server and hands it down.
+ *
+ * NOTHING RENDERED HERE IS A MESSAGE SOMEBODY WROTE, and the check is here
+ * rather than only in the route, because anybody can open `/connections` with
+ * a query of their own. `outcome` selects one of a fixed set of sentences and
+ * an unknown value selects the last of them. `detail` is rendered only where
+ * it looks like an address or like an error code. React escapes it either way,
+ * so this is not about script: it is about a link that puts "call this number
+ * to restore your account" under KPA's own heading.
+ */
+export function GrantNotice({
+  outcome,
+  detail,
+}: {
+  outcome: string | null;
+  detail: string | null;
+}) {
+  if (!outcome) return null;
+
+  const account = detail && looksLikeEmail(detail) ? detail : null;
+  const code = detail && ERROR_CODE.test(detail) ? detail : null;
+
+  const said: Record<string, string> = {
+    ok: account
+      ? `${account} is connected. The token is sealed on the server.`
+      : "That account is connected.",
+    refused:
+      code === "access_denied"
+        ? "Nothing was connected, because consent was refused."
+        : `The provider refused the grant${code ? `: ${code}` : "."}`,
+    expired: "That took longer than ten minutes. Start it again.",
+    unknown: "That link had already been used. Start the grant again.",
+    "no-code": "The provider sent nothing to exchange. Start it again.",
+    "no-refresh-token":
+      "The provider granted an hour and no way to renew it, so nothing was stored.",
+    failed: "The grant did not finish. The server log says why.",
+  };
+
+  // An outcome nobody issued reads as a failure rather than as a success, so a
+  // crafted link cannot show a green tick beside a connection that is absent.
+  const known = outcome in said;
+  const good = known && outcome === "ok";
+
+  return (
+    <p
+      role="status"
+      className={cn(
+        "rounded-md border px-3 py-2 text-sm",
+        good
+          ? "border-success/40 bg-success/5 text-success"
+          : "border-destructive/40 bg-destructive/5 text-destructive"
+      )}
+    >
+      {said[outcome] ?? "The grant did not finish."}
+    </p>
   );
 }
 

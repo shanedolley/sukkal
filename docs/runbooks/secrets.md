@@ -23,6 +23,7 @@ is for, where it comes from, and what breaks without it.
 | `KPA_SECRET_KEY` | `src/connections/crypto.ts` | No connection secret seals or opens |
 | `GOOGLE_OAUTH_CLIENT_ID` | `src/connections/oauth.ts` | The Google grant cannot start |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | `src/connections/oauth.ts` | The callback cannot exchange a code |
+| `KPA_URL` | `src/connections/oauth.ts` | The grant redirects to `http://localhost:3000` |
 | `VAULT_PATH` | `src/vault-mapping.ts` | Nothing. The reader falls back to a path under `$HOME` |
 
 `REUI_LICENSE_KEY` belongs to the web tier and sits in `apps/web/.env.example`.
@@ -118,12 +119,35 @@ application needs before it can open a sealed secret cannot itself be one.
 
 What the grant returns is a vendor credential and follows the rule above. The
 refresh token for each account goes through `src/connections/crypto.ts` into
-`connection_credentials`, beside the expiry Google names.
+`connection_credentials`.
+
+**The expiry column stays null on a Google connection**, because Google names
+no lifetime for a refresh token: it works until somebody revokes it. The
+callback writes the expiry the answer carries and invents none, so a date on
+that row would tell the briefing a credential lapses on a day nobody promised.
+The access token does carry a lifetime, and it is not what is stored: it lasts
+an hour and is re-minted from the refresh token on demand.
 
 The client came from Google Cloud project `personal-assistant-506014`, which
 `workspace-mcp` already used. KPA inherits it rather than registering a second
 one, so revoking one client revokes both. The redirect URIs are registered in
 that project's console.
+
+### `KPA_URL` is not a secret, and it still has to be right
+
+It names where this installation answers, and it is the one value the grant
+cannot guess. `redirectUri` in `src/connections/oauth.ts` builds
+`$KPA_URL/oauth2/callback`, and the provider compares that string to
+the ones its console holds, character for character.
+
+**Configure it rather than read it off the request.** A value taken from
+`x-forwarded-host` is a value the caller wrote, which is the class of defect
+ADR-0023 refused for identity. Here it fails in a way nobody can read: the
+provider answers `redirect_uri_mismatch` and names neither value.
+
+Absent, it falls back to `http://localhost:3000`, which suits `next dev` and
+nothing else. Set it to the tunnel address, with no trailing slash, and add
+the same address in the provider's console.
 
 ### `VAULT_PATH` is not a secret
 

@@ -1,5 +1,3 @@
-"use client";
-
 // Connections. Every account the assistant reaches, and one card that adds
 // another.
 //
@@ -7,10 +5,26 @@
 // sealed under the connection's own id. KPA-127 moved both there. What this
 // screen records is which accounts exist, what each one covers, and whether a
 // key is stored against it. Using that key is the worker's job.
+//
+// IT IS A SERVER COMPONENT, AND THE QUERY IS WHY. The OAuth callback redirects
+// here with what it did, and `useSearchParams` in a client component would
+// need a Suspense boundary: Next's own documentation says a static page
+// calling that hook fails the production build without one. The sign-in and
+// reset pages read their parameters the same way.
 
-import { ConnectionsGrid } from "@/components/connections/connections";
+import {
+  ConnectionsGrid,
+  GrantNotice,
+} from "@/components/connections/connections";
 
-export default function ConnectionsPage() {
+/** The query, read once. Anything but a single string is nothing. */
+function one(value: string | string[] | undefined): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+export default async function ConnectionsPage(props: PageProps<"/connections">) {
+  const asked = await props.searchParams;
+
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header className="flex flex-col gap-1">
@@ -21,6 +35,8 @@ export default function ConnectionsPage() {
           by side.
         </p>
       </header>
+
+      <GrantNotice outcome={one(asked["grant"])} detail={one(asked["detail"])} />
 
       <ConnectionsGrid />
 
