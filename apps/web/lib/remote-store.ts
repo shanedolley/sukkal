@@ -88,12 +88,21 @@ export function createRemoteStore<T>(url: string, fallback: T): RemoteStore<T> {
  * trade `account.ts` makes for the colour picker: a round trip in front of
  * every click makes the screen feel broken.
  */
+/**
+ * Writes, reloads, and answers what went wrong.
+ *
+ * It returns the message rather than throwing, and null when the write
+ * worked. A caller that does not care carries on writing `void send(...)`,
+ * which is every caller but the one KPA-103 added: removing a connection can
+ * be refused by a provider, and the person deserves the reason rather than a
+ * card that quietly reappears.
+ */
 export async function send<T>(
   store: RemoteStore<T>,
   url: string,
   method: "POST" | "PATCH" | "PUT" | "DELETE",
   body?: unknown
-): Promise<void> {
+): Promise<string | null> {
   try {
     const response = await fetch(url, {
       method,
@@ -110,8 +119,10 @@ export async function send<T>(
       } | null;
       throw new Error(said?.error ?? `the write answered ${response.status}`);
     }
+    return null;
   } catch (cause) {
     console.error(`${method} ${url}:`, cause);
+    return cause instanceof Error ? cause.message : "The write did not land.";
   } finally {
     await store.reload();
   }

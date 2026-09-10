@@ -495,14 +495,25 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
       assert.equal(asked[0]?.body.get('token'), 'a-token');
     });
 
+    test('a token the provider already refuses counts as revoked', async () => {
+      // Google answers 400 `invalid_token` for a token revoked elsewhere or
+      // long expired. Reading that as a failure would strand the row: nothing
+      // could remove a connection whose token had already died, which is
+      // exactly the connection somebody wants rid of.
+      const { fetcher } = answers(400, { error: 'invalid_token' });
+      const said = await revoke(grantFor('google'), 'a-dead-one', fetcher);
+      assert.equal(said.revoked, true);
+      assert.match(said.said, /already stopped working/);
+    });
+
     test('a refusal reports itself rather than throwing', async () => {
       // KPA-103 requires a failed revoke to leave the row standing. A throw
       // here would make the caller choose between losing the row and losing
       // the reason.
-      const { fetcher } = answers(400, { error: 'invalid_token' });
+      const { fetcher } = answers(503, { error: 'backend_error' });
       const said = await revoke(grantFor('google'), 'a-token', fetcher);
       assert.equal(said.revoked, false);
-      assert.match(said.said, /answered 400/);
+      assert.match(said.said, /answered 503/);
     });
 
     test('a network failure is not a revoked token', async () => {

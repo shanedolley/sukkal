@@ -113,6 +113,25 @@ export async function connectionNamed(
 }
 
 /**
+ * Which provider a connection is on, or null when no such row exists.
+ *
+ * The removal path calls it. Revoking a token needs the record that names the
+ * revoke endpoint, and the record is keyed by provider, so this is the one
+ * question asked before the row goes. `listConnections` would answer it and
+ * read every row to do so.
+ */
+export async function providerOf(
+  client: ClientBase,
+  id: string,
+): Promise<string | null> {
+  const found = await client.query<{ provider: string }>(
+    'SELECT provider FROM connections WHERE id = $1',
+    [id],
+  );
+  return found.rows[0]?.provider ?? null;
+}
+
+/**
  * Seals `secret` and stores it against `id`, replacing whatever was there.
  *
  * Retyping a key is the ordinary case, so this replaces rather than refuses.

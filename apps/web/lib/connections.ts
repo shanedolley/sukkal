@@ -67,6 +67,13 @@ export function addConnection(connection: NewConnection): void {
   void send(store, URL, "POST", connection);
 }
 
-export function removeConnection(id: string): void {
-  void send(store, `${URL}?id=${encodeURIComponent(id)}`, "DELETE");
+/**
+ * Removes one account, and answers why not when the server refused.
+ *
+ * A provider is told before the row goes, and a provider that does not agree
+ * leaves the connection standing. So this one write reports itself, where the
+ * two above are content to reload and show what the server now holds.
+ */
+export function removeConnection(id: string): Promise<string | null> {
+  return send(store, `${URL}?id=${encodeURIComponent(id)}`, "DELETE");
 }

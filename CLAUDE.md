@@ -107,6 +107,21 @@ Two databases on amaterasu at `192.168.20.110`, both owned by the `kpa` role.
 | `DATABASE_URL` | `kpa` | The migration. It holds the facts |
 | `DATABASE_URL_TEST` | `kpa_dev` | Every test and every rehearsal |
 
+**Never point the running application at `kpa_dev`.** The suite ends on
+`down()`, which drops every table, so a test run destroys whatever the app put
+there. On 10 September 2026 it destroyed three Google OAuth connections that
+had taken a person three consent screens to create, and the tokens survived at
+Google where nothing could reach them to revoke. Use a third database:
+
+```
+createdb kpa_local && psql -d kpa_local -qc "CREATE EXTENSION IF NOT EXISTS vector"
+DATABASE_URL="postgresql://$(whoami)@localhost:5432/kpa_local" npm run migrate
+cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/kpa_local" npm run dev
+```
+
+`kpa_dev` is for tests, which own it and drop it. `kpa_local` is for the
+running app, and no test names it.
+
 **`npm run migrate` reads `DATABASE_URL` and ignores `DATABASE_URL_TEST`.**
 Writing `DATABASE_URL_TEST=... npm run migrate` points it AT production rather
 than away from it, which is the shape of the mistake: the prefix reads like a

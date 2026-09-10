@@ -31,6 +31,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { ClientBase } from 'pg';
 
 import { fingerprint } from '../auth/session.ts';
+import { providerOf, secretFor } from './store.ts';
 
 /** How long a grant may stay in flight, in minutes. */
 export const LIFETIME_MINUTES = 10;
@@ -473,6 +474,17 @@ export async function revoke(
       body: new URLSearchParams({ token, client_id: id, client_secret: secret }).toString(),
     });
     if (answer.ok) return { revoked: true, said: 'the provider forgot the token.' };
+
+    // A TOKEN THE PROVIDER ALREADY REFUSES IS A REVOKED TOKEN. Google answers
+    // 400 `invalid_token` for one that was revoked elsewhere, or expired, or
+    // never existed. Reading that as a failure would strand the row: nothing
+    // could ever remove a connection whose token had already died, which is
+    // exactly the connection somebody wants rid of.
+    const said = (await answer.json().catch(() => ({}))) as { error?: unknown };
+    if (answer.status === 400 && said.error === 'invalid_token') {
+      return { revoked: true, said: 'the token had already stopped working.' };
+    }
+
     return {
       revoked: false,
       said: `the provider answered ${String(answer.status)}.`,
@@ -519,6 +531,42 @@ export async function whoami(
     throw new Error(`${grant.identity.url} carried no ${grant.identity.field}.`);
   }
   return who.trim();
+}
+
+/**
+ * Tells the provider to forget the token one connection holds.
+ *
+ * THE PLAINTEXT NEVER LEAVES THIS FUNCTION. A route asks about a connection
+ * and gets a verdict, so `test/connections-read.test.ts` can keep its rule
+ * that no route names `secretFor`. That rule caught the first shape of this
+ * work, where the removal route opened the secret itself: correct in what it
+ * did and wrong in where it did it, because the one function that returns a
+ * plaintext belongs behind a seam rather than in a handler.
+ *
+ * A connection on a provider KPA runs no grant for answers `no endpoint`, and
+ * so does one holding no secret. Neither is a failure. There is nothing to
+ * revoke, and the caller may remove the row.
+ */
+export async function revokeConnection(
+  client: ClientBase,
+  connectionId: string,
+  fetcher: Fetcher,
+): Promise<{ revoked: boolean; said: string }> {
+  const provider = await providerOf(client, connectionId);
+  if (provider === null) {
+    return { revoked: true, said: 'no such connection.' };
+  }
+  const grant = GRANTS[provider];
+  if (grant === undefined) {
+    return { revoked: true, said: `KPA holds no token from ${provider} to revoke.` };
+  }
+
+  const token = await secretFor(client, connectionId);
+  if (token === null) {
+    return { revoked: true, said: 'no secret is stored against it.' };
+  }
+
+  return revoke(grant, token, fetcher);
 }
 
 /**

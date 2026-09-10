@@ -3,10 +3,16 @@
  *
  * NO SHAPE OF THIS HANDLER RETURNS A SECRET. `listConnections` names its
  * columns and `ciphertext` is not among them, so `GET` cannot carry one out.
- * `secretFor` is the only function that returns a plaintext, no route may call
- * it, and this file does not import it. `POST` answers `{ ok: true }` and
- * `DELETE` answers the same, so neither hands back what it was given.
- * `test/connections-read.test.ts` asserts the exact key set.
+ * `POST` answers `{ ok: true }` and `DELETE` answers the same, so neither
+ * hands back what it was given. `test/connections-read.test.ts` asserts the
+ * exact key set.
+ *
+ * `DELETE` TELLS THE PROVIDER FIRST, AND STILL NAMES NO PLAINTEXT.
+ * `revokeConnection` in `src/connections/oauth.ts` opens the secret, sends it
+ * to the provider, and hands this route a verdict. The first shape of that
+ * work opened the secret here, and `test/connections-read.test.ts` refused it:
+ * the one function that returns a plaintext belongs behind a seam rather than
+ * in a handler.
  *
  * THE SECRET TRAVELS ONCE, IN THE REQUEST BODY. It reaches `setCredential`,
  * which seals it with AES-256-GCM under the connection's own id, and nothing
@@ -34,6 +40,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { PROVIDERS } from "@/lib/providers";
 import { requireOwner } from "@/lib/session";
+import { revokeConnection } from "../../../../../../src/connections/oauth.ts";
 import {
   addConnection,
   listConnections,
@@ -181,10 +188,27 @@ export async function DELETE(request: Request): Promise<Response> {
 
   const client = await db().connect();
   try {
+    // THE PROVIDER IS TOLD FIRST, AND THE ROW GOES ONLY IF IT AGREED. KPA-103
+    // asks for that in as many words. Removing the row alone leaves a token
+    // Google still honours and KPA can no longer see, which is worse than the
+    // connection this was meant to end: nobody can revoke what nobody knows
+    // about.
+    const said = await revokeConnection(client, id, fetch);
+    if (!said.revoked) {
+      // The row stands, and the reason reaches the person rather than the log
+      // alone. Trying again is what fixes a provider that was down.
+      return NextResponse.json(
+        { error: `The connection was kept, because the provider did not revoke the token: ${said.said}` },
+        { status: 502 }
+      );
+    }
+
     // The credential goes with it, by the cascade migration 016 declares.
     await removeConnection(client, id);
     return NextResponse.json({ ok: true });
   } catch (cause) {
+    // A token never enters `cause`: `secretFor` returns it and `revoke` puts
+    // it in a body, and neither the URL nor the message carries one.
     return refused("connection removal", cause);
   } finally {
     client.release();

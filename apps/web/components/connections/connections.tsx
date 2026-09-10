@@ -447,6 +447,11 @@ function AddConnection() {
 
 function ConnectionCard({ connection }: { connection: Connection }) {
   const entry = providerById(connection.provider);
+  // A refused removal, in the provider's own terms. The card stays either way,
+  // because the server keeps the row when the provider will not revoke, and a
+  // card that reappears with no reason reads as a bug rather than a refusal.
+  const [fault, setFault] = useState("");
+  const [going, setGoing] = useState(false);
   if (!entry) return null;
 
   const method = entry.methods.find((item) => item.id === connection.method);
@@ -465,12 +470,33 @@ function ConnectionCard({ connection }: { connection: Connection }) {
         <Button
           size="icon-sm"
           variant="ghost"
+          disabled={going}
           aria-label={`Remove ${connection.name}`}
-          onClick={() => removeConnection(connection.id)}
+          onClick={() => {
+            setGoing(true);
+            setFault("");
+            void removeConnection(connection.id).then((said) => {
+              // Nothing sets `going` back on success, because the card is
+              // gone by then and setting state on it would say so in the
+              // console.
+              if (said !== null) {
+                setFault(said);
+                setGoing(false);
+              }
+            });
+          }}
         >
           <Trash2Icon aria-hidden="true" />
         </Button>
       </CardHeader>
+
+      {fault && (
+        <CardContent className="pt-0">
+          <p role="alert" className="text-destructive text-xs">
+            {fault}
+          </p>
+        </CardContent>
+      )}
 
       <CardContent className="flex flex-wrap items-center gap-1.5">
         {connection.services.map((id) => (
