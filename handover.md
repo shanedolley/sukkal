@@ -1,0 +1,267 @@
+# Handover
+
+State as at 12 September 2026. `prompt.md` holds the instructions for a new
+session. This file holds the facts.
+
+## Where the work is
+
+**Branch `main`, head `4e07052`, pushed, 143 commits. The working tree is
+clean and CI is green.** This project commits straight to `main`; `CLAUDE.md`
+says why and names the override the hook wants.
+
+Twenty-eight migrations, twenty-six ADRs.
+
+The suite runs **593 tests with the vault and 575 without it**. One test skips
+in both, and it is meant to: `test/connect.test.ts` skips its TLS case because
+a loopback database needs none.
+
+## The board
+
+Project KPA on `koinon.atlassian.net`. **116 stories, 78 shipped, which is 67%
+by count and 62% by points.**
+
+| Status | Stories |
+|---|---|
+| Done | 59 |
+| In Review | 19 |
+| To Do | 37 |
+| Decision required | 1 |
+
+**In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
+on Shane reading them and nothing else, so a story blocked by one is not really
+blocked.
+
+    KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
+    KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
+    KPA-138 KPA-139 KPA-144
+
+| Epic | Done/All | Title |
+|---|---|---|
+| KPA-1 | 16/20 | Slice one: migrate the memory |
+| KPA-35 | 8/8 | Build the web interface |
+| KPA-51 | 7/7 | Finish the memory schema |
+| KPA-52 | 16/22 | Join the halves: replace every fixture |
+| KPA-53 | 12/12 | Build the application data schema |
+| KPA-54 | 5/10 | Connect the accounts |
+| KPA-55 | 3/14 | Fill the stores |
+| KPA-56 | 6/7 | The agent and the policy engine |
+| KPA-57 | 0/7 | Retrieval and chat |
+| KPA-75 | 5/6 | Let the installation authenticate its owner |
+| KPA-145 | 0/3 | Harden what the installation exposes |
+
+**Paging matters.** `/rest/api/3/search/jql` caps a page at 100 issues whatever
+`maxResults` says, and answers with a `nextPageToken` rather than an error. An
+unpaged query reads one page and reports it as the whole project. A handover on
+3 September said "62 of 100 stories" for exactly that reason, and both numbers
+were wrong.
+
+## One decision waiting
+
+**[KPA-143] is the open question**, and it sits in filter 10047, the queue Shane
+works from. How does a self-hosted box send the reset link? KPA-79 mints the
+token and names which connection would carry it, and nothing carries it, so a
+shell on the server is the only way to a link.
+
+The comment weighs an SMTP provider card, the OAuth mail connection, and no
+mail at all, and recommends SMTP: nodemailer 9.1.1 declares no dependencies and
+unpacks to 617 KB, against a root that runs two.
+
+**The register reads two exact strings and nothing else.**
+`scripts/decision-register.ts` finds a question only in a warning panel whose
+first paragraph flattens to exactly `DECISION NEEDED`, and a recommendation
+only in a paragraph starting `MY RECOMMENDATION`. A comment saying the same
+things in other words is invisible to it. Run `npm run decisions` after posting
+one and read the count it prints.
+
+## Where the OAuth work stands
+
+KPA-103 is nearly done and is not closed. Five commits built it:
+
+- `src/connections/oauth.ts` holds one record per provider. A fourth provider
+  is a key in that object rather than a route beside the existing pair.
+- `migrations/029_oauth_grants.sql` holds a grant in flight. The id is a
+  SHA-256 of the state, the PKCE verifier waits beside it, and claiming one is
+  a `DELETE ... RETURNING`.
+- `POST /api/connections/authorize` starts a grant. `/oauth2/callback`
+  finishes it.
+- Removing a connection tells the provider first and keeps the row when the
+  provider refuses.
+
+**Three Google accounts are connected in `kpa_local` and all three tokens
+work.** Proved by opening each sealed credential and refreshing it against
+Google, not by reading the rows.
+
+**Two criteria are still open.**
+
+1. "Three accounts produce three distinct connections" is built and half
+   proved. The address the provider reports names the connection, and
+   `connectionNamed` makes a second grant of the same account refresh the row.
+   Granting one account twice would prove the rest in a minute.
+2. "A refresh runs before expiry and rewrites the date" is not built. `renew`
+   exists in the module and nothing calls it. The worker runs only the drain
+   and the nightly review. KPA-107 is the re-verification schedule and this
+   criterion sits on KPA-103.
+
+## What runs
+
+```
+npm run lint                  # oxlint over src, test and scripts
+npm run build                 # tsc --noEmit, which emits nothing
+npm test                      # node --test over test/**/*.test.ts
+npm run migrate               # applies pending migrations
+npm run decisions             # rebuilds docs/decisions.md from Jira
+./scripts/scan-history.sh     # every commit, for a credential
+./scripts/reset-password.sh   # --link prints a reset link, --unlock ends a run
+```
+
+In `apps/web`: `npm run lint`, `npm run build`, and `npm run check`, which runs
+nineteen scripts under plain node.
+
+Run the suite the way CI runs it, which is without the vault:
+
+```
+VAULT_PATH=/nonexistent DATABASE_URL_TEST="postgresql://$(whoami)@localhost:5432/kpa_dev" npm test
+```
+
+Watch the run afterwards with `gh run list --limit 1`. A push nobody watches is
+how the trunk went red on 2 September 2026 and stayed red across two pushes.
+
+## Three databases, and only one is safe for the app
+
+| Database | Who writes it |
+|---|---|
+| `kpa` on amaterasu | The migration. Production. Four migrations behind |
+| `kpa_dev` | Every test. The suite drops every table in it |
+| `kpa_local` | The running application. No test names it |
+
+`kpa_local` exists because the suite ends on `down()`. On 10 September 2026 a
+test run destroyed three Google OAuth connections that had taken three consent
+screens to create, and the tokens survived at Google where nothing could reach
+them to revoke. Start the dev server like this:
+
+```
+cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/kpa_local" npm run dev
+```
+
+**Production `kpa` holds migrations 001 to 024 and nothing since.** 025 through
+029 are not there, so production is five behind. It was migrated by accident on
+3 September 2026 and Shane chose to leave it. The command now names the
+database before it acts and refuses `kpa` outright;
+`KPA_ALLOW_PRODUCTION=1 npm run migrate` migrates it deliberately.
+
+## Environment
+
+`~/.config/kpa/env`, mode 0600, outside the repository.
+`docs/runbooks/secrets.md` says what each value is for.
+
+| Variable | For |
+|---|---|
+| `DATABASE_URL` | Production `kpa`. The migration reads this and nothing else |
+| `DATABASE_URL_TEST` | `kpa_dev` |
+| `KPA_SECRET_KEY` | Seals every connection credential |
+| `GOOGLE_OAUTH_CLIENT_ID` | Identifies KPA to Google |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | The callback exchanges a code with it |
+| `KPA_URL` | Where this installation answers. `http://localhost:3000` today |
+| `VOYAGE_API_KEY`, `VOYAGE_PROJECT_ID` | Read by no code. KPA-104 moved a vendor key into a connection |
+
+**One OAuth client serves KPA and workspace-mcp**, in Google Cloud project
+`personal-assistant-506014`. Google holds exactly two redirect URIs, and both
+are needed:
+
+```
+http://localhost:8000/oauth2callback     workspace-mcp. No slash before callback
+http://localhost:3000/oauth2/callback    KPA. With the slash
+```
+
+## Traps
+
+`CLAUDE.md` carries the traps this repository has paid for more than once:
+`noclobber` on `>`, a test run piped into `tail` reporting the wrong exit code,
+`--test-concurrency=1` on a bare `node --test`, and the stale
+`apps/web/.next/dev/types` that fails a build after a page is removed. What
+follows is new, and each cost time on 9 to 12 September 2026.
+
+**Revoking KPA at Google's permissions page revokes workspace-mcp too.** The
+two share one OAuth client, so removing the application's access at
+`myaccount.google.com/permissions` kills every token issued under that client.
+Shane cleared three orphaned KPA tokens on 12 September and workspace-mcp's
+three died with them, including the one account that had worked since August.
+Registering a second client would separate them, and nobody has decided to.
+
+**`--env-file` does not override a variable already set.** So
+`DATABASE_URL=... ./scripts/reset-password.sh` reaches the database named on the
+command line, not the one in `~/.config/kpa/env`. Proved on 12 September rather
+than assumed, and it is what makes the reset script safe to point at
+`kpa_local`.
+
+**A compound command the delete guard blocks runs nothing at all, including
+what came before the delete.** A `python3` heredoc followed by `&& rm -rf ...`
+in one Bash call was rejected whole, so an edit that reported success had never
+run. The tool result says `Could not parse this command to verify delete
+safety`; read it as "nothing happened", not as "the delete was skipped".
+
+**A grep check can pass for the wrong reason.** Checking that a banner read
+"That account is connected" passed against the old code, because the old
+ternary used the same sentence as its fallback. The second check, for the
+string that only the old path could produce, is what caught it. Pick the string
+that proves the change rather than the one the change happens to keep.
+
+**`curl ... | grep -q X && echo good || echo bad` reports good when curl
+fails.** The pipeline's status is grep's, and a failed curl makes grep find
+nothing, which takes the `||` branch or the `&&` branch depending on the test.
+One verification reported that Google had accepted a redirect when curl had
+refused the arguments entirely.
+
+**A query parameter is in the page source whatever a component renders.** Next
+mirrors the search params into the router state in the flight payload. Removing
+a value from the screen does not remove it from the response, so the fix for
+anything sensitive is to keep it out of the URL rather than out of the render.
+
+**No route may name `secretFor`.** `test/connections-read.test.ts` reads every
+file under `apps/web/app/(app)/api` and fails when one does. The first shape of
+the connection revoke opened the sealed token inside the route handler and that
+test refused it. The plaintext lives behind `revokeConnection` in
+`src/connections/oauth.ts`, which hands a route a verdict.
+
+**A CSP nonce would make eleven prerendered routes dynamic.** Next's own guide
+in `node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`
+says a nonce requires dynamic rendering. Thirty-three routes build today and
+eleven are static. KPA-148 carries the choice between a nonce and a hash of the
+one inline script this app runs, in
+`apps/web/components/appearance-bootstrap.tsx`.
+
+**`node_modules` was found empty once**, on 9 September, with no explanation.
+`npm install` restored 474 packages and the lockfile did not change. A
+`Cannot find package 'pg'` from a file that has always imported it means this
+rather than a broken import.
+
+## Document map
+
+| File | Holds |
+|---|---|
+| `CLAUDE.md` | The golden rule, the commands, the layout, and every trap paid for twice |
+| `docs/project-brief.md` | The architecture, the decisions, the policy, the risks accepted |
+| `docs/adr/` | The decisions that were hard to reverse |
+| `docs/decisions.md` | The lighter rulings, generated from Jira |
+| `docs/schema.md` | Every table, every enum, and why each constraint exists |
+| `docs/runbooks/` | Operating the server, and where the secrets live |
+| `apps/web/AGENTS.md` | The Next.js here is not the one you know |
+
+## Two facts worth not rediscovering
+
+**`apps/web/AGENTS.md` is right, and it has been right three times.** KPA-77
+found that `middleware.ts` is deprecated and renamed to `proxy.ts`, and that
+Proxy defaults to the Node.js runtime, which is what lets a guard reach the
+database. KPA-128 found that a static page calling `useSearchParams` fails the
+production build without a Suspense boundary, so `/sign-in`, `/reset` and
+`/connections` read their parameters on the server and hand them down. KPA-148
+will find the third. Read `node_modules/next/dist/docs/` before writing web
+code.
+
+**Transcripts come from nabium, not from Zoom.** `migrations/007_meetings.sql`
+says a meeting may point at the source its transcript became, and that source
+arrives when nabium sends one. Zoom stays in the catalogue and has no grant
+record: an unpublished Zoom app installs only on the developer's own account,
+and a free account holds no cloud recording to read.
+
+[KPA-143]: https://koinon.atlassian.net/browse/KPA-143

@@ -1,6 +1,11 @@
 # KPA conventions
 
-Read `docs/project-brief.md` first. It carries the architecture, the decisions,
+Read `handover.md` first. It carries where the work stands, what runs, and the
+traps found since the last session. `prompt.md` beside it is what a fresh
+session is given. The two replaced `docs/session-handoff.md` on 12 September
+2026.
+
+Then read `docs/project-brief.md`. It carries the architecture, the decisions,
 the policy the assistant operates under, and the risks accepted. `docs/adr/`
 holds the decisions that were hard to reverse.
 
