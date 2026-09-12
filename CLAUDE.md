@@ -277,6 +277,21 @@ first, so a check under `apps/web/scripts/` can run the real module rather
 than a copy of it. `allowImportingTsExtensions` in `apps/web/tsconfig.json` is
 what lets `tsc` accept it.
 
+**A check script cannot import a `.tsx` file.** Node strips types and leaves
+JSX alone, so an import of a component answers
+`ERR_UNKNOWN_FILE_EXTENSION: Unknown file extension ".tsx"`. A check on a
+component reads its source instead, which
+`apps/web/scripts/check-avatar.ts` shows. The nineteen other checks import a
+real module because every one of them names a `.ts`. KPA-151,
+12 September 2026.
+
+**A Tailwind size class is not a pixel count.** `size-16` renders at 64px and
+`size-24` at 96px, because `--spacing` is `0.25rem` and the class multiplies
+it. KPA-151 named a risk at "16px" that was `size-16` read as pixels, and the
+real smallest size on any screen is four times that. Read the number from
+`.next/static/chunks/*.css` or from `getBoundingClientRect` rather than from
+the class name.
+
 **`apps/web` declares `"type": "module"`, so a test may import from it.**
 KPA-139 added the field on 3 September 2026. Node and `tsc` both read the
 package as ESM now, which ends two things: a file under `test/` reaches a

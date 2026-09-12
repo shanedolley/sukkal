@@ -18,15 +18,14 @@ a loopback database needs none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **118 stories, 78 shipped, which is 66%
-by count and 60% by points.** Measured on 12 September 2026, after KPA-150 and
-KPA-151 were raised.
+Project KPA on `koinon.atlassian.net`. **118 stories, 80 shipped, which is 68%
+by count.** Measured on 12 September 2026, after KPA-150 and KPA-151 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 19 |
-| To Do | 39 |
+| In Review | 21 |
+| To Do | 37 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -58,12 +57,12 @@ unpaged query reads one page and reports it as the whole project. A handover on
 3 September said "62 of 100 stories" for exactly that reason, and both numbers
 were wrong.
 
-## What Shane asked for next
+## The assistant is Sukkal
 
-**The assistant becomes Sukkal.** Decided 12 September 2026.
-[KPA-149](https://koinon.atlassian.net/browse/KPA-149) is the epic, KPA-150
-carries the name and KPA-151 draws the face. Nothing is built yet; Shane asked
-for the tickets only.
+**Both stories under
+[KPA-149](https://koinon.atlassian.net/browse/KPA-149) shipped on
+12 September 2026.** KPA-150 carried the name through 190 places a person
+reads, and KPA-151 drew the face. Both are on `main` and CI is green.
 
 A sukkal is a role rather than a name: in Mesopotamian religion, a deity who
 served a greater one as servant, advisor and envoy, and who could intercede on
@@ -97,19 +96,42 @@ Ishtar armed, Enki with water at his shoulders, and behind Enki his two-faced
 vizier. Drawing Ninshubur would be an invention wearing a citation.
 
 The two faces also say what the product does. One turned to the person served,
-one to the world reached. Two faces at 16px may not survive, and KPA-151 names
-that risk and what to give up if it does not.
+one to the world reached.
+
+**The risk KPA-151 named did not arrive.** It feared two faces at 16px.
+`size-16` is a Tailwind class rather than a pixel count, and it renders at
+64px, so the smallest place the avatar appears is four times the size the
+ticket feared. Both faces read at 64px and the silhouette still holds at 32px.
+Nothing was given up.
+
+**The drawing is in
+`apps/web/components/setup/assistant-avatar.tsx`, and its silhouette is the
+identity.** Two attempts failed before the third worked, and both failed the
+same way: a round skull with a bump on each side reads as one head with ears,
+whatever is drawn inside it. The outline has to run forehead, nose, lip, chin
+and then the same mirrored. Two profiles joined at a point make a spearhead,
+so they meet across a plateau the crown covers. A long beard stops reading as
+a beard and starts reading as a torso.
+
+`apps/web/scripts/check-avatar.ts` is the twentieth web check. It reads the
+source, because Node cannot import a `.tsx`.
 
 **The name is a role, which leaves the instance its own name.** The setup
-wizard already asks what to call the assistant and stores it in
-`users.assistant_name`. Ninshubur and Isimud belong on that list of names
-rather than on the product.
+wizard asks what to call the assistant and stores it in
+`users.assistant_name`. Ninshubur and Isimud are on that list now.
 
 **Six machine identifiers keep the letters KPA**, and KPA-150 says why: the
-Jira project key with its 558 story references, the three databases, the eight
+Jira project key with its 640 story references, the three databases, the eight
 `KPA_` environment variables, the two npm package names, the GitHub repository,
 and `~/.config/kpa/env`. Whether any should move is an open question on that
 ticket rather than a decision anybody has made.
+
+Three more places keep the letters and are not on that list: the row
+`KPA · Personal Assistant`, which is the Jira project's own label and is
+seeded by `migrations/018` and mirrored in `apps/web/lib/workspaces.ts`; the
+`# KPA` marker `scripts/provision-amaterasu-root.sh` greps for in
+`pg_hba.conf`; and `docs/decisions.md`, which `npm run decisions` rewrites
+from Jira comments on every run.
 
 ## One decision waiting
 
