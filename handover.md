@@ -34,7 +34,7 @@ blocked.
 
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
-    KPA-138 KPA-139 KPA-144
+    KPA-138 KPA-139 KPA-144 KPA-150 KPA-151
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -49,7 +49,7 @@ blocked.
 | KPA-57 | 0/7 | Retrieval and chat |
 | KPA-75 | 5/6 | Let the installation authenticate its owner |
 | KPA-145 | 0/3 | Harden what the installation exposes |
-| KPA-149 | 0/2 | Become Sukkal |
+| KPA-149 | 2/2 | Become Sukkal. In Review itself |
 
 **Paging matters.** `/rest/api/3/search/jql` caps a page at 100 issues whatever
 `maxResults` says, and answers with a `nextPageToken` rather than an error. An
@@ -121,7 +121,7 @@ wizard asks what to call the assistant and stores it in
 `users.assistant_name`. Ninshubur and Isimud are on that list now.
 
 **Six machine identifiers keep the letters KPA**, and KPA-150 says why: the
-Jira project key with its 640 story references, the three databases, the eight
+Jira project key with its 644 story references, the three databases, the eight
 `KPA_` environment variables, the two npm package names, the GitHub repository,
 and `~/.config/kpa/env`. Whether any should move is an open question on that
 ticket rather than a decision anybody has made.

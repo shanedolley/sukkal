@@ -137,8 +137,12 @@ assistant is Sukkal, and Isimud is its face. Both stories shipped on
   and no colour is fixed for Isimud's sake. Fixing one is a decision worth
   naming rather than an accident.
 
-Most of what is left needs something only Shane can supply. Thirty-seven
-stories are open and three of them are unblocked: KPA-50, KPA-146 and KPA-148.
-The rest wait on one OAuth grant, a metered key, a live Jira site, a
-deployment, or him at both ends of nabium. Measured on 12 September 2026. Read
-the blockers before picking, and prefer what unblocks the most.
+Most of what is left needs something only Shane can supply. Thirty-eight
+stories are open: 37 To Do and one Decision required. Counted from Jira on
+12 September 2026, paged, against 118 stories and 21 In Review.
+
+Three of the open ones are unblocked: KPA-50, KPA-146 and KPA-148. That is the
+same list a session measured on 12 September, less KPA-150 and KPA-151, which
+have since shipped. It has not been measured again. The rest wait on one OAuth
+grant, a metered key, a live Jira site, a deployment, or Shane at both ends of
+nabium. Read the blockers before picking, and prefer what unblocks the most.
