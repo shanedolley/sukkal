@@ -5,9 +5,10 @@ session. This file holds the facts.
 
 ## Where the work is
 
-**Branch `main`, head `4e07052`, pushed, 143 commits. The working tree is
-clean and CI is green.** This project commits straight to `main`; `CLAUDE.md`
-says why and names the override the hook wants.
+**Branch `main`, pushed, the working tree clean and CI green.** This project
+commits straight to `main`; `CLAUDE.md` says why and names the override the
+hook wants. Read the head with `git log --oneline -1` rather than from here: a
+commit hash written into a file is stale the moment the file is committed.
 
 Twenty-eight migrations, twenty-six ADRs.
 
@@ -17,14 +18,15 @@ a loopback database needs none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **116 stories, 78 shipped, which is 67%
-by count and 62% by points.**
+Project KPA on `koinon.atlassian.net`. **118 stories, 78 shipped, which is 66%
+by count and 60% by points.** Measured on 12 September 2026, after KPA-150 and
+KPA-151 were raised.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
 | In Review | 19 |
-| To Do | 37 |
+| To Do | 39 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -48,12 +50,50 @@ blocked.
 | KPA-57 | 0/7 | Retrieval and chat |
 | KPA-75 | 5/6 | Let the installation authenticate its owner |
 | KPA-145 | 0/3 | Harden what the installation exposes |
+| KPA-149 | 0/2 | Become Sukkal |
 
 **Paging matters.** `/rest/api/3/search/jql` caps a page at 100 issues whatever
 `maxResults` says, and answers with a `nextPageToken` rather than an error. An
 unpaged query reads one page and reports it as the whole project. A handover on
 3 September said "62 of 100 stories" for exactly that reason, and both numbers
 were wrong.
+
+## What Shane asked for next
+
+**The assistant becomes Sukkal.** Decided 12 September 2026.
+[KPA-149](https://koinon.atlassian.net/browse/KPA-149) is the epic, KPA-150
+carries the name and KPA-151 draws the face. Nothing is built yet; Shane asked
+for the tickets only.
+
+A sukkal is a role rather than a name: in Mesopotamian religion, a deity who
+served a greater one as servant, advisor and envoy, and who could intercede on
+a mortal's behalf. The word began as a Sumerian office translated as vizier,
+held by somebody who oversaw the execution of a king's commands and acted as
+envoy and translator. Scholarship describes the bond between a sukkal and the
+deity served "not as cause and effect, but as command and execution", which is
+the policy engine ADR-0005 built.
+
+The goddess is **Ninshubur**, sukkal of Inanna and the earliest and most
+important of them. In Inanna's Descent she petitions Enlil, then Nanna, then
+Enki, until one acts.
+
+For the avatar the record gives a staff or sceptre, the mark of the office;
+doors, shoes and lapis lazuli as her associated objects; and Orion as her
+astral symbol. It gives almost no certain depiction: she may appear on seals of
+Lugal-ushumgal, governor of Lagash in the Akkadian period, and that is as firm
+as it gets. So there is latitude, and nothing should be presented as a
+reproduction.
+
+**The name is a role, which leaves the instance its own name.** The setup
+wizard already asks what to call the assistant and stores it in
+`users.assistant_name`. Ninshubur belongs on that list of names rather than on
+the product.
+
+**Six machine identifiers keep the letters KPA**, and KPA-150 says why: the
+Jira project key with its 558 story references, the three databases, the eight
+`KPA_` environment variables, the two npm package names, the GitHub repository,
+and `~/.config/kpa/env`. Whether any should move is an open question on that
+ticket rather than a decision anybody has made.
 
 ## One decision waiting
 
@@ -130,7 +170,7 @@ how the trunk went red on 2 September 2026 and stayed red across two pushes.
 
 | Database | Who writes it |
 |---|---|
-| `kpa` on amaterasu | The migration. Production. Four migrations behind |
+| `kpa` on amaterasu | The migration. Production. Five migrations behind |
 | `kpa_dev` | Every test. The suite drops every table in it |
 | `kpa_local` | The running application. No test names it |
 

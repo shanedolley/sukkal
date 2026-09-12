@@ -108,9 +108,35 @@ Link every Jira ID as a clickable markdown link.
 Say what you dispatched to a subagent and what came back, and verify it before
 repeating it as fact.
 
-## Where to start
+## Start here
 
-Ask Shane what he wants next, unless he has already said. If he has not:
+**Shane asked for [KPA-149](https://koinon.atlassian.net/browse/KPA-149) next,
+on 12 September 2026.** The assistant takes the name Sukkal. Two stories sit
+under that epic and the first blocks the second.
+
+1. **[KPA-150](https://koinon.atlassian.net/browse/KPA-150)**, three points.
+   Carry the name through every document and the one screen that shows it. Wide
+   rather than deep, and the risk is renaming a machine identifier by accident.
+   The ticket names the six that stay and why.
+2. **[KPA-151](https://koinon.atlassian.net/browse/KPA-151)**, five points.
+   Draw the avatar from the historical record, slightly animated, still under
+   `prefers-reduced-motion`. The ticket carries what the record gives and what
+   it does not.
+
+Read the epic before either story. It holds what a sukkal was, why the name
+fits a policy engine, and why a role rather than a person's name leaves the
+instance its own.
+
+**Three things Shane may want a ruling on**, and none blocks the work:
+
+- Whether any of the six machine identifiers should move too. KPA-150 asks.
+- The colour. Lapis lazuli is one of Ninshubur's associated objects, and the
+  avatar takes the accent colour today. Fixing one and not the other is a
+  decision worth naming.
+- Whether the name reaches the Jira project. It does not, and 558 story keys
+  are why.
+
+## After that
 
 1. **[KPA-146](https://koinon.atlassian.net/browse/KPA-146)**, one point.
    `X-Content-Type-Options` and a frame policy. The `headers()` function and
@@ -123,8 +149,9 @@ Ask Shane what he wants next, unless he has already said. If he has not:
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
    ticket anywhere on the board creates it.
 
-Most of what is left needs something only Shane can supply. Thirty-eight
-stories are open and three of them are unblocked: KPA-50, KPA-146 and KPA-148.
-The other thirty-five wait on one OAuth grant, a metered key, a live Jira site,
-a deployment, or him at both ends of nabium. Measured on 12 September 2026.
-Read the blockers before picking, and prefer what unblocks the most.
+Most of what is left needs something only Shane can supply. Forty stories are
+open and five of them are unblocked: KPA-50, KPA-146, KPA-148, KPA-150 and
+KPA-151. The other thirty-five wait on one OAuth grant, a metered key, a live
+Jira site, a deployment, or him at both ends of nabium. Measured on
+12 September 2026. Read the blockers before picking, and prefer what unblocks
+the most.
