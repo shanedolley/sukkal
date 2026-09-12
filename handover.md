@@ -73,21 +73,37 @@ envoy and translator. Scholarship describes the bond between a sukkal and the
 deity served "not as cause and effect, but as command and execution", which is
 the policy engine ADR-0005 built.
 
-The goddess is **Ninshubur**, sukkal of Inanna and the earliest and most
-important of them. In Inanna's Descent she petitions Enlil, then Nanna, then
-Enki, until one acts.
+Three held the office and the record treats them differently.
 
-For the avatar the record gives a staff or sceptre, the mark of the office;
-doors, shoes and lapis lazuli as her associated objects; and Orion as her
-astral symbol. It gives almost no certain depiction: she may appear on seals of
-Lugal-ushumgal, governor of Lagash in the Akkadian period, and that is as firm
-as it gets. So there is latitude, and nothing should be presented as a
-reproduction.
+**Ninshubur**, sukkal of Inanna, is the earliest and most important. In
+Inanna's Descent she petitions Enlil, then Nanna, then Enki, until one acts.
+Her attribute is the staff; her associated objects are doors, shoes and lapis
+lazuli; her astral symbol is Orion. Almost no certain depiction of her
+survives.
+
+**Isimud**, sukkal of Enki, is the avatar. Akkadian *Usmû*, from a word meaning
+two-faced, and that is what he is: one head, two faces looking opposite ways.
+Advisor, messenger and doorkeeper. He is the exception among sukkals, because
+every other one needs a staff to be identified in art and he does not.
+
+**Nuska**, sukkal of Enlil, is a god of fire and light and a protection at
+night. Staff, lamp, rooster, and a bundle of flames on Old Babylonian seals.
+
+**The avatar is Isimud rather than Ninshubur, because something survives to
+read.** He appears on cylinder seals from the Akkadian through the Kassite
+periods, and the Adda seal in the British Museum is the one to work from:
+greenstone, about 2300 BC, showing Shamash rising through the mountains,
+Ishtar armed, Enki with water at his shoulders, and behind Enki his two-faced
+vizier. Drawing Ninshubur would be an invention wearing a citation.
+
+The two faces also say what the product does. One turned to the person served,
+one to the world reached. Two faces at 16px may not survive, and KPA-151 names
+that risk and what to give up if it does not.
 
 **The name is a role, which leaves the instance its own name.** The setup
 wizard already asks what to call the assistant and stores it in
-`users.assistant_name`. Ninshubur belongs on that list of names rather than on
-the product.
+`users.assistant_name`. Ninshubur and Isimud belong on that list of names
+rather than on the product.
 
 **Six machine identifiers keep the letters KPA**, and KPA-150 says why: the
 Jira project key with its 558 story references, the three databases, the eight

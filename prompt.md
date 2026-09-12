@@ -119,20 +119,21 @@ under that epic and the first blocks the second.
    rather than deep, and the risk is renaming a machine identifier by accident.
    The ticket names the six that stay and why.
 2. **[KPA-151](https://koinon.atlassian.net/browse/KPA-151)**, five points.
-   Draw the avatar from the historical record, slightly animated, still under
-   `prefers-reduced-motion`. The ticket carries what the record gives and what
-   it does not.
+   Draw Isimud, Enki's two-faced sukkal, slightly animated, and still under
+   `prefers-reduced-motion`. The ticket names the artefact to work from and the
+   risk it carries: two faces at 16px may not survive, and it says what to give
+   up if they do not.
 
-Read the epic before either story. It holds what a sukkal was, why the name
-fits a policy engine, and why a role rather than a person's name leaves the
-instance its own.
+Read the epic before either story. It holds what a sukkal was, three who held
+the office, why the name fits a policy engine, and why a role rather than a
+person's name leaves the instance its own.
 
 **Three things Shane may want a ruling on**, and none blocks the work:
 
 - Whether any of the six machine identifiers should move too. KPA-150 asks.
-- The colour. Lapis lazuli is one of Ninshubur's associated objects, and the
-  avatar takes the accent colour today. Fixing one and not the other is a
-  decision worth naming.
+- The colour. The avatar takes the accent colour today, so Preferences changes
+  it. Any colour fixed for Isimud's sake is a decision worth naming rather than
+  an accident.
 - Whether the name reaches the Jira project. It does not, and 558 story keys
   are why.
 
