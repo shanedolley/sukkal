@@ -108,7 +108,7 @@ export interface NeedsYouItem {
   entity: string | null;
   /** ISO date the item arrived. */
   raisedAt: string;
-  /** Drafts open in Gmail. KPA never sends. */
+  /** Drafts open in Gmail. Sukkal never sends. */
   gmailUrl?: string;
   /** Named on a denied-action row: the policy rule that stopped it. */
   rule?: string;

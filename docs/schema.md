@@ -170,7 +170,7 @@ and whether it is on. `absolute` marks a rule Shane may not turn off, and
 `src/policy/engine.ts` denies on an absolute rule whether `enabled` is true or
 false. Migration 005 seeds the four rules the brief names. Migration 012 adds
 `deny-by-default`, which is the engine's own behaviour rather than a fifth rule
-about what KPA may do. ADR-0021.
+about what Sukkal may do. ADR-0021.
 
 | Key | Absolute | Seeded by |
 |---|---|---|
@@ -686,7 +686,7 @@ the plain string the editor binds to, and the adapter converts between the two.
 **A cache may not refuse what the tracker accepts.** Jira takes a due date
 before its own start date, so no check compares the pair, where migration 020
 compares the contract's two dates. Three rules are the exceptions, and each
-refuses a row KPA wrote wrong rather than a row Jira holds: the key is upper
+refuses a row Sukkal wrote wrong rather than a row Jira holds: the key is upper
 case in the shape `projects.match_key_prefix` compares, the title says
 something, and `fields` is a JSON object rather than an array.
 
@@ -703,7 +703,7 @@ connection with no queue loses the edit in silence, and the screen then shows a
 value Jira never received.
 
 **A conflict keeps both stamps.** ADR-0007 leaves the merge to a person,
-because KPA cannot guess how two descriptions combine, and a person deciding
+because Sukkal cannot guess how two descriptions combine, and a person deciding
 needs to see what the write expected and what the tracker actually had. One
 number says a write was refused; two say why.
 `issue_writes_a_conflict_names_both_stamps` refuses the first without the
@@ -711,7 +711,7 @@ second, and `issue_writes_only_a_conflict_observed_a_stamp` refuses the second
 without a conflict.
 
 **A successful write moves to `sent` rather than being deleted.** The row is
-the record that KPA changed somebody else's issue, and a queue that empties
+the record that Sukkal changed somebody else's issue, and a queue that empties
 itself on success can only ever show failures. Old rows are prunable, which is
 where this differs from `audit`.
 
@@ -727,7 +727,7 @@ second edit of the same field.
 **A trap the sender owns, and the schema cannot close.** Three edits made from
 one screen all carry the stamp that screen read. The first succeeds and the
 tracker's stamp moves, so the other two now expect a stamp that has passed and
-both conflict, against a change KPA itself made. Whatever sends these has to
+both conflict, against a change Sukkal itself made. Whatever sends these has to
 carry the new stamp forward to the issue's remaining queued rows. A constraint
 cannot: it would have to know which writes were the same person's, and a
 conflict is exactly the case where guessing is what ADR-0007 refuses.
@@ -861,7 +861,7 @@ callbacks carrying one state race for a row only one of them gets. A replayed
 callback is exactly what the state exists to refuse.
 
 **Two secrets meet here and they live apart.** `GOOGLE_OAUTH_CLIENT_ID` and
-`GOOGLE_OAUTH_CLIENT_SECRET` identify KPA to Google and sit in the environment,
+`GOOGLE_OAUTH_CLIENT_SECRET` identify Sukkal to Google and sit in the environment,
 because the callback needs them before any connection row exists. What the
 grant returns belongs to one account, so it goes through
 `src/connections/crypto.ts` into `connection_credentials`.
@@ -957,7 +957,7 @@ cannot be forgotten and would slow every sign-in for good.
 reason: a sign-in is the highest-value event on the box. `audit` refuses a
 denial that names no rule, so authentication gets a row in `policies`, the way
 the engine's own default did in migration 012. `auth.sign-in` is a sixth row
-and not a sixth rule: the four the brief names describe what KPA may do, and
+and not a sixth rule: the four the brief names describe what Sukkal may do, and
 `src/policy/engine.ts` never reads this one, because `decide` matches a
 proposal and nothing proposes a sign-in.
 

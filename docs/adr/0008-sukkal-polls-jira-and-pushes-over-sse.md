@@ -1,4 +1,4 @@
-# KPA polls Jira and pushes over SSE
+# Sukkal polls Jira and pushes over SSE
 
 The board has to show a change made in Jira without anybody reloading the page.
 We chose to poll each Jira site on a pg-boss schedule and push to the open tab
@@ -7,7 +7,7 @@ over Server-Sent Events, rather than accept Jira webhooks.
 Atlassian closed the webhook REST endpoint to API tokens. `GET
 /rest/api/3/webhook` answers `403`, "Only Connect and OAuth 2.0 apps can use
 this operation", so registering one needs the admin UI and the Administer Jira
-permission on each site. KPA reads boards Shane does not administer.
+permission on each site. Sukkal reads boards Shane does not administer.
 
 Polling costs almost nothing. `POST /rest/api/3/search/jql` returned a burst
 budget of 200 with 199 left after a single call, so a ten second interval across

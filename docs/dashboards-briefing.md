@@ -1,4 +1,4 @@
-# Building dashboards in KPA
+# Building dashboards in Sukkal
 
 A post-implementation briefing. Read this before you build a dashboard, a
 board view, or any screen that reports on data. It states the operating model,

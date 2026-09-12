@@ -57,7 +57,7 @@ async function setValidTo(
  *
  * `effective` is the date the change took effect according to that source. An
  * email saying someone left in June retires the fact as of June, not as of the
- * day KPA read the email.
+ * day Sukkal read the email.
  *
  * Where the source states no date, pass `sourceDate` alone. `valid_to` then
  * takes the source's own date and the fact records that the date was inferred,

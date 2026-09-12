@@ -1,6 +1,6 @@
 # Autonomy bounded by a policy table, not by a prompt
 
-KPA acts on its own rather than queueing everything for approval, which is a
+Sukkal acts on its own rather than queueing everything for approval, which is a
 deliberate departure from the markdown system whose governing principle is that
 the default is to write nothing. We chose to bound that autonomy with a policy
 engine backed by a database table the worker consults before every outbound

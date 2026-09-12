@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# The root half of the KPA provisioning. provision-amaterasu.sh copies this to
+# The root half of the Sukkal provisioning. provision-amaterasu.sh copies this to
 # the server, substitutes the three placeholders, and runs it under one sudo
 # prompt. Do not run it by hand: the placeholders are unset until then.
 #

@@ -1,6 +1,6 @@
 /**
  * The web tier's receiver for nabium's webhook. ADR-0013 records why nabium
- * pushes a signed payload here instead of KPA reading its database.
+ * pushes a signed payload here instead of Sukkal reading its database.
  *
  * A thin handler, on purpose: it reads the raw body and the two headers
  * nabium sends, then hands everything to `receive` in the root package,

@@ -13,7 +13,7 @@ import type { NextConfig } from "next";
  * HEADER. Both send no `Referer` to another origin, which is the whole of the
  * leak. `no-referrer` also sets `Origin` to `null` on an HTML form submission
  * and on a `fetch` in `same-origin` or `no-cors` mode, which would quietly
- * defeat a CSRF check that reads it. KPA reads no such header today and may,
+ * defeat a CSRF check that reads it. Sukkal reads no such header today and may,
  * so the stronger-sounding value is the one that buys nothing and costs a
  * future decision.
  *

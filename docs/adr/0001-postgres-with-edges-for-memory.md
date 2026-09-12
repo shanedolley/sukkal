@@ -3,7 +3,7 @@
 The assistant's memory is a graph: people, customers, engagements, systems and
 the facts connecting them. We chose PostgreSQL with an `edges` table, pgvector
 for embeddings, and recursive CTEs for traversal, rather than Neo4j, because the
-queries KPA actually runs are bounded neighbourhood queries ("everything about
+queries Sukkal actually runs are bounded neighbourhood queries ("everything about
 Meridian and its immediate people and decisions") rather than open-ended path
 finding, and Postgres answers those in milliseconds at this scale while also
 serving as the application store and the pg-boss job queue.
@@ -27,7 +27,7 @@ serving as the application store and the pg-boss job queue.
   reduced that separation to a guideline, so this tiebreaker no longer applies.
   The decision stands on the arguments above, and this note records the change
   rather than hiding it.
-- Multi-hop traversal is written by hand as recursive CTEs. If KPA ever needs
+- Multi-hop traversal is written by hand as recursive CTEs. If Sukkal ever needs
   genuine path finding or community detection, this decision is the one to
   revisit.
 - Nabium already runs Postgres with pgvector, so the operational knowledge and

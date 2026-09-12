@@ -164,7 +164,7 @@ const ADDRESS_KEPT = 200;
  *
  * IT DOES NOT GO THROUGH `act`. That function is the one path to an *outbound*
  * action, and it is a Permit and a policy verdict because ADR-0005 governs
- * what KPA sends out. A sign-in reaches nothing outbound and no rule judges
+ * what Sukkal sends out. A sign-in reaches nothing outbound and no rule judges
  * whether it may be attempted, so `decide` would deny every one by default.
  * The row is written here, and `src/policy/act.ts` names this second writer.
  *

@@ -1,7 +1,7 @@
 /**
  * The one path to an outbound action.
  *
- * Nothing approves what KPA does before it does it, so the audit log is the
+ * Nothing approves what Sukkal does before it does it, so the audit log is the
  * whole safety net. A call site that reaches Gmail without passing through
  * here is an action nobody can find afterwards, which is the failure ADR-0005
  * built the log to catch. So this function asks the engine, writes the row,

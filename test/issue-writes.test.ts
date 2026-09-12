@@ -2,7 +2,7 @@
  * The queue for a write the tracker has not accepted.
  *
  * ADR-0007 asks for it: the cache carries the tracker's own stamp, and this
- * carries what KPA wants to change. Every rule the story states is proved here
+ * carries what Sukkal wants to change. Every rule the story states is proved here
  * against the database rather than asserted in a comment.
  */
 import assert from 'node:assert/strict';

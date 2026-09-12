@@ -8,7 +8,7 @@
  *
  * THE CLIENT IS THE APPLICATION'S, AND THE TOKEN IS AN ACCOUNT'S. Two secrets
  * meet here and they live in different places. `GOOGLE_OAUTH_CLIENT_ID` and
- * `GOOGLE_OAUTH_CLIENT_SECRET` identify KPA to Google and sit in the
+ * `GOOGLE_OAUTH_CLIENT_SECRET` identify Sukkal to Google and sit in the
  * environment, because the callback needs them before any connection row
  * exists. What the grant returns belongs to one account, so it goes through
  * `crypto.ts` into `connection_credentials` like every other vendor
@@ -78,13 +78,13 @@ export interface Grant {
 }
 
 /**
- * Every provider KPA can run a grant for.
+ * Every provider Sukkal can run a grant for.
  *
  * MICROSOFT IS ABSENT, AND THE BRIEF IS WHY. KPA-103 names it and calls its
  * fate an open question. `docs/project-brief.md` answers it: all three
  * mailboxes are Google, so the Microsoft surface is customer tenants where
  * Shane is a guest, and "Graph access to those tenants is not obtainable and
- * KPA will not pursue it". A record for a grant nobody may run is a button
+ * Sukkal will not pursue it". A record for a grant nobody may run is a button
  * that fails on press.
  *
  * ZOOM IS ABSENT FOR A SMALLER REASON. An unpublished Zoom app installs only
@@ -423,7 +423,7 @@ export function exchange(
  *
  * The provider usually returns no new refresh token, so `refreshToken` comes
  * back null and the caller keeps the one it holds. A provider that does rotate
- * returns one, and the caller stores it: dropping it would leave KPA holding a
+ * returns one, and the caller stores it: dropping it would leave Sukkal holding a
  * token the provider has retired.
  */
 export function renew(
@@ -543,7 +543,7 @@ export async function whoami(
  * did and wrong in where it did it, because the one function that returns a
  * plaintext belongs behind a seam rather than in a handler.
  *
- * A connection on a provider KPA runs no grant for answers `no endpoint`, and
+ * A connection on a provider Sukkal runs no grant for answers `no endpoint`, and
  * so does one holding no secret. Neither is a failure. There is nothing to
  * revoke, and the caller may remove the row.
  */
@@ -558,7 +558,7 @@ export async function revokeConnection(
   }
   const grant = GRANTS[provider];
   if (grant === undefined) {
-    return { revoked: true, said: `KPA holds no token from ${provider} to revoke.` };
+    return { revoked: true, said: `Sukkal holds no token from ${provider} to revoke.` };
   }
 
   const token = await secretFor(client, connectionId);

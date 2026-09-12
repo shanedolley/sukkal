@@ -1,17 +1,17 @@
 # Nabium pushes the payload over a signed webhook
 
-Nabium captures and transcribes meetings on Shane's Mac, and KPA needs that
+Nabium captures and transcribes meetings on Shane's Mac, and Sukkal needs that
 material on amaterasu. ADR-0003 had nabium push a session id over the LAN,
-after which KPA read the detail from nabium's Postgres through a read-only
+after which Sukkal read the detail from nabium's Postgres through a read-only
 role. This decision moves the payload onto the push itself: nabium signs its
-whole delivery with a shared secret and posts it to a KPA endpoint, and the
+whole delivery with a shared secret and posts it to a Sukkal endpoint, and the
 read-only role goes away once nabium sends payloads this way. Decided by Shane
 on 2 September 2026.
 
 This supersedes ADR-0003. Two things in that decision no longer hold. First,
-ADR-0009 made KPA the product other people install, and a read-only role on
+ADR-0009 made Sukkal the product other people install, and a read-only role on
 Shane's Mac cannot be granted to somebody else's box, so the design served one
-person only. Second, the accepted risk "nabium's migrations can break KPA
+person only. Second, the accepted risk "nabium's migrations can break Sukkal
 silently" stops being accepted: a payload is a contract that can be versioned,
 so a breaking change becomes a failed post rather than a silent wrong read.
 
@@ -29,9 +29,9 @@ would face the same refusal ADR-0008 gives Jira.
    leaves the schema-coupling risk unmitigated.
 2. **A documented HTTP API in both directions** - ADR-0003 already rejected
    this shape as two sides to build and version for one consumer. Nothing here
-   changes that math; the traffic still runs one way, from nabium to KPA, and a
+   changes that math; the traffic still runs one way, from nabium to Sukkal, and a
    single signed endpoint covers it.
-3. **KPA polls an endpoint nabium exposes** - inverts the direction back onto
+3. **Sukkal polls an endpoint nabium exposes** - inverts the direction back onto
    nabium running a server on the LAN, which trades one credential problem for
    another and adds latency nabium's own event does not need. Rejected because
    nabium already knows the moment a session is ready; pushing costs it nothing
@@ -50,15 +50,15 @@ would face the same refusal ADR-0008 gives Jira.
 
 ## Consequences
 
-- Trust reverses. KPA held a credential on nabium's database before; afterwards
-  nabium holds one secret and KPA opens nothing outbound to reach it.
+- Trust reverses. Sukkal held a credential on nabium's database before; afterwards
+  nabium holds one secret and Sukkal opens nothing outbound to reach it.
 - The endpoint stores the body verbatim and parses only the two fields the
   contract names, `event` and `sessionId`. Nabium owns the shape, matching the
   rule the `sources` table already obeys: a receiver that interprets on the way
   in loses whatever it failed to understand.
 - Retiring the read-only role waits until nabium actually sends payloads this
   way. Until then both paths exist side by side.
-- ADR-0003's best property, that a missed push costs nothing because KPA can
+- ADR-0003's best property, that a missed push costs nothing because Sukkal can
   replay from nabium's database, does not carry over. A webhook alone loses a
   delivery nabium never retries. The catch-up path that property needs is out
   of scope here and needs its own story before the read-only role can retire.

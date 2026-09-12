@@ -12,7 +12,7 @@
 
 ## Executive summary
 
-The Koinon Personal Assistant replaces a working markdown system. That system
+Sukkal replaces a working markdown system. That system
 holds 17 compiled facts and 32 raw sources in an Obsidian vault, governed by
 rules written as prose and enforced by a person reading them. It earned its
 design through use, and it has reached the limit of what a vault and a grep can
@@ -86,7 +86,7 @@ backlinks, a graph and rename handling. Postgres has to earn all three.
 
 ## 2. Target users
 
-KPA is single user. The one user is Shane Dolley, and the memory model assumes
+Sukkal is single user. The one user is Shane Dolley, and the memory model assumes
 one person throughout: one set of facts, one inbox, one voice, one review queue,
 and a `verified_by` that means him.
 
@@ -154,7 +154,7 @@ Shane's Mac                          amaterasu (Ubuntu 24.04)
 │  scripts/check.py          │       │  kpa_dev   (tests)           │
 │  3 launchd jobs, paused    │  TLS  │                              │
 │                            │──────▶│  role kpa, owns the schema,  │
-│ KPA repository (this repo) │  LAN  │  not a superuser             │
+│ Sukkal repository (this repo) │  LAN  │  not a superuser             │
 │  TypeScript, Node 22       │       └──────────────────────────────┘
 │  migration runner          │                    ▲
 │  vault reader              │                    │
@@ -167,7 +167,7 @@ Shane's Mac                          amaterasu (Ubuntu 24.04)
 
 The migration runs on the Mac and writes to Postgres on amaterasu over the LAN.
 This follows from where the two inputs sit: the vault and `check.py` live on the
-Mac and cannot move, and Postgres lives on amaterasu because that is where KPA
+Mac and cannot move, and Postgres lives on amaterasu because that is where Sukkal
 will run. Only one of the two can cross the network, and it is the one that
 already has a wire protocol.
 
@@ -618,4 +618,4 @@ rewritten. A task in `plan.md` carries the correction.
 | Stale | A fact past its `stale_after` date. Due for review, not false |
 | Retired | A fact carrying a `valid_to` date. Kept, and queryable as at an earlier date |
 | amaterasu | A 2018 Mac mini running Ubuntu 24.04, on the LAN at 192.168.20.110 |
-| nabium | Shane's macOS meeting recorder, which feeds KPA in a later slice |
+| nabium | Shane's macOS meeting recorder, which feeds Sukkal in a later slice |

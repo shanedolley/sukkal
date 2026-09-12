@@ -172,7 +172,7 @@ The unit belongs beside the web tier's on amaterasu. Nothing installs it yet.
 
 ```ini
 [Unit]
-Description=KPA worker
+Description=Sukkal worker
 After=network-online.target postgresql.service
 Wants=network-online.target
 

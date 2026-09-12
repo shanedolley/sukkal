@@ -1,4 +1,4 @@
-# Koinon Personal Assistant: project brief
+# Sukkal: project brief
 
 **Status:** draft, in active discovery. Sections marked *Open* hold questions
 not yet answered.
@@ -28,6 +28,42 @@ own, or in a container, and it belongs to them from the first boot. One
 installation still serves one owner: the change is which owner, not how many.
 That decision is what took identity out of Cloudflare Access and into the
 application. ADR-0009.
+
+## The name
+
+A sukkal is an office rather than an invention. The word is Sumerian and names
+an administrative post conventionally translated as vizier: somebody who
+oversaw the execution of a king's commands and acted as envoy and translator.
+Mesopotamian religion then gave the title to a class of deity who served a
+greater one as servant, advisor and envoy, and who could intercede on a
+mortal's behalf.
+
+Scholarship describes the bond between a sukkal and the deity served "not as
+cause and effect, but as command and execution". That is the policy engine in
+ADR-0005, named four thousand years before it was written.
+
+Three held the office and the record treats them differently. **Ninshubur**,
+sukkal of Inanna, is the earliest and the most important: in Inanna's Descent
+she petitions Enlil, then Nanna, then Enki, until one of them acts. **Isimud**,
+sukkal of Enki, is advisor, messenger and doorkeeper, with one head and two
+faces looking opposite ways. **Nuska**, sukkal of Enlil, is a god of fire and
+light and a protection at night.
+
+**Isimud is the face.** Almost no certain depiction of Ninshubur survives, so
+drawing her would be an invention wearing a citation. Isimud appears on
+cylinder seals from the Akkadian through the Kassite periods, including the
+Adda seal in the British Museum. His two faces also say what the product does:
+one turned to the person served, one to the world reached.
+
+**The name is a role, which leaves the instance its own name.** The setup
+wizard asks what to call the assistant and stores the answer in
+`users.assistant_name`. The product is the office, and the box holds one who
+fills it.
+
+The letters KPA stay on the machine. The Jira project key, the three databases,
+the eight `KPA_` variables, the two package names, the repository and
+`~/.config/kpa/env` each cost more to move than the rename is worth, the way a
+person has a name and a payroll number.
 
 ## The problem
 
@@ -93,7 +129,7 @@ what he owes people is issues on two Jira boards. An assistant that reports on
 work it cannot see reports on half his day.
 
 **What it costs.** Three decisions already carry the weight, and each is an ADR.
-The tracker owns the issue text and KPA caches it, so no second master exists.
+The tracker owns the issue text and Sukkal caches it, so no second master exists.
 The editor is TipTap, because ProseMirror sits one rename from Jira's ADF. The
 cache refreshes by polling on a schedule and pushes to the browser over SSE,
 because Jira refuses a webhook to an API token.
@@ -164,7 +200,7 @@ keeps the memory trustworthy.
 by default and the system flags any answer drawing across the two, but nothing in
 the database prevents it. See *Risks accepted*.
 
-These four say what KPA may do. `policies` holds a fifth row, `deny-by-default`,
+These four say what Sukkal may do. `policies` holds a fifth row, `deny-by-default`,
 which says what the engine does when it cannot read them: an action no rule
 describes, and any action proposed while the table is empty or damaged, are
 refused and the refusal names that row. It is absolute, because a default Shane
@@ -183,7 +219,7 @@ the Koinon account, with refresh tokens in `~/.google_workspace_mcp/credentials`
 | `shane.dolley@collibra.com` | Collibra | Authorised 20 August 2026 with no admin block. The tenant can revoke it. |
 | `shanevdolley@gmail.com` | Personal | |
 
-The OAuth work is done and KPA inherits it rather than repeating it. The Collibra
+The OAuth work is done and Sukkal inherits it rather than repeating it. The Collibra
 grant is the fragile one: it exists because nobody blocked it, not because
 anybody approved it.
 
@@ -220,13 +256,13 @@ Salesforce, which is why every object it owns carries the `pse__` prefix. One
 Salesforce grant reaches `pse__Proj__c`, `pse__Assignment__c` and
 `pse__Scheduled_Hours__c` alike.
 
-**Nabium is not a connection.** It reaches KPA through a read-only database role
+**Nabium is not a connection.** It reaches Sukkal through a read-only database role
 and a push over the LAN, which *Decisions settled* records. No screen configures
 it, and none should.
 
 **Microsoft reopens a settled decision.** *Microsoft, Teams and customer
 tenants* below says Graph access to a customer tenant is unobtainable and that
-KPA will not pursue it. The connections screen offers Microsoft anyway. Either
+Sukkal will not pursue it. The connections screen offers Microsoft anyway. Either
 the card serves a tenant Shane owns rather than a customer's, or the decision
 changes. *Open.*
 
@@ -259,7 +295,7 @@ The stated goal names Outlook and Teams. All three mailboxes are Google, so the
 Microsoft surface is customer tenants where Shane is a guest: BHP, TfNSW, Sydney
 Water and others.
 
-**Graph access to those tenants is not obtainable and KPA will not pursue it.** A
+**Graph access to those tenants is not obtainable and Sukkal will not pursue it.** A
 third-party application reading Teams messages needs an application registration
 and admin consent inside the resource tenant. A guest user cannot self-consent,
 and enterprises of that size block third-party consent by default. Asking is a
@@ -268,7 +304,7 @@ conversation with a customer's IT department that ends in a refusal.
 Nabium already solves this without asking anyone. It captures meetings from the
 desktop on any platform, because it records what Shane can already see and hear,
 and ADR-0003 extends the same approach to Teams messages. **All customer-tenant
-material reaches KPA through nabium.**
+material reaches Sukkal through nabium.**
 
 ## Prior art: the markdown system
 
@@ -350,19 +386,19 @@ with pgvector HNSW indexes.
 **Status:** a personal tool. It may become a product later, and that is not
 driving decisions today.
 
-### How KPA and nabium meet
+### How Sukkal and nabium meet
 
-Nabium owns capture, transcription, speakers and sessions. KPA owns mail, memory,
+Nabium owns capture, transcription, speakers and sessions. Sukkal owns mail, memory,
 the briefing and the agents.
 
-Nabium pushes an event over the LAN when a session is ready. KPA then reads the
+Nabium pushes an event over the LAN when a session is ready. Sukkal then reads the
 detail from nabium's Postgres through a read-only role. Push is the trigger, the
 read-only connection is the source.
 
-The cost of reading another system's tables directly is that KPA breaks whenever
-nabium migrates its schema. Two things reduce that: KPA reads through database
+The cost of reading another system's tables directly is that Sukkal breaks whenever
+nabium migrates its schema. Two things reduce that: Sukkal reads through database
 views it defines rather than through nabium's base tables, and nabium's migration
-runbook gains a step that names KPA as a consumer.
+runbook gains a step that names Sukkal as a consumer.
 
 ### Where the two projects disagree
 
@@ -371,13 +407,13 @@ transcripts of BHP Ironclad and Meridian workshops should not leave the device.
 It transcribes locally on purpose and gates cloud summarisation behind a
 per-engagement `allow_cloud_summarisation` flag.
 
-**KPA ignores that flag.** Decided 23 August 2026. Content from every engagement
+**Sukkal ignores that flag.** Decided 23 August 2026. Content from every engagement
 reaches Claude or OpenRouter regardless of what nabium recorded about it.
 
-The consequence is that the sovereignty guarantee ends at KPA's boundary rather
+The consequence is that the sovereignty guarantee ends at Sukkal's boundary rather
 than continuing through it. Nabium's local transcription still earns its keep,
 since it is already built and costs nothing to run, but it no longer protects the
-engagements it was written to protect once KPA ingests them. See *Risks
+engagements it was written to protect once Sukkal ingests them. See *Risks
 accepted*.
 
 ## Decisions settled
@@ -394,9 +430,9 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Distribution | A container, and a first boot that asks who you are | The install has to work on a machine that holds nothing but Docker. Everything the assistant needs beyond that is asked for on screen rather than assumed from the environment. ADR-0009. |
 | Autonomy | Autonomous within policy | Acts inside rules Shane sets, logs everything, audited after. |
 | Nabium integration | Read-only database role, triggered by a LAN push | Cheapest to build, no API to design and maintain across two personal projects. |
-| Nabium cloud flag | Ignored by KPA | Shane's call, 23 August 2026. |
-| Entity ownership | KPA is canonical, nabium feeds it | KPA sees mail as well as meetings, which is a far wider source of people. Nabium's entities merge in on ingest. |
-| Memory vault | KPA replaces it | The 19 facts and 32 sources migrate into Postgres. The vault and its three launchd jobs retire. One system, no sync problem. |
+| Nabium cloud flag | Ignored by Sukkal | Shane's call, 23 August 2026. |
+| Entity ownership | Sukkal is canonical, nabium feeds it | Sukkal sees mail as well as meetings, which is a far wider source of people. Nabium's entities merge in on ingest. |
+| Memory vault | Sukkal replaces it | The 19 facts and 32 sources migrate into Postgres. The vault and its three launchd jobs retire. One system, no sync problem. |
 | Collibra and Koinon separation | A guideline, not a database constraint | Decided 23 August 2026. Retrieval filters by space and crossing answers get flagged. Nothing structurally prevents a leak. |
 | Remote access | Cloudflare Tunnel with Access in front, on Shane's box | Works on any device without installing a client. Traffic transits Cloudflare. Another installation reaches itself however its owner chooses, and the application no longer depends on the answer. Access refuses everyone but Shane before a request reaches the tunnel, and the application still asks who is knocking. ADR-0009, ADR-0023. |
 | Ingestion depth | Six months | Covers current engagements at a bounded one-off cost. |
@@ -405,22 +441,22 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Microsoft Graph | Not pursued | Customer-tenant consent is unobtainable. Nabium's desktop capture covers the same material. |
 | Application shape | Next.js for the web tier, a separate worker process for everything long-running | Agent runs and ingestion must never sit in a request handler. The split is load bearing. |
 | Job queue | pg-boss, backed by the same Postgres | No Redis, so no second store and no extra RAM on a box where RAM is the constraint. |
-| Issue text | The tracker owns it, KPA caches and adapts at the boundary | Jira's ADF is a ProseMirror schema, so the round trip costs a node rename and a second copy earns nothing. Boards Shane shares with colleagues have other writers, and two masters over one rich-text blob do not merge. ADR-0007. |
+| Issue text | The tracker owns it, Sukkal caches and adapts at the boundary | Jira's ADF is a ProseMirror schema, so the round trip costs a node rename and a second copy earns nothing. Boards Shane shares with colleagues have other writers, and two masters over one rich-text blob do not merge. ADR-0007. |
 | Issue editor | TipTap, whose document model is ProseMirror | Every adapter starts one rename from ADF. Slate and Lexical would need a parser instead. ADR-0007. |
 | Tracker freshness | Poll on a pg-boss schedule, push to the browser over SSE | Jira refuses webhook registration to an API token, and the admin route needs a permission Shane lacks on the Collibra site. Polling also keeps Cloudflare Access closed, where a webhook would need a bypass on a public path. ADR-0008. |
 | First slice | Migrate the memory | Proves the model before any volume reaches it. |
 | Jira stories | Spec carrying | Each story states its acceptance criteria, the files it touches, its test, and a definition of done an agent can verify alone. |
 | Repository | Git from the first commit, private on GitHub | Matches nabium and the memory vault. The design carries history from line one. |
-| Scope of replacement | KPA replaces the whole markdown system | The vault, `journal/`, the three launchd jobs and the Gmail filter rules. Nothing of it keeps running alongside. |
-| Gmail labelling | KPA takes it over | The 15 rules in `gmail-filters/collibra.xml` import as the starting policy rather than being rewritten from nothing. |
-| Drafting voice | The `draft-email` skill's rules | Already written, already tuned, already covers all three accounts. KPA implements them rather than learning a voice from sent mail. |
+| Scope of replacement | Sukkal replaces the whole markdown system | The vault, `journal/`, the three launchd jobs and the Gmail filter rules. Nothing of it keeps running alongside. |
+| Gmail labelling | Sukkal takes it over | The 15 rules in `gmail-filters/collibra.xml` import as the starting policy rather than being rewritten from nothing. |
+| Drafting voice | The `draft-email` skill's rules | Already written, already tuned, already covers all three accounts. Sukkal implements them rather than learning a voice from sent mail. |
 | Retirement | Only a source or a human sets `valid_to` | Time alone never retires a fact. The staleness sweep flags and re-confirms. |
 | Offline | Rescan on return | No queueing on the Mac and no catch-up logic. When the box comes back it scans from the last watermark, which is the same path a normal poll takes. |
 | Backup | Copy nabium's runbook | `docs/runbooks/database-backup.md` already exists and already covers Postgres on this hardware. |
 | Employer policy checklist | Not a gate | Shane is the decision maker and has accepted the risk directly. Recorded, not chased. |
 | Mail triage rule | Carries forward unchanged | If a person composed the words it stays in the inbox, and the sending address proves nothing. The rule earned itself through use in `docs/mail-triage-method.md`. |
 | Identity | The installation owns its own account, created on the first boot | An installation somebody else runs has no Access in front of it and no WorkOS tenant behind it, so the application authenticates rather than assuming the network already did. Access and WorkOS stay in front of Shane's box as that deployment's own choice. Supersedes the WorkOS decision of 23 August 2026. ADR-0009, ADR-0020. |
-| Access as an identity | Never read, and never required | KPA authenticates on every installation and reads no identity header, so it depends on Access for nothing and Access becomes removable. Where a deployment runs it, it is a network gate rather than a sign-in: two gates in series, and neither assumes the other held. Verifying the signed assertion Cloudflare issues was weighed and left available. ADR-0023. |
+| Access as an identity | Never read, and never required | Sukkal authenticates on every installation and reads no identity header, so it depends on Access for nothing and Access becomes removable. Where a deployment runs it, it is a network gate rather than a sign-in: two gates in series, and neither assumes the other held. Verifying the signed assertion Cloudflare issues was weighed and left available. ADR-0023. |
 | Fact state | Store the review position, derive the rest | `facts` already carries `verified`, `stale_after` and `valid_to`, so a status column repeating them holds one truth twice and the two eventually disagree. `candidate`, `proposed` and `rejected` are stored. `verified`, `stale` and `retired` are read from the dates. Replaces `fact_status`, whose three values described a vault note's maturity and had no word for a fact waiting on Shane. ADR-0010. |
 | Audit shape | An attempt and its outcome are two rows | The columns are `NOT NULL` and the table is append only, so one row cannot be started and finished. A crash between the call and the record would otherwise leave no trace that anything was attempted. An orphaned attempt is the row worth having. ADR-0015. |
 | Inference path | The subscription for scheduled work, the metered API for chat | *Risks accepted* already separates them: a few scheduled jobs a day is ordinary use of a coding tool, and an always-on screen is not. Both sit behind the seam `src/memory/inference.ts` already provides. ADR-0016. |
@@ -487,7 +523,7 @@ flowchart TB
     cfd["cloudflared"]
     web["kpa-web<br/>Next.js :3000"]
     worker["kpa-worker<br/>ingest · agents · schedules<br/>pg-boss"]
-    pg[("KPA Postgres + pgvector<br/>sources · facts · edges · audit · issue cache")]
+    pg[("Sukkal Postgres + pgvector<br/>sources · facts · edges · audit · issue cache")]
     cfd --> web
     web --> pg
     worker --> pg
@@ -544,7 +580,7 @@ in every way that matters.
 | Holds | Sources, facts, edges, entities, the review queue, the audit log, the policy rules | The account, connections, workspaces, projects, sprints, the issue cache, custom fields, preferences |
 | Written by | Ingestion and agents, then confirmed by Shane | Shane, and a poller mirroring Jira |
 | Deletes | Never. It retires and supersedes | Ordinarily. A removed connection is gone |
-| Who owns the truth | KPA. A fact is its own | The tracker. ADR-0007 keeps the text there and caches it here |
+| Who owns the truth | Sukkal. A fact is its own | The tracker. ADR-0007 keeps the text there and caches it here |
 | Shape | A graph with time on every node | Plain rows |
 | Today | Ten tables in `migrations/001_core_schema.sql`, and nine migrations on top | Six tables, and the fixtures every screen still reads |
 
@@ -609,7 +645,7 @@ spaces.
 **Only a source or a human. Time alone never does.**
 
 A **contradicting source** sets it to the date the change took effect according
-to that source, not the date KPA learned of it. An email saying Nigel left in
+to that source, not the date Sukkal learned of it. An email saying Nigel left in
 June retires the fact as of June. Where the source gives no date, `valid_to`
 takes the source's own date and the fact records that the date was inferred
 rather than stated, because recording the uncertainty is what the vault's
@@ -625,18 +661,18 @@ The vault's own rule already says so: a stale fact is a fact doing its job rathe
 than a defect. The sweep flags and re-confirms; it never retires.
 
 One consequence of choosing `valid_from` and `valid_to` over full bitemporal:
-KPA answers what was true in March, but not what it believed in March. A
+Sukkal answers what was true in March, but not what it believed in March. A
 backdated retirement rewrites the answer to the first question with no record
 that the answer used to differ. Adding a `recorded_at` column later upgrades this
 without a rewrite.
 
-Entity resolution is KPA's job. Nabium's `people` and `engagements` feed in and
-merge against KPA's own, because KPA sees mail as well as meetings and mail is
+Entity resolution is Sukkal's job. Nabium's `people` and `engagements` feed in and
+merge against Sukkal's own, because Sukkal sees mail as well as meetings and mail is
 the wider source of people.
 
 ### One user, with one hedge
 
-KPA is single user. No permission model, no per-user partitioning, no sharing.
+Sukkal is single user. No permission model, no per-user partitioning, no sharing.
 Building any of that now would be building a different product.
 
 Single user means one owner per installation. The first boot asks who that is
@@ -682,7 +718,7 @@ sequenceDiagram
   participant NP as nabium PG (read only)
   participant L as Claude
   participant V as Voyage
-  participant P as KPA PG
+  participant P as Sukkal PG
 
   N->>W: POST /ingest/session {session_id}
   W->>NP: read transcript, attendees, engagement
@@ -690,7 +726,7 @@ sequenceDiagram
   W->>P: INSERT source (verbatim, never edited)
   W->>L: extract entities, decisions, commitments
   L-->>W: candidates
-  W->>P: resolve entities against KPA's people and engagements
+  W->>P: resolve entities against Sukkal's people and engagements
   loop each candidate
     W->>W: apply the four gates
     alt passes
@@ -706,7 +742,7 @@ sequenceDiagram
   W->>P: queue proposals for the briefing
 ```
 
-Nabium pushes the trigger and KPA pulls the detail. The push carries an id, not a
+Nabium pushes the trigger and Sukkal pulls the detail. The push carries an id, not a
 payload, so a missed push is recoverable by replaying from nabium's database.
 
 ### Triaging mail
@@ -718,7 +754,7 @@ sequenceDiagram
   participant W as kpa-worker
   participant G as Gmail ×3
   participant L as Claude
-  participant P as KPA PG
+  participant P as Sukkal PG
   participant U as Shane
 
   S->>W: mail.poll
@@ -749,7 +785,7 @@ sequenceDiagram
   participant U as Shane
   participant Web as kpa-web
   participant V as Voyage
-  participant P as KPA PG
+  participant P as Sukkal PG
   participant L as Claude
 
   U->>Web: question
@@ -780,7 +816,7 @@ sequenceDiagram
   autonumber
   participant A as kpa-worker (agent)
   participant Pol as Policy engine
-  participant P as KPA PG (audit)
+  participant P as Sukkal PG (audit)
   participant X as External service
 
   A->>Pol: propose {action, target, payload}
@@ -809,7 +845,7 @@ surface on the briefing.
 
 ## Risks accepted
 
-**Client transcripts reach the cloud.** KPA ignores nabium's per-engagement
+**Client transcripts reach the cloud.** Sukkal ignores nabium's per-engagement
 sovereignty flag, so BHP Ironclad and Meridian material reaches Claude or
 OpenRouter along with everything else. Accepted 23 August 2026.
 
@@ -820,7 +856,7 @@ carries an unsigned checklist covering exactly this, at
 the decision maker and accepts the exposure directly. Recorded, not chased.
 
 **Voyage AI belongs to MongoDB.** It acquired Voyage in February 2025, and has
-been folding those models into Atlas since. KPA depends on the standalone API
+been folding those models into Atlas since. Sukkal depends on the standalone API
 and stores the vectors in its own Postgres, so a vendor whose direction is
 "embeddings inside our database" is one worth watching. `src/embedding.ts`
 holds the model and the width in one place, so a move costs a migration rather
@@ -865,11 +901,11 @@ node runs four at a time, so the rules ADR-0020 sets already put the password
 out of reach at any online rate.
 
 **The Collibra OAuth grant is revocable.** It works because no administrator
-blocked it. A tenant policy change removes KPA's access to that mailbox without
+blocked it. A tenant policy change removes Sukkal's access to that mailbox without
 warning, and the design should degrade rather than break when it happens.
 
-**Schema coupling to nabium.** KPA reads another project's tables. Nabium's
-migrations can break KPA silently.
+**Schema coupling to nabium.** Sukkal reads another project's tables. Nabium's
+migrations can break Sukkal silently.
 
 **One machine, no redundancy.** A consumer desktop with a single NVMe. Backups
 are not yet designed. Nabium has a database backup runbook worth copying.
@@ -977,9 +1013,9 @@ vault retires, which is an argument for building it now.
 
 #### The journal crosses a machine boundary
 
-KPA replaces `journal/` along with the rest of the markdown system, and
+Sukkal replaces `journal/` along with the rest of the markdown system, and
 `journal.py` renders that journal from Claude Code's transcripts in
-`~/.claude/projects/`. Those live on Shane's Mac. KPA runs on amaterasu.
+`~/.claude/projects/`. Those live on Shane's Mac. Sukkal runs on amaterasu.
 
 So the journal needs the same treatment as nabium: something on the Mac ships the
 transcripts across. The cheapest version reuses the pattern already chosen, a

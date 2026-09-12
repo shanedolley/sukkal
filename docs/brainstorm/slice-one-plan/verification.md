@@ -626,7 +626,7 @@ than in five. `src/memory/prompts/*.md` and `test/gates.test.ts` are as named.
 
 | Acceptance criterion | Evidence |
 |---|---|
-| A contradicting source sets `valid_to` to the date the change took effect, not the date KPA learned of it | An email read on 27 August saying Nigel left in June retires the fact as at 1 June |
+| A contradicting source sets `valid_to` to the date the change took effect, not the date Sukkal learned of it | An email read on 27 August saying Nigel left in June retires the fact as at 1 June |
 | Where the source gives no date, `valid_to` takes the source's date and the fact records that it was inferred | The same email without a date sets `valid_to` to 27 August and `valid_to_inferred` to true |
 | A superseding fact sets the old fact's `valid_to` to the replacement's `valid_from`, with a `supersedes` edge | One answer on 31 May, the other on 1 June, one edge between them |
 | A human sets `valid_to` to whatever date is given | `retireByHuman` writes the date and leaves `valid_to_inferred` false |

@@ -1,4 +1,4 @@
-# Where KPA's secrets live
+# Where Sukkal's secrets live
 
 Written for KPA-16, extended for KPA-70, KPA-137 and KPA-138, and checked on
 the Mac on 3 September 2026.
@@ -129,7 +129,7 @@ The access token does carry a lifetime, and it is not what is stored: it lasts
 an hour and is re-minted from the refresh token on demand.
 
 The client came from Google Cloud project `personal-assistant-506014`, which
-`workspace-mcp` already used. KPA inherits it rather than registering a second
+`workspace-mcp` already used. Sukkal inherits it rather than registering a second
 one, so revoking one client revokes both. The redirect URIs are registered in
 that project's console.
 

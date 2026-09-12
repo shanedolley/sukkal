@@ -110,7 +110,7 @@ no line and is refused. That refusal is an acceptance criterion, not a default.
 
 **No read-only role exists.** The original acceptance criterion asked for one
 "for later use against nabium", and it had the direction backwards: ADR-0003 has
-KPA reading nabium's database, not the reverse. An unused credential with read
+Sukkal reading nabium's database, not the reverse. An unused credential with read
 access to Collibra material is attack surface that earns nothing yet.
 
 **`sslmode=require`, not `verify-full`.** The connection is encrypted but the

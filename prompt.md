@@ -1,4 +1,4 @@
-# Continue KPA
+# Continue Sukkal
 
 Paste this into a fresh session from
 `~/Development/koinonau/personal-assistant`.

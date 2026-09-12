@@ -530,7 +530,7 @@ const ERROR_CODE = /^[a-z_]{1,40}$/;
  * an unknown value selects the last of them. `detail` is rendered only where
  * it looks like an error code. React escapes it either way, so this is not
  * about script: it is about a link that puts "call this number to restore
- * your account" under KPA's own heading.
+ * your account" under Sukkal's own heading.
  *
  * IT NAMES NO ACCOUNT, AND THAT IS THE POINT. This line used to say which
  * address had connected, which put the address in the URL, in browser history

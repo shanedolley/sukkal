@@ -1,10 +1,10 @@
 -- The issues a tracker owns, cached here, and the blocking links between them.
 --
 -- THE TABLE IS A CACHE AND NEVER A MASTER. ADR-0007 leaves the text with the
--- tracker: KPA reads an issue, stores what it read, and converts at the
+-- tracker: Sukkal reads an issue, stores what it read, and converts at the
 -- boundary. Every row therefore carries `updated`, the tracker's own stamp. A
 -- write reads that stamp first and refuses when it has moved, and the writer
--- re-reads and decides, because KPA cannot guess how two descriptions combine.
+-- re-reads and decides, because Sukkal cannot guess how two descriptions combine.
 -- Drop the stamp and nothing can refuse a stale write, which is the second
 -- master ADR-0007 exists to prevent.
 --
@@ -66,7 +66,7 @@
 -- A CACHE MAY NOT REFUSE WHAT THE TRACKER ACCEPTS. Jira takes a due date
 -- before its own start date, so no check compares the pair, where
 -- `020_project_contract.sql` compares the contract's two dates. Each rule
--- below refuses a row KPA wrote wrong rather than a row Jira holds.
+-- below refuses a row Sukkal wrote wrong rather than a row Jira holds.
 --
 -- THREE ENUMS, WHERE `connections.provider` IS TEXT. That column is text
 -- because the provider catalogue still grows, and `014_audit_attempt.sql`

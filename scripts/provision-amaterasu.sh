@@ -189,7 +189,7 @@ HOST="${KPA_HOST:-amaterasu}"
 PGVER=18
 REMOTE_SCRIPT=/tmp/kpa-provision-root.sh
 
-banner "Provision PostgreSQL $PGVER for KPA on $HOST"
+banner "Provision PostgreSQL $PGVER for Sukkal on $HOST"
 
 # ── 1 ─────────────────────────────────────────────────────────────────────
 stage "Preflight"

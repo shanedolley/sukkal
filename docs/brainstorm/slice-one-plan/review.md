@@ -34,7 +34,7 @@ The decision earns an ADR when the schema story lands.
 
 *Raised by solution-architect and technical-analyst independently.*
 
-REQ-002 created `kpa_ro` on KPA's own database "for nabium". ADR-0003 has KPA
+REQ-002 created `kpa_ro` on Sukkal's own database "for nabium". ADR-0003 has Sukkal
 reading nabium's database, not the reverse, and nabium integration is out of
 scope for this slice. The requirement spent a P0 on access control for a
 consumer that does not exist.

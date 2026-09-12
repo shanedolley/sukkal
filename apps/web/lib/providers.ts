@@ -58,7 +58,7 @@ export interface Method {
   /** What the method asks for. A method that only sends you out asks nothing. */
   fields?: Field[];
   /**
-   * Whether KPA can run a real grant, rather than open the provider's front
+   * Whether Sukkal can run a real grant, rather than open the provider's front
    * door and store nothing.
    *
    * `GRANTS` in `src/connections/oauth.ts` is what decides it, and
@@ -156,7 +156,7 @@ export const PROVIDERS: Provider[] = [
       { id: "drive", label: "Drive" },
       { id: "keep", label: "Keep" },
     ],
-    // The one provider KPA runs a real grant for. `src/connections/oauth.ts`
+    // The one provider Sukkal runs a real grant for. `src/connections/oauth.ts`
     // holds the urls and the scopes, and the sign-in address here is what a
     // person reads rather than where the grant goes.
     methods: [oauth("https://accounts.google.com/signin", [], true)],

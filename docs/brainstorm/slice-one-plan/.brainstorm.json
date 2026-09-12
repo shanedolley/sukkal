@@ -1,6 +1,6 @@
 {
   "slug": "slice-one-plan",
-  "goal": "Verify and consolidate the KPA slice one plan: write the PRD, correct the inverted blocking graph, score and expand the stories, and add stories for the four gaps research found.",
+  "goal": "Verify and consolidate the Sukkal slice one plan: write the PRD, correct the inverted blocking graph, score and expand the stories, and add stories for the four gaps research found.",
   "complexity": "complex",
   "phase": "build",
   "branch": null,
@@ -89,7 +89,7 @@
       "docImpact": [
         {
           "category": "technical-knowledge",
-          "note": "kpa role is LOGIN, NOSUPERUSER, NOCREATEROLE and owns both kpa and kpa_dev. No kpa_ro role, by the PRD's decision: ADR-0003 has KPA reading nabium, not the reverse.",
+          "note": "kpa role is LOGIN, NOSUPERUSER, NOCREATEROLE and owns both kpa and kpa_dev. No kpa_ro role, by the PRD's decision: ADR-0003 has Sukkal reading nabium, not the reverse.",
           "files": [
             "docs/runbooks/postgres-setup.md"
           ]

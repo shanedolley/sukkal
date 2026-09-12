@@ -2,7 +2,7 @@
 
 Slice one reads two inputs that live on Shane's Mac and cannot move: the
 Obsidian vault, and the `check.py` whose report is the verification oracle.
-PostgreSQL lives on amaterasu, because that is where KPA will run. Only one of
+PostgreSQL lives on amaterasu, because that is where Sukkal will run. Only one of
 the two can cross the network, so it is the one that already has a wire
 protocol: the migration runs on the Mac and writes to amaterasu over the LAN.
 
@@ -13,7 +13,7 @@ on a LAN that carries other devices.
 ## Considered Options
 
 1. **Run the migration on amaterasu** - puts the code beside the database, and
-   matches where every other KPA service will run. Rejected because it means
+   matches where every other Sukkal service will run. Rejected because it means
    copying the vault and `check.py` onto a second machine. The verification
    compares the new checks against `check.py`'s report, so a copied oracle is
    an oracle that can drift from the thing it certifies.

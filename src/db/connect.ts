@@ -1,5 +1,5 @@
 /**
- * The one place KPA opens a database connection.
+ * The one place Sukkal opens a database connection.
  *
  * Configuration comes from the environment. No host, user, password or
  * connection string appears in this repository. `.env.example` names the

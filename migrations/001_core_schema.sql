@@ -71,7 +71,7 @@ COMMENT ON TABLE nodes IS
 -- users: one row, and every owner_id defaults to it
 -- ---------------------------------------------------------------------------
 --
--- KPA is single user. This column exists only so that adding a second user
+-- Sukkal is single user. This column exists only so that adding a second user
 -- later is not a migration of every table holding anything personal. Nothing
 -- else in the design may assume a second user exists.
 

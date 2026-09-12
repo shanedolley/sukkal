@@ -11,12 +11,12 @@
 -- a value Jira never received. The row is what survives that.
 --
 -- A CONFLICT KEEPS BOTH STAMPS. ADR-0007 leaves the merge to a person, because
--- KPA cannot guess how two descriptions combine, and a person deciding needs
+-- Sukkal cannot guess how two descriptions combine, and a person deciding needs
 -- to see what the write expected and what the tracker actually had. One number
 -- says a write was refused; two say why.
 --
 -- A SUCCESSFUL WRITE MOVES TO `sent` RATHER THAN BEING DELETED. The row is the
--- record that KPA changed somebody else's issue, and a queue that empties
+-- record that Sukkal changed somebody else's issue, and a queue that empties
 -- itself on success can only ever show failures. Old rows are prunable, which
 -- is where this differs from `audit`.
 --
@@ -32,7 +32,7 @@
 --   A TRAP THE WRITER OWNS, AND IT IS NOT SOLVED HERE. Three edits made from
 --   one screen all carry the stamp that screen read. The first succeeds and
 --   the tracker's stamp moves, so the other two now expect a stamp that has
---   passed and both conflict, against a change KPA itself made. Whatever sends
+--   passed and both conflict, against a change Sukkal itself made. Whatever sends
 --   these has to carry the new stamp forward to the rest of the issue's queued
 --   rows. The schema cannot: it would have to know which writes were the same
 --   person's, and a `conflict` row is exactly the case where guessing is the
@@ -124,11 +124,11 @@ CREATE INDEX issue_writes_by_issue ON issue_writes (workspace, key, id DESC);
 
 COMMENT ON TABLE issue_writes IS
   'A write the tracker has not accepted yet. ADR-0007 asks for it: the cache '
-  'carries the tracker''s stamp, and this carries what KPA wants to change.';
+  'carries the tracker''s stamp, and this carries what Sukkal wants to change.';
 
 COMMENT ON COLUMN issue_writes.expected_updated IS
   'The tracker''s stamp when the write was made. The sender compares it and '
-  'refuses when it has moved, because KPA cannot guess how two edits combine.';
+  'refuses when it has moved, because Sukkal cannot guess how two edits combine.';
 
 COMMENT ON COLUMN issue_writes.observed_updated IS
   'What the tracker had instead, on a conflict. A person deciding needs both '

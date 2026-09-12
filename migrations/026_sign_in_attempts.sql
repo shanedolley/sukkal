@@ -58,12 +58,12 @@ COMMENT ON COLUMN users.sign_in_failures IS
 --
 -- So authentication gets a row in `policies`, the way the engine's own default
 -- did in migration 012. It is a sixth row and not a sixth rule. The four the
--- brief names describe what KPA may do; this one describes what the door does,
+-- brief names describe what Sukkal may do; this one describes what the door does,
 -- written where the audit screen can render it beside every other refusal.
 --
 -- `src/policy/engine.ts` never reads it. `decide` matches a proposal against
 -- what a rule governs, and nothing proposes a sign-in: authentication is
--- inbound and the engine judges what KPA sends out.
+-- inbound and the engine judges what Sukkal sends out.
 
 INSERT INTO policies (key, governs, effect, absolute) VALUES
   ('auth.sign-in',

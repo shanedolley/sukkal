@@ -1,4 +1,4 @@
-# Koinon Personal Assistant
+# Sukkal
 
 A hosted web application that acts as Shane Dolley's personal assistant. It
 connects to three Google Workspace accounts, ingests meeting transcripts from
@@ -86,9 +86,9 @@ rather than the story rewritten to match the code.
 ## Related repositories
 
 **nabium**, at `~/Development/personal/nabium`. Captures and transcribes meetings
-on macOS. KPA reads its database through a read-only role and it pushes a session
+on macOS. Sukkal reads its database through a read-only role and it pushes a session
 id over the LAN when one is ready. See ADR-0003.
 
 **personal-assistant**, at `~/Development/personal/personal-assistant`, and the
 **Memory vault** at `~/Development/obsidian_vaults/Memory`. The markdown system
-KPA replaces. Its principles carry forward and the brief records which.
+Sukkal replaces. Its principles carry forward and the brief records which.

@@ -190,7 +190,7 @@ export async function DELETE(request: Request): Promise<Response> {
   try {
     // THE PROVIDER IS TOLD FIRST, AND THE ROW GOES ONLY IF IT AGREED. KPA-103
     // asks for that in as many words. Removing the row alone leaves a token
-    // Google still honours and KPA can no longer see, which is worse than the
+    // Google still honours and Sukkal can no longer see, which is worse than the
     // connection this was meant to end: nobody can revoke what nobody knows
     // about.
     const said = await revokeConnection(client, id, fetch);

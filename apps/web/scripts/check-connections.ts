@@ -116,7 +116,7 @@ assert.ok(
 //     `providers.ts` carries a boolean because a client component bundles it
 //     and reaching into `src/` would carry `node:crypto` into the browser. So
 //     the two are separate, and this is what stops them drifting: a card
-//     promising a grant KPA cannot run is a button that fails on press, and a
+//     promising a grant Sukkal cannot run is a button that fails on press, and a
 //     record nobody can reach is code nothing calls.
 const granted = new Set(
   PROVIDERS.filter((entry) => entry.methods.some((method) => method.grant)).map(
@@ -126,10 +126,10 @@ const granted = new Set(
 assert.deepEqual(
   [...granted].sort(),
   Object.keys(GRANTS).sort(),
-  "a card and src/connections/oauth.ts disagree about which providers KPA can grant"
+  "a card and src/connections/oauth.ts disagree about which providers Sukkal can grant"
 );
 
-// Every service on a card KPA grants has an answer in the record, even when
+// Every service on a card Sukkal grants has an answer in the record, even when
 // the answer is no scope at all. A card gaining a service otherwise grants
 // nothing for it and says nothing about why.
 for (const id of granted) {

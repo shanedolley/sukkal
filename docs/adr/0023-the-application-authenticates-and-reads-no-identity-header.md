@@ -1,6 +1,6 @@
 # The application authenticates, and reads no identity header
 
-KPA signs its owner in with its own account, on every installation. It reads no
+Sukkal signs its owner in with its own account, on every installation. It reads no
 identity from Cloudflare Access, on any box, under any configuration. Decided
 by Shane on 3 September 2026.
 
@@ -10,15 +10,15 @@ open: what a box that *does* have Access in front of it should do with the
 identity Access already established. This settles that, and the answer is
 nothing.
 
-## KPA requires no Access
+## Sukkal requires no Access
 
-**Whether a deployment runs Access is that deployment's own choice.** KPA
+**Whether a deployment runs Access is that deployment's own choice.** Sukkal
 depends on it for nothing, which is the point: ADR-0009 made this software
 somebody else installs, and that person has no Cloudflare account. Shane
 recorded the same thing about his own box on 3 September 2026.
 
 **Where a deployment does run it, it is a network gate.** Access refuses
-everyone but the owner before a request reaches the tunnel, and KPA still asks
+everyone but the owner before a request reaches the tunnel, and Sukkal still asks
 who is knocking. Two gates stand in series and neither assumes the other held,
 which is the whole value of running both. A tunnel misrouted, a port published
 to the LAN, a container reachable on a network somebody trusted: each is
@@ -74,7 +74,7 @@ session lapses. The friction is whatever KPA-77 chooses, and it is not daily.
   self-hosted box, and the working gate on Shane's.
 - **KPA-77 is unblocked, and it owns the session lifetime.** A box holding
   employer customer material is not a shopping site, and that story says so.
-- **Access becomes removable.** Nothing in KPA reads it, so taking it down
+- **Access becomes removable.** Nothing in Sukkal reads it, so taking it down
   costs the network gate and no application behaviour. The brief's *Remote
   access* row is now a deployment choice rather than a dependency.
 - **Nothing is foreclosed.** Option 2 is an addition rather than a replacement,

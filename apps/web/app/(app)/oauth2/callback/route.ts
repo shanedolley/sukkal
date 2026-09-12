@@ -66,7 +66,7 @@ import {
  * The shape is checked for two reasons. The value arrives in the query and
  * reaches the screen, so a link somebody mails must not be able to put a
  * sentence there: React escapes it either way, and this is about a person
- * reading "call this number to restore your account" under KPA's own heading.
+ * reading "call this number to restore your account" under Sukkal's own heading.
  * The same pattern also refuses an address, which is what keeps a person out
  * of the server's access log.
  */
@@ -134,7 +134,7 @@ export async function GET(request: Request): Promise<Response> {
 
     // No refresh token means no durable access, whatever the access token
     // says. Google returns one because the record asks for consent every
-    // time; a provider that does not leaves KPA with an hour and no way to
+    // time; a provider that does not leaves Sukkal with an hour and no way to
     // renew, and storing that would read as a working connection.
     if (tokens.refreshToken === null) {
       return NextResponse.redirect(landing(back, "no-refresh-token"));

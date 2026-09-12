@@ -7,7 +7,7 @@
 //
 // THE PROTOTYPE NOTICE IS GONE, and KPA-128 is why. It read that Cloudflare
 // Access and WorkOS authenticate before the application sees the request, so
-// this screen never appears in production. ADR-0023 refused that: KPA reads no
+// this screen never appears in production. ADR-0023 refused that: Sukkal reads no
 // identity header on any installation, so this card is the only gate there is.
 
 import { AuthLogo } from "@/components/blocks/auth-20/components/auth-logo";

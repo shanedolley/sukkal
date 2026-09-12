@@ -215,18 +215,18 @@ database before it acts and refuses `kpa` outright;
 | `DATABASE_URL` | Production `kpa`. The migration reads this and nothing else |
 | `DATABASE_URL_TEST` | `kpa_dev` |
 | `KPA_SECRET_KEY` | Seals every connection credential |
-| `GOOGLE_OAUTH_CLIENT_ID` | Identifies KPA to Google |
+| `GOOGLE_OAUTH_CLIENT_ID` | Identifies Sukkal to Google |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | The callback exchanges a code with it |
 | `KPA_URL` | Where this installation answers. `http://localhost:3000` today |
 | `VOYAGE_API_KEY`, `VOYAGE_PROJECT_ID` | Read by no code. KPA-104 moved a vendor key into a connection |
 
-**One OAuth client serves KPA and workspace-mcp**, in Google Cloud project
+**One OAuth client serves Sukkal and workspace-mcp**, in Google Cloud project
 `personal-assistant-506014`. Google holds exactly two redirect URIs, and both
 are needed:
 
 ```
 http://localhost:8000/oauth2callback     workspace-mcp. No slash before callback
-http://localhost:3000/oauth2/callback    KPA. With the slash
+http://localhost:3000/oauth2/callback    Sukkal. With the slash
 ```
 
 ## Traps
@@ -237,10 +237,10 @@ http://localhost:3000/oauth2/callback    KPA. With the slash
 `apps/web/.next/dev/types` that fails a build after a page is removed. What
 follows is new, and each cost time on 9 to 12 September 2026.
 
-**Revoking KPA at Google's permissions page revokes workspace-mcp too.** The
+**Revoking Sukkal at Google's permissions page revokes workspace-mcp too.** The
 two share one OAuth client, so removing the application's access at
 `myaccount.google.com/permissions` kills every token issued under that client.
-Shane cleared three orphaned KPA tokens on 12 September and workspace-mcp's
+Shane cleared three orphaned Sukkal tokens on 12 September and workspace-mcp's
 three died with them, including the one account that had worked since August.
 Registering a second client would separate them, and nobody has decided to.
 

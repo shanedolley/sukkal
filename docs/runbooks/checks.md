@@ -1,7 +1,7 @@
 # The checks
 
 The vault's `scripts/check.py` caught a malformed note before a grep came back
-empty. KPA ports it in two pieces, split because they disagree on one thing:
+empty. Sukkal ports it in two pieces, split because they disagree on one thing:
 whether a finding stops the run.
 
 `src/checks/problems.ts` (KPA-32) ports the six that do: a malformed fact

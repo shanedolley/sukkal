@@ -84,7 +84,7 @@ describe('the policy and audit tables', { skip: url ? false : 'DATABASE_URL_TEST
         // it beside every other refusal. KPA-78 requires every sign-in to
         // reach the log, and `audit_denial_names_a_rule` refuses a denial
         // that cites nothing. `migrations/026` says why it is not a rule: the
-        // engine judges what KPA sends out, and nothing proposes a sign-in.
+        // engine judges what Sukkal sends out, and nothing proposes a sign-in.
         { key: 'auth.sign-in', absolute: true, enabled: true },
         // The engine's own behaviour, written down for the same reason.
         // `migrations/012` says why an unnamed denial has no home.

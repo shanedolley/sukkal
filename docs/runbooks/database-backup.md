@@ -1,4 +1,4 @@
-# Backing up the KPA database
+# Backing up the Sukkal database
 
 Written for KPA-22, and checked against the live server on 26 August 2026.
 

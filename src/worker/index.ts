@@ -77,7 +77,7 @@ export async function drain(
 }
 
 /** Builds the queue against the same connection string every other part of
- *  KPA connects with. `createSchema: false` because migration 011 owns the
+ *  Sukkal connects with. `createSchema: false` because migration 011 owns the
  *  schema, so a worker started against an unmigrated database stops rather
  *  than installing one nobody recorded. */
 export function queue(variable = 'DATABASE_URL'): PgBoss {

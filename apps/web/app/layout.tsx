@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KPA",
-  description: "Koinon Personal Assistant",
+  title: "Sukkal",
+  description: "Sukkal, Koinon's personal assistant",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

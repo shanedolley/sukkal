@@ -78,11 +78,15 @@ import { cn } from "@/lib/utils";
 
 // Short, neutral, and easy to say out loud, which is how a name gets used.
 // Five at a time, because a wall of names is a decision nobody makes.
+//
+// Ninshubur and Isimud are the exception to "short". The product is the office
+// a sukkal held, so the two who held it belong on the list an owner picks from.
+// KPA-150.
 const NAMES = [
   "Ada", "Otto", "Juno", "Kestrel", "Wren",
   "Iris", "Milo", "Nova", "Pip", "Rune",
   "Sable", "Echo", "Fable", "Halo", "Vale",
-  "Bo", "Marlowe", "Quill",
+  "Bo", "Marlowe", "Quill", "Ninshubur", "Isimud",
 ];
 const SHOWN = 5;
 

@@ -13,7 +13,7 @@ The log records what the vault *did*: a day's ingest run, a convention that
 changed, the day it was created. It explains why the vault is shaped as it is,
 which is worth more than any single fact in it.
 
-**A table in Postgres** was the obvious choice, because KPA replaces the vault
+**A table in Postgres** was the obvious choice, because Sukkal replaces the vault
 and the memory lives in Postgres. It loses because this is not memory. It is a
 record of process, it answers no question the assistant will ever be asked, and
 putting it in the database means a table that no story designed, that KPA-13's

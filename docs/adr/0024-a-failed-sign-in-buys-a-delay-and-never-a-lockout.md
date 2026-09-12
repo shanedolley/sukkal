@@ -105,11 +105,11 @@ So `migrations/026` writes an `auth.sign-in` row into `policies`. It is a sixth
 row and not a sixth rule, exactly as migration 012's `deny-by-default` was a
 fifth row and not a fifth rule. `src/policy/engine.ts` never reads it: `decide`
 matches a proposal against what a rule governs, and nothing proposes a sign-in,
-because authentication is inbound and the engine judges what KPA sends out.
+because authentication is inbound and the engine judges what Sukkal sends out.
 
 `src/auth/attempts.ts` writes those rows rather than `src/policy/act.ts`, and
 `act.ts` names the second writer. `act` is the one path to an *outbound*
-action, and it takes a Permit and a verdict because ADR-0005 governs what KPA
+action, and it takes a Permit and a verdict because ADR-0005 governs what Sukkal
 sends. A sign-in reaches nothing, so `decide` would deny every one by default.
 
 ## Consequences

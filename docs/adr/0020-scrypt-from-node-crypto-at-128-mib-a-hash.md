@@ -1,6 +1,6 @@
 # scrypt from node:crypto, at 128 MiB a hash
 
-ADR-0009 gave every installation its own account, so KPA now stores a password
+ADR-0009 gave every installation its own account, so Sukkal now stores a password
 and has to choose how. `src/auth/password.ts` uses scrypt from `node:crypto`
 with N of 2^17, r of 8 and p of 1, a 16-byte salt and a 32-byte key, encoded in
 the PHC string format. Those are the parameters OWASP names first for scrypt,

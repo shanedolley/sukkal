@@ -203,7 +203,7 @@ export async function readFacts(
 /**
  * Who a move from this interface records as the verifier.
  *
- * KPA is single user and migration 001 wrote the one row, so `human:1` names
+ * Sukkal is single user and migration 001 wrote the one row, so `human:1` names
  * it. The browser never supplies this. A verifier a request could name is a
  * verifier a request could forge, and the one thing the policy will not have
  * forged is who confirmed a fact.

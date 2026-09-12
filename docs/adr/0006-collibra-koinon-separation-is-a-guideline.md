@@ -2,7 +2,7 @@
 
 The Memory vault's hardest rule is that Collibra and Koinon notes never cite each
 other: an employer's customer material and Shane's own commercial figures stay
-apart. KPA keeps that rule as a guideline rather than a database constraint.
+apart. Sukkal keeps that rule as a guideline rather than a database constraint.
 Retrieval filters by space by default and the interface flags any answer drawing
 on both, but nothing structurally prevents a crossing. Decided by Shane on 23
 August 2026, after row-level security was offered.

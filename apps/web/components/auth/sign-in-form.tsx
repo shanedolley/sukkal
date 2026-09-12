@@ -4,7 +4,7 @@
 //
 // KPA-37 built this as a prototype and recorded that production would drop it,
 // because Cloudflare Access authenticated the person before the request
-// arrived. ADR-0023 refused that assumption: KPA reads no identity header on
+// arrived. ADR-0023 refused that assumption: Sukkal reads no identity header on
 // any box, so this form is the gate rather than a picture of one. KPA-128 is
 // where it started authenticating somebody.
 //

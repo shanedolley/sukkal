@@ -46,14 +46,14 @@ export async function POST(request: Request): Promise<Response> {
 
   // Every field is checked here and not only on the form. `PROVIDERS` is the
   // catalogue the screen draws from, so the two cannot name different
-  // providers, and `GRANTS` says which of them KPA can actually run a grant
+  // providers, and `GRANTS` says which of them Sukkal can actually run a grant
   // for. Microsoft is on the card and in neither, which the brief settles.
   if (!PROVIDERS.some((entry) => entry.id === provider)) {
     return NextResponse.json({ error: "No such provider." }, { status: 400 });
   }
   if (!(provider in GRANTS)) {
     return NextResponse.json(
-      { error: `KPA runs no OAuth grant for ${provider}.` },
+      { error: `Sukkal runs no OAuth grant for ${provider}.` },
       { status: 400 }
     );
   }

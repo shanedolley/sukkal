@@ -1,5 +1,5 @@
 // Adapted from the ReUI app-shell-1 block. The shapes are the block's; the
-// content is KPA's. See docs/project-brief.md.
+// content is Sukkal's. See docs/project-brief.md.
 
 import { type ReactNode } from "react"
 import {

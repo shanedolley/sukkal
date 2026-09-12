@@ -1,4 +1,4 @@
-# KPA conventions
+# Sukkal conventions
 
 Read `handover.md` first. It carries where the work stands, what runs, and the
 traps found since the last session. `prompt.md` beside it is what a fresh

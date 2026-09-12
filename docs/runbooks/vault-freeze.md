@@ -1,7 +1,7 @@
 # Freezing the memory vault
 
 The migration is checked by running the vault's `scripts/check.py` against the
-vault, running KPA's checks against Postgres, and diffing the two reports. That
+vault, running Sukkal's checks against Postgres, and diffing the two reports. That
 comparison is only worth anything if the vault holds still.
 
 Three launchd jobs write to it. This runbook stops them, records the commit the

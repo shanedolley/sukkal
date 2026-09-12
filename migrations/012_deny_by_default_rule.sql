@@ -17,7 +17,7 @@
 -- a policy layer.
 --
 -- THE BRIEF STILL NAMES FOUR RULES. This is a fifth row and not a fifth rule.
--- The four describe what KPA may do. This one describes what happens when the
+-- The four describe what Sukkal may do. This one describes what happens when the
 -- four cannot be read, which is the engine's own behaviour written down where
 -- the audit screen can render it beside every other refusal.
 

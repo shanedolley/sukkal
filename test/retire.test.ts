@@ -74,7 +74,7 @@ describe('retirement', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () 
   }
 
   describe('a contradicting source', () => {
-    test('retires as at the date the change took effect, not the date KPA read it', async () => {
+    test('retires as at the date the change took effect, not the date Sukkal read it', async () => {
       await fact({ path: 'koinon/nigel.md' });
 
       // An email read in August, saying Nigel left in June.

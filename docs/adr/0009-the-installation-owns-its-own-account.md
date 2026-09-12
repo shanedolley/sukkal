@@ -1,6 +1,6 @@
 # The installation owns its own account
 
-KPA now ships as software other people run, on a server of their own or in a
+Sukkal now ships as software other people run, on a server of their own or in a
 container. Those installations have no Cloudflare Access in front of them and no
 WorkOS tenant behind them, so the assumption that the network authenticates the
 person before the request arrives no longer holds. Every installation therefore
@@ -15,14 +15,14 @@ rather than the product's design.
 
 ## Considered Options
 
-1. **Keep Access and WorkOS for everybody** - no password handling in KPA at
+1. **Keep Access and WorkOS for everybody** - no password handling in Sukkal at
    all, which is the cheapest security posture available. Rejected because it
    puts two paid accounts in front of the front door of self-hosted software.
    Somebody who types `docker run` has neither, and telling them to open a
    Cloudflare account before they can see the login screen loses them there.
 2. **OIDC against whatever the deployer already runs** - correct for an
    organisation that has an identity provider, and it keeps passwords out of
-   KPA. Rejected as the only route for the same reason: it assumes an identity
+   Sukkal. Rejected as the only route for the same reason: it assumes an identity
    provider exists. It stays available as an addition, because a local account
    and an OIDC option are not exclusive.
 3. **A local account, created on first boot** - chosen. It is the only option
@@ -30,7 +30,7 @@ rather than the product's design.
 
 ## Consequences
 
-- KPA now owns the parts Access made unnecessary: password storage, sessions,
+- Sukkal now owns the parts Access made unnecessary: password storage, sessions,
   reset, and a lockout. Each is a place to get security wrong, and none of them
   existed in the design a week ago.
 - A password is worth more here than on a forum, because the one account reaches

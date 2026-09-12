@@ -1,14 +1,14 @@
-# KPA reads nabium's database read-only
+# Sukkal reads nabium's database read-only
 
 **Status: superseded by ADR-0013.**
 
-Nabium captures and transcribes meetings on Shane's Mac; KPA needs that material
-on amaterasu. We chose to have nabium push a session id over the LAN and KPA read
+Nabium captures and transcribes meetings on Shane's Mac; Sukkal needs that material
+on amaterasu. We chose to have nabium push a session id over the LAN and Sukkal read
 the detail from nabium's Postgres through a read-only role, rather than design an
 API between two personal projects that only ever talk to each other.
 
 Push carries the trigger, not the payload. A missed push costs nothing, because
-KPA can replay from nabium's database at any time.
+Sukkal can replay from nabium's database at any time.
 
 ## Considered Options
 
@@ -24,10 +24,10 @@ KPA can replay from nabium's database at any time.
 
 ## Consequences
 
-- KPA breaks when nabium migrates its schema. Two mitigations: KPA reads through
+- Sukkal breaks when nabium migrates its schema. Two mitigations: Sukkal reads through
   views it defines rather than nabium's base tables, and nabium's migration
-  runbook gains a step naming KPA as a consumer.
+  runbook gains a step naming Sukkal as a consumer.
 - If nabium ever becomes a product, this decision is the first thing to unwind,
   and ADR-0003 in nabium's own repository should point back here.
-- KPA owns entity resolution. Nabium's `people` and `engagements` merge into
-  KPA's, because KPA also sees mail and mail is the wider source of people.
+- Sukkal owns entity resolution. Nabium's `people` and `engagements` merge into
+  Sukkal's, because Sukkal also sees mail and mail is the wider source of people.
