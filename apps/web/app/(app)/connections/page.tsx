@@ -22,6 +22,18 @@ function one(value: string | string[] | undefined): string | null {
   return typeof value === "string" ? value : null;
 }
 
+/**
+ * What an OAuth error code looks like. RFC 6749 makes every one lower case
+ * with underscores: `access_denied`, `invalid_scope`.
+ *
+ * The query is filtered here rather than only where it renders, because a
+ * prop reaches the browser whether a component prints it or not. React
+ * serialises it into the payload, so a value refused downstream still travels.
+ * An address in the query would then sit in the response body as well as in
+ * the URL, which is most of what putting it in the URL cost.
+ */
+const ERROR_CODE = /^[a-z_]{1,40}$/;
+
 export default async function ConnectionsPage(props: PageProps<"/connections">) {
   const asked = await props.searchParams;
 
@@ -36,7 +48,12 @@ export default async function ConnectionsPage(props: PageProps<"/connections">) 
         </p>
       </header>
 
-      <GrantNotice outcome={one(asked["grant"])} detail={one(asked["detail"])} />
+      <GrantNotice
+        outcome={one(asked["grant"])}
+        detail={
+          ERROR_CODE.test(one(asked["detail"]) ?? "") ? one(asked["detail"]) : null
+        }
+      />
 
       <ConnectionsGrid />
 

@@ -49,7 +49,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { looksLikeEmail } from "@/lib/email";
 import {
   addConnection,
   removeConnection,
@@ -529,9 +528,15 @@ const ERROR_CODE = /^[a-z_]{1,40}$/;
  * rather than only in the route, because anybody can open `/connections` with
  * a query of their own. `outcome` selects one of a fixed set of sentences and
  * an unknown value selects the last of them. `detail` is rendered only where
- * it looks like an address or like an error code. React escapes it either way,
- * so this is not about script: it is about a link that puts "call this number
- * to restore your account" under KPA's own heading.
+ * it looks like an error code. React escapes it either way, so this is not
+ * about script: it is about a link that puts "call this number to restore
+ * your account" under KPA's own heading.
+ *
+ * IT NAMES NO ACCOUNT, AND THAT IS THE POINT. This line used to say which
+ * address had connected, which put the address in the URL, in browser history
+ * and in every access log between the browser and the box. Shane read one
+ * there on 12 September 2026. The card in the grid below says the same thing
+ * in a place that does not travel.
  */
 export function GrantNotice({
   outcome,
@@ -542,13 +547,10 @@ export function GrantNotice({
 }) {
   if (!outcome) return null;
 
-  const account = detail && looksLikeEmail(detail) ? detail : null;
   const code = detail && ERROR_CODE.test(detail) ? detail : null;
 
   const said: Record<string, string> = {
-    ok: account
-      ? `${account} is connected. The token is sealed on the server.`
-      : "That account is connected.",
+    ok: "That account is connected. The token is sealed on the server, and the card below names it.",
     refused:
       code === "access_denied"
         ? "Nothing was connected, because consent was refused."

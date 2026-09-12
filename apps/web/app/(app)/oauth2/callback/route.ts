@@ -26,9 +26,16 @@
  * fragment of either. What the person sees is the connections screen and one
  * sentence about what happened, carried in the query as an outcome rather
  * than as a message somebody could write. The outcome is one of a fixed set of
- * words, and the detail beside it is either an address the provider named or
- * an error code in the shape RFC 6749 gives. Anything else is dropped, because
- * this route is reachable by a link and a link is written by whoever sends it.
+ * words, and anything else is dropped, because this route is reachable by a
+ * link and a link is written by whoever sends it.
+ *
+ * NO ADDRESS GOES IN THE QUERY. It did until Shane read one there on
+ * 12 September 2026, and he was right: a URL reaches browser history, the
+ * server's own access log, and every proxy between the two. Three addresses
+ * were already sitting in a dev server log by then. The grid below the notice
+ * names the account on its card, which is the same answer in a place that does
+ * not travel. Only an OAuth error code rides along now, and RFC 6749 makes
+ * those lower case with underscores rather than anything about a person.
  *
  * THE ACCOUNT NAMES THE CONNECTION. Three Google accounts produce three rows
  * because the provider says which one consented. A second grant of the same
@@ -56,11 +63,12 @@ import {
  * What an OAuth error code looks like. RFC 6749 names them, and every one is
  * lower case with underscores: `access_denied`, `invalid_scope`.
  *
- * The shape is checked because the value arrives in the query and reaches the
- * screen. Anything else is dropped, so a link somebody mails cannot put a
- * sentence on the connections page. React escapes it either way, so this is
- * not about script: it is about a person reading "call this number to restore
- * your account" under KPA's own heading.
+ * The shape is checked for two reasons. The value arrives in the query and
+ * reaches the screen, so a link somebody mails must not be able to put a
+ * sentence there: React escapes it either way, and this is about a person
+ * reading "call this number to restore your account" under KPA's own heading.
+ * The same pattern also refuses an address, which is what keeps a person out
+ * of the server's access log.
  */
 const ERROR_CODE = /^[a-z_]{1,40}$/;
 
@@ -163,7 +171,9 @@ export async function GET(request: Request): Promise<Response> {
         expiresOn: null,
       });
       await client.query("COMMIT");
-      return NextResponse.redirect(landing(back, "ok", account));
+      // The address is deliberately absent. `account` named the connection a
+      // line above and reaches the screen on its card, not in a URL.
+      return NextResponse.redirect(landing(back, "ok"));
     } catch (cause) {
       await client.query("ROLLBACK");
       throw cause;
