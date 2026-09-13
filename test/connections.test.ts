@@ -12,7 +12,7 @@ import {
   secretFor,
   setCredential,
 } from '../src/connections/store.ts';
-import { connect } from '../src/db/connect.ts';
+import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
@@ -24,7 +24,7 @@ function freshKey(): string {
   return randomBytes(32).toString('base64');
 }
 
-/** Runs `body` with `KPA_SECRET_KEY` set to `value`, or unset when it is null,
+/** Runs `body` with `SUKKAL_SECRET_KEY` set to `value`, or unset when it is null,
  *  and puts back whatever was there. */
 async function withKey(value: string | null, body: () => Promise<void> | void): Promise<void> {
   const held = process.env[KEY_VARIABLE];
@@ -55,8 +55,8 @@ describe('sealing a connection secret', () => {
 
   test('refuses to run with no key', async () => {
     await withKey(null, () => {
-      assert.throws(() => encrypt(SECRET, '7'), /KPA_SECRET_KEY is unset/);
-      assert.throws(() => decrypt(Buffer.alloc(64), '7'), /KPA_SECRET_KEY is unset/);
+      assert.throws(() => encrypt(SECRET, '7'), /SUKKAL_SECRET_KEY is unset/);
+      assert.throws(() => decrypt(Buffer.alloc(64), '7'), /SUKKAL_SECRET_KEY is unset/);
     });
   });
 
@@ -146,8 +146,7 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     process.env[KEY_VARIABLE] = freshKey();
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
   });

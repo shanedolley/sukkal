@@ -120,18 +120,21 @@ source, because Node cannot import a `.tsx`.
 wizard asks what to call the assistant and stores it in
 `users.assistant_name`. Ninshubur and Isimud are on that list now.
 
-**Six machine identifiers keep the letters KPA**, and KPA-150 says why: the
-Jira project key with its 644 story references, the three databases, the eight
-`KPA_` environment variables, the two npm package names, the GitHub repository,
-and `~/.config/kpa/env`. Whether any should move is an open question on that
-ticket rather than a decision anybody has made.
+**The machine followed, in KPA-153.** Shane ruled on 13 September 2026 that
+five of the six identifiers move. The variables, the config folder, the package
+names, the repository and the local databases all read `sukkal` now. KPA-152 is
+the epic and KPA-154 carries what is left.
 
-Three more places keep the letters and are not on that list: the row
-`KPA · Personal Assistant`, which is the Jira project's own label and is
-seeded by `migrations/018` and mirrored in `apps/web/lib/workspaces.ts`; the
-`# KPA` marker `scripts/provision-amaterasu-root.sh` greps for in
-`pg_hba.conf`; and `docs/decisions.md`, which `npm run decisions` rewrites
-from Jira comments on every run.
+**The Jira project key stays `KPA`**, with its 644 references, and so does the
+project's own label `KPA · Personal Assistant`, which is keyed to it and seeded
+by `migrations/018`.
+
+**Four more things keep the letters, and each is deliberate.** Eleven browser
+storage keys, `kpa.appearance` through `kpa.issues.tree`, because a rename
+abandons a viewer's saved choice rather than moving it and nothing fails when
+it does. Twelve SVG names inside the avatar, which never leave the component.
+`kpa-worker`, the `application_name` the worker reports to PostgreSQL. And
+`docs/decisions.md`, which `npm run decisions` rewrites from Jira on every run.
 
 ## One decision waiting
 
@@ -165,7 +168,7 @@ KPA-103 is nearly done and is not closed. Five commits built it:
 - Removing a connection tells the provider first and keeps the row when the
   provider refuses.
 
-**Three Google accounts are connected in `kpa_local` and all three tokens
+**Three Google accounts are connected in `sukkal_local` and all three tokens
 work.** Proved by opening each sealed credential and refreshing it against
 Google, not by reading the rows.
 
@@ -198,7 +201,7 @@ nineteen scripts under plain node.
 Run the suite the way CI runs it, which is without the vault:
 
 ```
-VAULT_PATH=/nonexistent DATABASE_URL_TEST="postgresql://$(whoami)@localhost:5432/kpa_dev" npm test
+VAULT_PATH=/nonexistent DATABASE_URL_TEST="postgresql://$(whoami)@localhost:5432/sukkal_dev" npm test
 ```
 
 Watch the run afterwards with `gh run list --limit 1`. A push nobody watches is
@@ -209,37 +212,47 @@ how the trunk went red on 2 September 2026 and stayed red across two pushes.
 | Database | Who writes it |
 |---|---|
 | `kpa` on amaterasu | The migration. Production. Five migrations behind |
-| `kpa_dev` | Every test. The suite drops every table in it |
-| `kpa_local` | The running application. No test names it |
+| `sukkal_dev` | Every test. The suite drops every table in it |
+| `sukkal_local` | The running application. No test names it |
 
-`kpa_local` exists because the suite ends on `down()`. On 10 September 2026 a
+**amaterasu still calls its two `kpa` and `kpa_dev`**, because KPA-153 could
+not reach the box. Only this Mac's databases moved. `DATABASE_URL` and
+`DATABASE_URL_TEST` in the env file therefore still name the old ones, and
+KPA-154 changes all four together.
+
+**Both names mean production.** `PRODUCTION` in `src/db/connect.ts` holds
+`kpa` and `sukkal`, the migration runner refuses either, and every test calls
+`refuseProduction` after it connects. KPA-154 drops `kpa` from that array, and
+that is the whole of its change in this repository.
+
+`sukkal_local` exists because the suite ends on `down()`. On 10 September 2026 a
 test run destroyed three Google OAuth connections that had taken three consent
 screens to create, and the tokens survived at Google where nothing could reach
 them to revoke. Start the dev server like this:
 
 ```
-cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/kpa_local" npm run dev
+cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local" npm run dev
 ```
 
 **Production `kpa` holds migrations 001 to 024 and nothing since.** 025 through
 029 are not there, so production is five behind. It was migrated by accident on
 3 September 2026 and Shane chose to leave it. The command now names the
 database before it acts and refuses `kpa` outright;
-`KPA_ALLOW_PRODUCTION=1 npm run migrate` migrates it deliberately.
+`SUKKAL_ALLOW_PRODUCTION=1 npm run migrate` migrates it deliberately.
 
 ## Environment
 
-`~/.config/kpa/env`, mode 0600, outside the repository.
+`~/.config/sukkal/env`, mode 0600, outside the repository.
 `docs/runbooks/secrets.md` says what each value is for.
 
 | Variable | For |
 |---|---|
-| `DATABASE_URL` | Production `kpa`. The migration reads this and nothing else |
-| `DATABASE_URL_TEST` | `kpa_dev` |
-| `KPA_SECRET_KEY` | Seals every connection credential |
+| `DATABASE_URL` | Production `kpa` on amaterasu. The migration reads this and nothing else |
+| `DATABASE_URL_TEST` | `kpa_dev` on amaterasu, which KPA-154 renames. Override it with a local URL |
+| `SUKKAL_SECRET_KEY` | Seals every connection credential |
 | `GOOGLE_OAUTH_CLIENT_ID` | Identifies Sukkal to Google |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | The callback exchanges a code with it |
-| `KPA_URL` | Where this installation answers. `http://localhost:3000` today |
+| `SUKKAL_URL` | Where this installation answers. `http://localhost:3000` today |
 | `VOYAGE_API_KEY`, `VOYAGE_PROJECT_ID` | Read by no code. KPA-104 moved a vendor key into a connection |
 
 **One OAuth client serves Sukkal and workspace-mcp**, in Google Cloud project
@@ -268,9 +281,9 @@ Registering a second client would separate them, and nobody has decided to.
 
 **`--env-file` does not override a variable already set.** So
 `DATABASE_URL=... ./scripts/reset-password.sh` reaches the database named on the
-command line, not the one in `~/.config/kpa/env`. Proved on 12 September rather
+command line, not the one in `~/.config/sukkal/env`. Proved on 12 September rather
 than assumed, and it is what makes the reset script safe to point at
-`kpa_local`.
+`sukkal_local`.
 
 **A compound command the delete guard blocks runs nothing at all, including
 what came before the delete.** A `python3` heredoc followed by `&& rm -rf ...`

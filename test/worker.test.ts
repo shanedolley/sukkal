@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
-import { connect } from '../src/db/connect.ts';
+import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 import {
   backlog,
@@ -71,8 +71,7 @@ describe('the delivery backlog', { skip: url ? false : 'DATABASE_URL_TEST is uns
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
   });
@@ -139,8 +138,7 @@ describe('running one delivery', { skip: url ? false : 'DATABASE_URL_TEST is uns
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
   });
@@ -217,8 +215,7 @@ describe('the queue', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
 
@@ -374,8 +371,7 @@ describe('the nightly review', { skip: url ? false : 'DATABASE_URL_TEST is unset
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
   });

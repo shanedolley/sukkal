@@ -1,5 +1,5 @@
 {
-  "name": "kpa",
+  "name": "sukkal",
   "version": "0.1.0",
   "private": true,
   "description": "Sukkal: the memory store and its migration.",
@@ -11,9 +11,9 @@
     "apps/web"
   ],
   "scripts": {
-    "migrate": "node --env-file-if-exists=$HOME/.config/kpa/env src/db/migrate.ts",
-    "worker": "node --env-file-if-exists=$HOME/.config/kpa/env src/worker/index.ts",
-    "test": "node --env-file-if-exists=$HOME/.config/kpa/env --test --test-concurrency=1 \"test/**/*.test.ts\"",
+    "migrate": "node --env-file-if-exists=$HOME/.config/sukkal/env src/db/migrate.ts",
+    "worker": "node --env-file-if-exists=$HOME/.config/sukkal/env src/worker/index.ts",
+    "test": "node --env-file-if-exists=$HOME/.config/sukkal/env --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "lint": "oxlint src test scripts --import-plugin --deny-warnings",
     "decisions": "node --experimental-strip-types scripts/decision-register.ts",
     "build": "tsc --noEmit"

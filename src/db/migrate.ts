@@ -14,7 +14,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ClientBase } from 'pg';
-import { connect } from './connect.ts';
+import { PRODUCTION, connect } from './connect.ts';
 
 /** Separates the two directions inside one migration file. */
 const DOWN_MARKER = /^--[ \t]*@down[ \t]*$/m;
@@ -176,25 +176,28 @@ const MIGRATIONS_DIR = path.join(import.meta.dirname, '..', '..', 'migrations');
  * runner refuses a schema holding tables it did not create, and the next one
  * will not be so lucky.
  *
- * `kpa` is the one database this refuses, which is the rule the rest of the
- * repository already keeps: `test/migrate.test.ts` asserts the database it
- * reached is not `kpa`, and CLAUDE.md says never to point a test there. A
+ * `PRODUCTION` in `connect.ts` holds the names this refuses, and the rest of
+ * the repository keeps the same rule against the same array: every test calls
+ * `refuseProduction`, and CLAUDE.md says never to point one at production. A
  * prefix rule was the first attempt and it was worse, because it also refused
  * a throwaway somebody named for the job rather than for the convention.
  *
- * `KPA_ALLOW_PRODUCTION=1` migrates it deliberately, and records the intent at
- * the moment it is used, the way `KOTHAR_ALLOW_MAIN` does for a commit on the
- * trunk.
+ * `SUKKAL_ALLOW_PRODUCTION=1` migrates it deliberately, and records the intent
+ * at the moment it is used, the way `KOTHAR_ALLOW_MAIN` does for a commit on
+ * the trunk.
  */
 function checkTarget(database: string): void {
-  if (database !== 'kpa' || process.env['KPA_ALLOW_PRODUCTION'] === '1') {
+  if (
+    !PRODUCTION.includes(database) ||
+    process.env['SUKKAL_ALLOW_PRODUCTION'] === '1'
+  ) {
     return;
   }
   throw new Error(
-    'refusing to migrate "kpa": it holds the facts.\n' +
+    `refusing to migrate "${database}": it holds the facts.\n` +
       'This command reads DATABASE_URL, so putting DATABASE_URL_TEST in front ' +
       'of it changes nothing.\n' +
-      'To migrate it deliberately: KPA_ALLOW_PRODUCTION=1 npm run migrate',
+      'To migrate it deliberately: SUKKAL_ALLOW_PRODUCTION=1 npm run migrate',
   );
 }
 

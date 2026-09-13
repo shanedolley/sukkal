@@ -17,7 +17,7 @@ jobs:
         image: pgvector/pgvector:0.8.6-pg18
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: kpa_dev
+          POSTGRES_DB: sukkal_dev
         ports:
           - 5432:5432
         options: >-
@@ -31,7 +31,7 @@ jobs:
       # allows a loopback host in the clear and requires encryption everywhere
       # else. DATABASE_URL is deliberately unset: nothing here migrates a real
       # database.
-      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/kpa_dev
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/sukkal_dev
 
     steps:
       - uses: actions/checkout@v4

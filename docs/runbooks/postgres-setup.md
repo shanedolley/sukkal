@@ -24,6 +24,12 @@ fails. Read the scripts when the two disagree.
 | Role | `kpa`. `LOGIN`, `NOSUPERUSER`, `NOCREATEROLE` |
 | Client credentials | `.env` at the repository root, git-ignored |
 
+**This box is the last thing called KPA.** KPA-153 moved every other machine
+name to Sukkal on 13 September 2026 and could not reach amaterasu, so the two
+databases, the role, `conf.d/kpa.conf`, the `# KPA` marker in `pg_hba.conf` and
+`/etc/sudoers.d/kpa` all keep the old name. KPA-154 moves them, and everything
+in this runbook with them.
+
 ## Before you run it
 
 Three things must already be true. The wizard's stage 1 checks the first and

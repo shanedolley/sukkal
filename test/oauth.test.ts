@@ -31,7 +31,7 @@ import {
   whoami,
   type Fetcher,
 } from '../src/connections/oauth.ts';
-import { connect } from '../src/db/connect.ts';
+import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
@@ -72,8 +72,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
     // The suite must not depend on what the developer happens to have set.
@@ -169,19 +168,19 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
       assert.throws(() => grantFor('friendface'), /friendface/);
     });
 
-    test('the redirect is built from KPA_URL and one path', () => {
+    test('the redirect is built from SUKKAL_URL and one path', () => {
       // A provider compares this to its console character for character, so
       // the two routes read it from here rather than each building a string.
-      const held = process.env['KPA_URL'];
-      process.env['KPA_URL'] = 'https://kpa.example/';
+      const held = process.env['SUKKAL_URL'];
+      process.env['SUKKAL_URL'] = 'https://kpa.example/';
       assert.equal(redirectUri(), `https://kpa.example${CALLBACK_PATH}`);
       assert.equal(installationUrl(), 'https://kpa.example', 'a trailing slash survived');
 
-      delete process.env['KPA_URL'];
+      delete process.env['SUKKAL_URL'];
       assert.equal(redirectUri(), `http://localhost:3000${CALLBACK_PATH}`);
 
-      if (held === undefined) delete process.env['KPA_URL'];
-      else process.env['KPA_URL'] = held;
+      if (held === undefined) delete process.env['SUKKAL_URL'];
+      else process.env['SUKKAL_URL'] = held;
     });
 
     test('the callback path is what the route file answers at', () => {

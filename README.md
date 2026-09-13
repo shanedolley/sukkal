@@ -31,8 +31,8 @@ open.
 You need Node 22.18 or newer, and an account on the PostgreSQL server.
 
 1. `npm install` at the root. `apps/web` is a workspace, so this installs it too
-2. `mkdir -p ~/.config/kpa && cp .env.example ~/.config/kpa/env && chmod 600 ~/.config/kpa/env`
-3. Fill in both connection strings in `~/.config/kpa/env`.
+2. `mkdir -p ~/.config/sukkal && cp .env.example ~/.config/sukkal/env && chmod 600 ~/.config/sukkal/env`
+3. Fill in both connection strings in `~/.config/sukkal/env`.
 4. `npm run migrate`
 5. `npm test`
 

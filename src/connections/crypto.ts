@@ -28,7 +28,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 /** The variable holding the key, base64, 32 bytes decoded. */
-export const KEY_VARIABLE = 'KPA_SECRET_KEY';
+export const KEY_VARIABLE = 'SUKKAL_SECRET_KEY';
 
 /**
  * What a sealed secret is made of, in the order it is written.
@@ -53,7 +53,7 @@ export const HEADER_BYTES = 1 + NONCE_BYTES + TAG_BYTES;
 /**
  * The key, read on every call.
  *
- * It comes from the environment, so it is in `~/.config/kpa/env` on the Mac
+ * It comes from the environment, so it is in `~/.config/sukkal/env` on the Mac
  * and in the unit's `EnvironmentFile` on amaterasu, which is where every other
  * secret already lives. `docs/runbooks/secrets.md` says why that file and not
  * this repository. It never comes from a column: the database holds the
@@ -72,7 +72,7 @@ export function key(): Buffer {
   if (!value) {
     throw new Error(
       `${KEY_VARIABLE} is unset, so no connection secret can be sealed or read. ` +
-        'See docs/runbooks/secrets.md: real values live in ~/.config/kpa/env. ' +
+        'See docs/runbooks/secrets.md: real values live in ~/.config/sukkal/env. ' +
         "Make one with `openssl rand -base64 32`.",
     );
   }

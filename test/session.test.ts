@@ -19,7 +19,7 @@ import {
   sameToken,
   sweepExpired,
 } from '../src/auth/session.ts';
-import { connect } from '../src/db/connect.ts';
+import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
@@ -40,8 +40,7 @@ describe('a session', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must never run against kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
   });

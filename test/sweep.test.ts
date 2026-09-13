@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
-import { connect } from '../src/db/connect.ts';
+import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 import { sweep } from '../src/memory/sweep.ts';
 
@@ -23,8 +23,7 @@ describe('the staleness sweep', { skip: url ? false : 'DATABASE_URL_TEST is unse
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
   });

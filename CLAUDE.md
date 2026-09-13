@@ -110,21 +110,27 @@ Two databases on amaterasu at `192.168.20.110`, both owned by the `kpa` role.
 | Variable | Database | Written by |
 |---|---|---|
 | `DATABASE_URL` | `kpa` | The migration. It holds the facts |
-| `DATABASE_URL_TEST` | `kpa_dev` | Every test and every rehearsal |
+| `DATABASE_URL_TEST` | `sukkal_dev` | Every test and every rehearsal |
 
-**Never point the running application at `kpa_dev`.** The suite ends on
+**Production still answers to `kpa`, and it is the last thing that does.**
+KPA-153 moved every local name to Sukkal on 13 September 2026 and could not
+reach amaterasu, so the database and the role there keep the old name until
+KPA-154 runs. Both names therefore mean production, and `PRODUCTION` in
+`src/db/connect.ts` holds both.
+
+**Never point the running application at `sukkal_dev`.** The suite ends on
 `down()`, which drops every table, so a test run destroys whatever the app put
 there. On 10 September 2026 it destroyed three Google OAuth connections that
 had taken a person three consent screens to create, and the tokens survived at
 Google where nothing could reach them to revoke. Use a third database:
 
 ```
-createdb kpa_local && psql -d kpa_local -qc "CREATE EXTENSION IF NOT EXISTS vector"
-DATABASE_URL="postgresql://$(whoami)@localhost:5432/kpa_local" npm run migrate
-cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/kpa_local" npm run dev
+createdb sukkal_local && psql -d sukkal_local -qc "CREATE EXTENSION IF NOT EXISTS vector"
+DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local" npm run migrate
+cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local" npm run dev
 ```
 
-`kpa_dev` is for tests, which own it and drop it. `kpa_local` is for the
+`sukkal_dev` is for tests, which own it and drop it. `sukkal_local` is for the
 running app, and no test names it.
 
 **`npm run migrate` reads `DATABASE_URL` and ignores `DATABASE_URL_TEST`.**
@@ -134,15 +140,21 @@ safety measure and is none. An agent did exactly that on 3 September 2026 and
 put all 21 migrations into `kpa`. Nothing was lost, because `kpa` was empty and
 the runner refuses a schema holding tables it did not create.
 
-The command now names the database before it acts and refuses `kpa` outright.
-`KPA_ALLOW_PRODUCTION=1 npm run migrate` migrates it deliberately. To reach any
-other database, set `DATABASE_URL` itself.
+The command now names the database before it acts and refuses every name in
+`PRODUCTION`. `SUKKAL_ALLOW_PRODUCTION=1 npm run migrate` migrates it
+deliberately. To reach any other database, set `DATABASE_URL` itself.
 
-**Never point a test at `kpa`.** Separating the two is the whole reason
-`kpa_dev` exists, and `test/migrate.test.ts` asserts the database it connected
-to is not `kpa`.
+**Never point a test at production.** Separating the two is the whole reason
+`sukkal_dev` exists. Every test calls `refuseProduction` from
+`src/db/connect.ts` after it connects, and that function asks the server which
+database it reached rather than reading the connection string, because a string
+can name one database and `PGDATABASE` reach another.
 
-Values live at `~/.config/kpa/env`, mode 0600, outside the repository.
+A refused run reports `# fail 0`, because the throw lands in a `before` hook
+and Node cancels the tests rather than failing them. Read the exit code or
+`# cancelled N` as well as `# fail N`.
+
+Values live at `~/.config/sukkal/env`, mode 0600, outside the repository.
 `docs/runbooks/secrets.md` says why and how to create it.
 
 `src/db/connect.ts` is the only place a connection opens. It reads a named
@@ -156,8 +168,8 @@ everything. The loopback rule above is what makes it work without weakening
 anything.
 
 ```
-createdb kpa_dev && psql -d kpa_dev -qc "CREATE EXTENSION IF NOT EXISTS vector"
-DATABASE_URL_TEST="postgresql://$(whoami)@localhost:5432/kpa_dev" npm test
+createdb sukkal_dev && psql -d sukkal_dev -qc "CREATE EXTENSION IF NOT EXISTS vector"
+DATABASE_URL_TEST="postgresql://$(whoami)@localhost:5432/sukkal_dev" npm test
 ```
 
 ## Layout
@@ -336,7 +348,7 @@ defects. Each agent proves its own work and none can see the interaction, so
 the orchestrator supplies what they cannot.
 
 **Give each agent its own database.** Concurrent `down()` and `up()` cycles on
-one database produce failures that mean nothing. `kpa_dev_a` through `kpa_dev_d`
+one database produce failures that mean nothing. `sukkal_dev_a` through `sukkal_dev_d`
 is the pattern.
 
 **Have each run only its own test file.** `npm test` runs the other agents'

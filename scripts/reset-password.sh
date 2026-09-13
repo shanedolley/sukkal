@@ -26,7 +26,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-env_file="$HOME/.config/kpa/env"
+env_file="$HOME/.config/sukkal/env"
 node_args=(--experimental-strip-types)
 if [ -f "$env_file" ]; then
   node_args+=("--env-file=$env_file")

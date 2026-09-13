@@ -14,7 +14,7 @@ this process. They meet at the database and nowhere else.
 |---|---|
 | Entry point | `src/worker/index.ts` |
 | Command | `npm run worker` |
-| Reads | `DATABASE_URL`, from `~/.config/kpa/env` |
+| Reads | `DATABASE_URL`, from `~/.config/sukkal/env` |
 | Queue | pg-boss, in the `pgboss` schema of the same database |
 | Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, and `nightly.review` at 03:30 Sydney |
 
@@ -180,7 +180,7 @@ Wants=network-online.target
 Type=simple
 User=kpa
 WorkingDirectory=/opt/kpa
-EnvironmentFile=/home/kpa/.config/kpa/env
+EnvironmentFile=/home/kpa/.config/sukkal/env
 ExecStart=/usr/bin/node src/worker/index.ts
 Restart=on-failure
 RestartSec=5

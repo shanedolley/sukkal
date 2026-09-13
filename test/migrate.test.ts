@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
-import { LOOPBACK, connect } from '../src/db/connect.ts';
+import { LOOPBACK, connect, refuseProduction } from '../src/db/connect.ts';
 import { down, readMigrations, up } from '../src/db/migrate.ts';
 
 const FIXTURES = path.join(import.meta.dirname, 'fixtures');
@@ -48,8 +48,7 @@ describe('the runner against Postgres', { skip: url ? false : 'DATABASE_URL_TEST
     await client.connect();
 
     // The migration database holds the real facts. Tests never touch it.
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
   });
 
   after(async () => {

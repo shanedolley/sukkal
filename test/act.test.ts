@@ -17,7 +17,7 @@ import { after, before, describe, test } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import type { ClientBase } from 'pg';
-import { connect } from '../src/db/connect.ts';
+import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 import { act, NOT_YET_KNOWN, type Action, type Permit } from '../src/policy/act.ts';
 
@@ -73,8 +73,7 @@ describe('the one path to an action', { skip: url ? false : 'DATABASE_URL_TEST i
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
   });

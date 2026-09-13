@@ -151,7 +151,7 @@ Shane's Mac                          amaterasu (Ubuntu 24.04)
 ┌────────────────────────────┐       ┌──────────────────────────────┐
 │ Obsidian vault             │       │ PostgreSQL 18 + pgvector     │
 │  17 facts, 32 sources      │       │  kpa       (the migration)   │
-│  scripts/check.py          │       │  kpa_dev   (tests)           │
+│  scripts/check.py          │       │  sukkal_dev   (tests)           │
 │  3 launchd jobs, paused    │  TLS  │                              │
 │                            │──────▶│  role kpa, owns the schema,  │
 │ Sukkal repository (this repo) │  LAN  │  not a superuser             │
@@ -282,7 +282,7 @@ same pair this paragraph does.
 |---|---|---|---|
 | REQ-001 | PostgreSQL 18 with pgvector runs on amaterasu under systemd | P0 | `SELECT extversion FROM pg_extension WHERE extname='vector'` returns a version, and repeats after `systemctl restart postgresql` and after a reboot |
 | REQ-002 | A `kpa` role owns the schema and holds no superuser rights | P0 | `\du` shows the role, and `rolsuper` is false. No other role is created this slice |
-| REQ-003 | Two databases exist on that server, `kpa` and `kpa_dev` | P0 | Tests connect to `kpa_dev` and never to `kpa`. A test run leaves `kpa` row counts unchanged |
+| REQ-003 | Two databases exist on that server, `kpa` and `sukkal_dev` | P0 | Tests connect to `sukkal_dev` and never to `kpa`. A test run leaves `kpa` row counts unchanged |
 | REQ-004 | The server listens on the LAN address only, with `scram-sha-256` and the Mac's address allowed | P0 | `psql` from the Mac connects. `psql` from an address outside the LAN is refused. `listen_addresses` never reads `0.0.0.0` |
 | REQ-005 | The connection is encrypted in transit | P0 | The server holds a certificate, the client connects with `sslmode=require` or stronger, and `SELECT ssl FROM pg_stat_ssl` reports true for the migration's connection. A client offering no TLS is refused |
 | REQ-006 | A TypeScript workspace builds and migrates from a clean clone, with dependencies pinned | P0 | `npm install`, `npm run migrate`, `npm test` all succeed, and `npm run migrate down` returns the database to empty. A lockfile is committed and `engines` names the Node major |
@@ -301,7 +301,7 @@ same pair this paragraph does.
 | REQ-018 | Every model call passes through one inference interface, and no test calls a live model | P0 | The test suite passes with the network unavailable. Gate 1 and gate 2 fixtures use recorded responses. Continuous integration makes no model call and needs no model credential |
 | REQ-019 | Only a source or a human sets `valid_to`. The staleness sweep never does | P0 | A test asserts the sweep leaves `valid_to` untouched on every fact it flags |
 | REQ-020 | The staleness sweep and the four advisory checks report and change nothing | P0 | The four are orphaned facts, links crossing the Collibra and Koinon boundary, the ratio of uncompiled sources, and review pile-up. A stale fact never fails the run, and neither does an advisory. The two ceilings are not advisories and belong to REQ-031 |
-| REQ-021 | Tests reset their own state and never depend on a previous run | P0 | The suite passes twice in a row against `kpa_dev` without a manual reset between runs |
+| REQ-021 | Tests reset their own state and never depend on a previous run | P0 | The suite passes twice in a row against `sukkal_dev` without a manual reset between runs |
 | REQ-022 | Test fixtures carry no Collibra customer material | P0 | Fixtures are synthetic. A review of `test/fixtures/` finds no customer name, no commercial figure, and no content copied from a `collibra/` note |
 | REQ-023 | The three launchd jobs pause for the duration of the slice, and the steps to restore them are recorded | P0 | `com.koinon.daily-memory-review`, `com.koinon.gmail-filter-review` and `com.koinon.weekly-vault-review` are unloaded and disabled, so a reboot does not restart them during an undated slice. A runbook names the command that restores each |
 | REQ-032 | Drift in the vault is detected rather than assumed away | P0 | The freeze records the vault's git `HEAD`. The verification re-reads it and fails when it has moved, naming the commits. This catches every writer REQ-023 does not touch: Obsidian, a hand edit, a git operation, and the `.smart-env` plugin directory. Without it a stray write reads as a migration defect |
@@ -487,7 +487,7 @@ therefore a P0 part of REQ-020 rather than an advisory nicety.
 | The schema is wrong | Every later slice writes into it, so a mistake becomes a migration for everything built afterwards | M | H | Judge the slice on the schema rather than on 17 rows arriving. REQ-008 fails on any unmapped key, and REQ-009 makes every edge endpoint a real foreign key |
 | The verification window closes | The diff against `check.py` is available only while the vault exists | M | H | Shane chose to retire the vault in a later slice, so both systems stay alive through slice one |
 | The vault sits paused for an undated slice | REQ-023 unloads the three jobs, so the vault stops being maintained and the nightly review stops running for as long as the slice takes | M | M | The runbook names the restore command per job, so the pause is reversible in one step. The slice has no date, which is what makes this a real cost rather than a formality |
-| Developing live against amaterasu | Tests share a box with a transcode monitor that takes all twelve threads, and need the LAN | H | M | REQ-003 puts tests in `kpa_dev`, so a test never touches the migration's data. A slow test run is a delay, not a defect |
+| Developing live against amaterasu | Tests share a box with a transcode monitor that takes all twelve threads, and need the LAN | H | M | REQ-003 puts tests in `sukkal_dev`, so a test never touches the migration's data. A slow test run is a delay, not a defect |
 | Silent parse failure | A note that parses subtly wrong enters as a fact and reads as true for months | M | H | REQ-013 fails loudly and reports totals. Silence is the failure mode the reader is designed against |
 | A gate passes on error | An exception or a hedged model answer treated as a pass writes an unverified fact | M | H | REQ-016 defaults to reject. A throw rejects, and anything that is not a clean pass or fail is an error, which also rejects |
 | Live model calls inside the test suite | Gates 1 and 2 call the model, and REQ-028 runs the suite on every push. Unmocked, that is cost, flakiness and the rate limit the brief already names against the Claude subscription | H | M | REQ-018 puts every call behind one interface and backs the tests with recorded responses. The suite passes with the network unavailable |

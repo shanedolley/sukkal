@@ -32,7 +32,7 @@ echo "== 2. the credentials in use =="
 #   empty            matches every commit.
 #   all upper case   is the placeholder shape, the same one check 3 clears.
 #   under 16 chars   is shorter than anything this project issues. The database
-#                    password is 32 characters, KPA_SECRET_KEY is 44, and both
+#                    password is 32 characters, SUKKAL_SECRET_KEY is 44, and both
 #                    come from a generator. A shorter secret is skipped, and the
 #                    answer to that is a longer secret.
 #
@@ -55,7 +55,7 @@ search_history() {
   found=$((found + 1))
 }
 
-env_file="${KPA_ENV_FILE:-$HOME/.config/kpa/env}"
+env_file="${SUKKAL_ENV_FILE:-$HOME/.config/sukkal/env}"
 if [ -r "$env_file" ]; then
   found=0
   all_commits=$(git rev-list --all)
@@ -76,14 +76,14 @@ if [ -r "$env_file" ]; then
     # slash one time in 64.
     # A path names a place on this machine and a url names where this
     # installation answers. Neither is a secret, and both belong in the
-    # repository: KPA_URL is http://localhost:3000 in .env.example and in four
+    # repository: SUKKAL_URL is http://localhost:3000 in .env.example and in four
     # source files, so comparing it fails every run and teaches a reader to
     # ignore this check. KPA-103 added it and this line with it.
     case "$name" in *_PATH|*_DIR) continue ;; esac
     # The two database URLs carry a password and are what this check exists
     # for, so they are named rather than matched by shape. Every other *_URL
     # names where something answers, which is not a secret and does belong in
-    # the repository: KPA_URL is http://localhost:3000 in .env.example and in
+    # the repository: SUKKAL_URL is http://localhost:3000 in .env.example and in
     # four source files, so comparing it fails every run and teaches a reader
     # to ignore this check. KPA-103 added it and this line with it.
     case "$name" in

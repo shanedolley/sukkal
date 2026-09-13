@@ -89,7 +89,7 @@
       "docImpact": [
         {
           "category": "technical-knowledge",
-          "note": "kpa role is LOGIN, NOSUPERUSER, NOCREATEROLE and owns both kpa and kpa_dev. No kpa_ro role, by the PRD's decision: ADR-0003 has Sukkal reading nabium, not the reverse.",
+          "note": "kpa role is LOGIN, NOSUPERUSER, NOCREATEROLE and owns both kpa and sukkal_dev. No kpa_ro role, by the PRD's decision: ADR-0003 has Sukkal reading nabium, not the reverse.",
           "files": [
             "docs/runbooks/postgres-setup.md"
           ]
@@ -454,7 +454,7 @@
       "docImpact": [
         {
           "category": "security",
-          "note": "Real values moved from the repository's .env to ~/.config/kpa/env, mode 0600 in a 0700 directory. The repository holds no .env at all now, so anything in another session that reads one finds nothing.",
+          "note": "Real values moved from the repository's .env to ~/.config/sukkal/env, mode 0600 in a 0700 directory. The repository holds no .env at all now, so anything in another session that reads one finds nothing.",
           "files": [
             "docs/runbooks/secrets.md",
             "README.md",

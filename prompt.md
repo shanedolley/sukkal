@@ -30,8 +30,8 @@ the old code also produced proves nothing.
 **Run the lint, the build and the tests before reporting anything finished**,
 then watch the run with `gh run list --limit 1`.
 
-**Point the running application at `kpa_local`.** The suite drops every table in
-`kpa_dev`, and it has already destroyed a person's work once.
+**Point the running application at `sukkal_local`.** The suite drops every table in
+`sukkal_dev`, and it has already destroyed a person's work once.
 
 **Ask the source rather than a summary.** Open the file, run the statement,
 call the API. A subagent that contradicts you has been right before.
@@ -97,7 +97,7 @@ of a real trade-off. Miss one and skip it. Invoke the
 - **KPA-71** needs somebody at both ends of the nabium push.
 - **KPA-22** needs amaterasu, which is often unreachable from the Mac.
 - **Production `kpa`.** It holds migrations 001 to 024 deliberately, and the
-  command refuses it without `KPA_ALLOW_PRODUCTION=1`.
+  command refuses it without `SUKKAL_ALLOW_PRODUCTION=1`.
 - **A live OAuth grant.** The consent screen is Shane's to press. Build the
   whole path, prove every part that needs no vendor, and hand him the button.
 
@@ -125,7 +125,7 @@ assistant is Sukkal, and Isimud is its face. Both stories shipped on
 3. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
    criteria remain, and `handover.md` says which.
 4. **Raise the deployment story.** Nothing serves the web tier, no tunnel
-   exists, and `KPA_URL` names localhost because there is no other address.
+   exists, and `SUKKAL_URL` names localhost because there is no other address.
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
    ticket anywhere on the board creates it.
 

@@ -153,7 +153,7 @@ export const GRANTS: Record<string, Grant> = {
  * The default suits `next dev` and nothing else. A tunnel sets this.
  */
 export function installationUrl(): string {
-  return (process.env['KPA_URL'] ?? 'http://localhost:3000').replace(/\/+$/, '');
+  return (process.env['SUKKAL_URL'] ?? 'http://localhost:3000').replace(/\/+$/, '');
 }
 
 /**

@@ -213,7 +213,7 @@ console.log(
 // This half skips when `DATABASE_URL_TEST` is unset, which is how CI runs it
 // and how it runs beside a box that is switched off:
 //
-//   DATABASE_URL_TEST=postgresql://you@localhost:5432/kpa_dev_b \
+//   DATABASE_URL_TEST=postgresql://you@localhost:5432/sukkal_dev_b \
 //     node --experimental-strip-types scripts/check-connections.ts
 
 const url = process.env["DATABASE_URL_TEST"];

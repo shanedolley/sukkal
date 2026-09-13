@@ -11,7 +11,7 @@ import {
   secretFor,
   setCredential,
 } from '../src/connections/store.ts';
-import { connect } from '../src/db/connect.ts';
+import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
 // What the connections route may hand a browser, and what it may not.
@@ -101,8 +101,7 @@ describe(
       process.env[KEY_VARIABLE] = randomBytes(32).toString('base64');
       client = connect('DATABASE_URL_TEST');
       await client.connect();
-      const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-      assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+      await refuseProduction(client);
       await down(client, MIGRATIONS);
       await up(client, MIGRATIONS);
     });

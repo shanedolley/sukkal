@@ -16,7 +16,7 @@
 // pattern `test/read-vault.test.ts` uses for the vault: build a reason, and
 // skip on it, so a suite green here is green there for the same reasons.
 //
-//   DATABASE_URL_TEST=postgresql://you@localhost:5432/kpa_dev_a \
+//   DATABASE_URL_TEST=postgresql://you@localhost:5432/sukkal_dev_a \
 //     node --experimental-strip-types scripts/check-review-rules.ts
 
 import assert from "node:assert/strict";
@@ -230,7 +230,7 @@ try {
   assert.notEqual(
     where.rows[0]?.name,
     "kpa",
-    "this check writes facts. It must run against kpa_dev, never kpa",
+    "this check writes facts. It must run against sukkal_dev, never kpa",
   );
 
   // ── Accept sets the verified date, and an agent can never be the verifier ──

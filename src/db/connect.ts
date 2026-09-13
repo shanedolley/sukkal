@@ -3,7 +3,7 @@
  *
  * Configuration comes from the environment. No host, user, password or
  * connection string appears in this repository. `.env.example` names the
- * variables and holds no value; the real ones live in `~/.config/kpa/env`.
+ * variables and holds no value; the real ones live in `~/.config/sukkal/env`.
  * See `docs/runbooks/secrets.md`.
  */
 import pg from 'pg';
@@ -72,7 +72,7 @@ export function connectionString(variable = 'DATABASE_URL'): string {
   if (!value) {
     throw new Error(
       `${variable} is unset. See docs/runbooks/secrets.md: real values live in ` +
-        '~/.config/kpa/env.',
+        '~/.config/sukkal/env.',
     );
   }
 
@@ -98,4 +98,44 @@ export function connectionString(variable = 'DATABASE_URL'): string {
  *  connects and ends it. */
 export function connect(variable = 'DATABASE_URL'): pg.Client {
   return new pg.Client({ connectionString: connectionString(variable) });
+}
+
+/**
+ * Every name production has answered to.
+ *
+ * Two, until KPA-154 renames the database on amaterasu. `sukkal` is the name
+ * it takes and `kpa` is the name it still has, so both mean the facts and both
+ * are refused. A guard that named only one would protect nothing for exactly
+ * as long as nobody noticed.
+ *
+ * KPA-154 drops `kpa` from this array, and that is the whole of its change
+ * here. The alternative was 40 files each holding the name itself, which is
+ * what this replaced.
+ */
+export const PRODUCTION: readonly string[] = ['kpa', 'sukkal'];
+
+/**
+ * Throws when `client` is connected to production.
+ *
+ * Every test calls this. `sukkal_dev` was separated from production precisely so
+ * a suite could drop every table, and a suite that drops them in the wrong
+ * database destroys the facts. On 10 September 2026 a run against the
+ * application's own database destroyed three Google OAuth connections that had
+ * taken three consent screens to create.
+ *
+ * It asks the server rather than reading the connection string, because a
+ * string can name one database and reach another through a service file or a
+ * `PGDATABASE` in the environment.
+ */
+export async function refuseProduction(client: pg.ClientBase): Promise<void> {
+  const seen = await client.query<{ name: string }>(
+    'SELECT current_database() AS name',
+  );
+  const name = seen.rows[0]?.name ?? '';
+  if (PRODUCTION.includes(name)) {
+    throw new Error(
+      `refusing to run against "${name}": it holds the facts. ` +
+        `Point DATABASE_URL_TEST at sukkal_dev.`,
+    );
+  }
 }

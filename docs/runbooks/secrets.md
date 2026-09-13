@@ -20,10 +20,10 @@ is for, where it comes from, and what breaks without it.
 | `DATABASE_URL` | `src/db/connect.ts`, its default | The migration and the worker throw at the first connection |
 | `DATABASE_URL_TEST` | The suite, and `apps/web/scripts/check-review-rules.ts` | Every test that needs a database skips |
 | `NABIUM_WEBHOOK_SECRET` | `apps/web/app/(app)/api/webhooks/nabium/route.ts` | The receiver answers 503 and stores no delivery |
-| `KPA_SECRET_KEY` | `src/connections/crypto.ts` | No connection secret seals or opens |
+| `SUKKAL_SECRET_KEY` | `src/connections/crypto.ts` | No connection secret seals or opens |
 | `GOOGLE_OAUTH_CLIENT_ID` | `src/connections/oauth.ts` | The Google grant cannot start |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | `src/connections/oauth.ts` | The callback cannot exchange a code |
-| `KPA_URL` | `src/connections/oauth.ts` | The grant redirects to `http://localhost:3000` |
+| `SUKKAL_URL` | `src/connections/oauth.ts` | The grant redirects to `http://localhost:3000` |
 | `VAULT_PATH` | `src/vault-mapping.ts` | Nothing. The reader falls back to a path under `$HOME` |
 
 `REUI_LICENSE_KEY` belongs to the web tier and sits in `apps/web/.env.example`.
@@ -36,7 +36,7 @@ Both need `sslmode=require`. amaterasu refuses a client offering no TLS, and
 passes in the clear, because that traffic reaches no network.
 
 The `kpa` role's password was set by `scripts/provision-amaterasu.sh` and is
-recorded in `~/.config/kpa/env` only. To change it, run `ALTER ROLE kpa
+recorded in `~/.config/sukkal/env` only. To change it, run `ALTER ROLE kpa
 PASSWORD ...` on amaterasu and edit that file to match.
 
 Unset, the failure names itself and names this file. Checked on 3 September
@@ -46,13 +46,13 @@ Unset, the failure names itself and names this file. Checked on 3 September
 $ env -u DATABASE_URL node --input-type=module -e "
 import { connectionString } from './src/db/connect.ts';
 try { connectionString(); } catch (e) { console.log(e.message); }"
-DATABASE_URL is unset. See docs/runbooks/secrets.md: real values live in ~/.config/kpa/env.
+DATABASE_URL is unset. See docs/runbooks/secrets.md: real values live in ~/.config/sukkal/env.
 ```
 
 **Never point a test at `kpa`.** `DATABASE_URL_TEST` exists to keep the two
 apart, and `test/migrate.test.ts` asserts the database it reached is not `kpa`.
 
-### `KPA_SECRET_KEY`
+### `SUKKAL_SECRET_KEY`
 
 It seals a connection's credential. A credential reaches an outside system on
 Shane's behalf, and two of the three mailboxes it reaches hold Collibra
@@ -68,15 +68,15 @@ Checked on 3 September 2026. The length check reads the real key and prints no
 value:
 
 ```
-$ node --env-file-if-exists=$HOME/.config/kpa/env -e "console.log(Buffer.from(process.env.KPA_SECRET_KEY ?? '', 'base64').length)"
+$ node --env-file-if-exists=$HOME/.config/sukkal/env -e "console.log(Buffer.from(process.env.SUKKAL_SECRET_KEY ?? '', 'base64').length)"
 32
 ```
 
 ```
-$ env -u KPA_SECRET_KEY node --input-type=module -e "
+$ env -u SUKKAL_SECRET_KEY node --input-type=module -e "
 import { encrypt } from './src/connections/crypto.ts';
 try { encrypt('x','c'); } catch (e) { console.log(e.message); }"
-KPA_SECRET_KEY is unset, so no connection secret can be sealed or read. See docs/runbooks/secrets.md: real values live in ~/.config/kpa/env. Make one with `openssl rand -base64 32`.
+SUKKAL_SECRET_KEY is unset, so no connection secret can be sealed or read. See docs/runbooks/secrets.md: real values live in ~/.config/sukkal/env. Make one with `openssl rand -base64 32`.
 ```
 
 **Rotating this key costs every stored credential.** Nothing re-seals a row.
@@ -94,7 +94,7 @@ verdict a vendor gave. An environment variable carries a string and no date,
 and the brief requires both of every credential.
 
 So Voyage, OpenRouter, Claude and Linear are added on the connections screen
-and appear nowhere in `~/.config/kpa/env`. `KPA_SECRET_KEY` is what protects
+and appear nowhere in `~/.config/sukkal/env`. `SUKKAL_SECRET_KEY` is what protects
 them all, which is why rotating it costs every one.
 
 **Voyage is metered, and verifying it costs a little.** It publishes no
@@ -114,7 +114,7 @@ A vendor key belongs to one account and expires on a date, which is the shape
 `connection_credentials` holds. An OAuth client identifies the application to
 Google. One client serves all three Google accounts, so it fits no single row,
 and the callback route needs it to exchange an authorization code before any
-connection row exists. `KPA_SECRET_KEY` sets the same precedent: what the
+connection row exists. `SUKKAL_SECRET_KEY` sets the same precedent: what the
 application needs before it can open a sealed secret cannot itself be one.
 
 What the grant returns is a vendor credential and follows the rule above. The
@@ -133,11 +133,11 @@ The client came from Google Cloud project `personal-assistant-506014`, which
 one, so revoking one client revokes both. The redirect URIs are registered in
 that project's console.
 
-### `KPA_URL` is not a secret, and it still has to be right
+### `SUKKAL_URL` is not a secret, and it still has to be right
 
 It names where this installation answers, and it is the one value the grant
 cannot guess. `redirectUri` in `src/connections/oauth.ts` builds
-`$KPA_URL/oauth2/callback`, and the provider compares that string to
+`$SUKKAL_URL/oauth2/callback`, and the provider compares that string to
 the ones its console holds, character for character.
 
 **Configure it rather than read it off the request.** A value taken from
@@ -172,7 +172,7 @@ apps/web/.gitignore:34:.env*	apps/web/.env.local
 ### The web tier reads its own environment
 
 `next dev` and `next start` pass no `--env-file`, and nothing under `apps/web`
-calls `dotenv`. So `~/.config/kpa/env` reaches the root package's commands and
+calls `dotenv`. So `~/.config/sukkal/env` reaches the root package's commands and
 does not reach the web tier.
 
 `NABIUM_WEBHOOK_SECRET` is the one variable a route handler reads, so it has to
@@ -186,7 +186,7 @@ The Mac's file holds no such entry today, and this reports the count rather
 than the value:
 
 ```
-$ grep -c '^NABIUM_WEBHOOK_SECRET=' ~/.config/kpa/env
+$ grep -c '^NABIUM_WEBHOOK_SECRET=' ~/.config/sukkal/env
 0
 ```
 
@@ -284,19 +284,19 @@ Read the status. `statusFor` maps them, and this table came from running it on
 
 ## On the Mac
 
-Real values live at `~/.config/kpa/env`, outside the repository. Checked on
+Real values live at `~/.config/sukkal/env`, outside the repository. Checked on
 3 September 2026:
 
 ```
-$ stat -f '%Sp %Su %N' ~/.config/kpa ~/.config/kpa/env
-drwx------ shanedolley /Users/shanedolley/.config/kpa
--rw------- shanedolley /Users/shanedolley/.config/kpa/env
+$ stat -f '%Sp %Su %N' ~/.config/sukkal ~/.config/sukkal/env
+drwx------ shanedolley /Users/shanedolley/.config/sukkal
+-rw------- shanedolley /Users/shanedolley/.config/sukkal/env
 ```
 
 ```
-$ stat -f '%OLp %N' ~/.config/kpa ~/.config/kpa/env
-700 /Users/shanedolley/.config/kpa
-600 /Users/shanedolley/.config/kpa/env
+$ stat -f '%OLp %N' ~/.config/sukkal ~/.config/sukkal/env
+700 /Users/shanedolley/.config/sukkal
+600 /Users/shanedolley/.config/sukkal/env
 ```
 
 The owner reads the file and nobody else does. The directory is `0700`, so no
@@ -305,10 +305,10 @@ other user lists it.
 ### Creating it
 
 ```
-mkdir -p ~/.config/kpa
-cp .env.example ~/.config/kpa/env
-chmod 700 ~/.config/kpa
-chmod 600 ~/.config/kpa/env
+mkdir -p ~/.config/sukkal
+cp .env.example ~/.config/sukkal/env
+chmod 700 ~/.config/sukkal
+chmod 600 ~/.config/sukkal/env
 ```
 
 Then fill in the values. `.env.example` names every variable the root package
@@ -316,7 +316,7 @@ reads and holds no value.
 
 ### How the code reads it
 
-`package.json` passes `--env-file-if-exists=$HOME/.config/kpa/env` to Node.
+`package.json` passes `--env-file-if-exists=$HOME/.config/sukkal/env` to Node.
 Nothing calls `dotenv`, and no code names a path of its own. The web tier is
 the exception, covered above.
 
@@ -403,15 +403,15 @@ Anyone reading a clean gitleaks run as proof that no connection string was
 committed is reading it wrong. That is why the next two checks exist, and check
 3 catches exactly this case.
 
-**2. The credentials in use.** Reads every value in `~/.config/kpa/env` and
+**2. The credentials in use.** Reads every value in `~/.config/sukkal/env` and
 greps the whole history for each one. No false positives, and it answers the
 question that matters: is a key that works today in the history? It prints no
 value either way. It names the variable that matched and the commits holding
-it, because a commit hash is not a secret and a scrub needs one. `KPA_ENV_FILE`
+it, because a commit hash is not a secret and a scrub needs one. `SUKKAL_ENV_FILE`
 points the check at another file, which is how its own failure path is tested.
 
 A connection string is searched whole, and its password is searched alone. The
-check read only that password until KPA-137, so a leaked `KPA_SECRET_KEY`
+check read only that password until KPA-137, so a leaked `SUKKAL_SECRET_KEY`
 passed all three checks.
 
 **Four kinds of value are skipped**, and each rule drops a value that would
@@ -420,7 +420,7 @@ location on disk, and `VAULT_PATH` holds a path the repository names
 throughout. An empty value matches every commit. An all upper case value is a
 placeholder, the shape check 3 already clears. A value under 16 characters is
 shorter than anything this project issues: the database password is 32
-characters and `KPA_SECRET_KEY` is 44. Issue a longer secret rather than lower
+characters and `SUKKAL_SECRET_KEY` is 44. Issue a longer secret rather than lower
 that number.
 
 **3. Connection strings carrying a password.** A pattern grep over every commit.
@@ -445,7 +445,7 @@ Rotate first, scrub second. A key in a pushed history is compromised from the
 moment it is pushed, and rewriting history does not un-push it.
 
 1. Change the credential at its source. The table below says where.
-2. Update `~/.config/kpa/env`, and the web tier's own file when the key is the
+2. Update `~/.config/sukkal/env`, and the web tier's own file when the key is the
    nabium secret.
 3. Rewrite the history with `git filter-repo`, then force push.
 4. Run `./scripts/scan-history.sh` and confirm it passes.
@@ -457,5 +457,5 @@ finding a key and assuming it still works.
 |---|---|---|
 | A database password | `ALTER ROLE kpa PASSWORD ...` on amaterasu | A restart |
 | `NABIUM_WEBHOOK_SECRET` | Both sides, by *Rotating one* above | A restart |
-| `KPA_SECRET_KEY` | A new `openssl rand -base64 32` | Every stored credential, retyped |
+| `SUKKAL_SECRET_KEY` | A new `openssl rand -base64 32` | Every stored credential, retyped |
 | `REUI_LICENSE_KEY` | Reissue at `reui.io` | A premium block install |

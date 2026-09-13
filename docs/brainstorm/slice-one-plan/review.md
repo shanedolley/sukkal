@@ -125,7 +125,7 @@ for as long as the slice takes.
 | # | Finding | Lens | Disposition |
 |---|---|---|---|
 | I10 | No test-data strategy, and fixtures might copy Collibra material into the repository | qa-analyst | Fixed. REQ-022 requires synthetic fixtures and a review that finds no customer content |
-| I11 | No isolation strategy for the shared `kpa_dev` database | qa-analyst | Fixed. REQ-021 requires the suite to pass twice in a row with no manual reset |
+| I11 | No isolation strategy for the shared `sukkal_dev` database | qa-analyst | Fixed. REQ-021 requires the suite to pass twice in a row with no manual reset |
 | I12 | The four advisory checks were never named | qa-analyst | Fixed. REQ-020 names all four |
 | I13 | The 120-note and 200-character ceilings were absent, and an empty diff at 17 facts proves nothing about them | qa-analyst | Fixed. REQ-020 ports both, and section 6 records that a fixture proves the rule because real data never fires it |
 | I14 | No inventory separating manual verification from automated | qa-analyst | Fixed. Section 7 lists the four criteria that cannot run in the suite |

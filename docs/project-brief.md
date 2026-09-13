@@ -60,10 +60,14 @@ wizard asks what to call the assistant and stores the answer in
 `users.assistant_name`. The product is the office, and the box holds one who
 fills it.
 
-The letters KPA stay on the machine. The Jira project key, the three databases,
-the eight `KPA_` variables, the two package names, the repository and
-`~/.config/kpa/env` each cost more to move than the rename is worth, the way a
-person has a name and a payroll number.
+The machine followed, in KPA-153. The databases, the eight environment
+variables, the config folder, the two package names and the repository each
+read `sukkal` now. Production on amaterasu is the one that lags, and KPA-154
+moves it when the box answers.
+
+The Jira project key stays `KPA`, because 644 references cite it and every one
+of them is a link. So does the Jira project's own label, `KPA · Personal
+Assistant`, which is keyed to it.
 
 ## The problem
 
@@ -521,7 +525,7 @@ flowchart TB
 
   subgraph ama["amaterasu · Ubuntu 24.04 · systemd"]
     cfd["cloudflared"]
-    web["kpa-web<br/>Next.js :3000"]
+    web["sukkal-web<br/>Next.js :3000"]
     worker["kpa-worker<br/>ingest · agents · schedules<br/>pg-boss"]
     pg[("Sukkal Postgres + pgvector<br/>sources · facts · edges · audit · issue cache")]
     cfd --> web
@@ -783,7 +787,7 @@ because it is not.
 sequenceDiagram
   autonumber
   participant U as Shane
-  participant Web as kpa-web
+  participant Web as sukkal-web
   participant V as Voyage
   participant P as Sukkal PG
   participant L as Claude

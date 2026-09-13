@@ -44,13 +44,13 @@ export function db(): Pool {
     // Small on purpose. amaterasu has about 5 GB left after the services
     // already on it, and every Postgres connection is a process.
     max: 5,
-    application_name: "kpa-web",
+    application_name: "sukkal-web",
   });
 
   // An idle client that loses its connection emits here. Without a listener
   // node treats it as an unhandled error event and takes the process down,
   // which turns a dropped connection into an outage.
-  pool.on("error", (error) => console.error("kpa-web pool:", error));
+  pool.on("error", (error) => console.error("sukkal-web pool:", error));
 
   held.kpaPool = pool;
   return pool;

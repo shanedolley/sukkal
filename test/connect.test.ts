@@ -44,7 +44,7 @@ describe('connect', () => {
     // amaterasu's Postgres also listens on 127.0.0.1, and CI uses a service
     // container. Neither connection reaches a network, so neither needs TLS.
     for (const host of ['localhost', '127.0.0.1']) {
-      withEnv(VARIABLE, `postgresql://someone:PLACEHOLDER@${host}:5432/kpa_dev`, () => {
+      withEnv(VARIABLE, `postgresql://someone:PLACEHOLDER@${host}:5432/sukkal_dev`, () => {
         assert.doesNotThrow(() => connect(VARIABLE), `host ${host}`);
       });
     }

@@ -10,7 +10,7 @@ set -euo pipefail
 
 PGVER=@@PGVER@@
 SRCNET=@@SRCNET@@
-KPA_PASSWORD=@@PASSWORD@@
+SUKKAL_PASSWORD=@@PASSWORD@@
 
 CONF=/etc/postgresql/$PGVER/main
 LAN_IP=$(hostname -I | awk '{print $1}')
@@ -131,7 +131,7 @@ DO \$\$ BEGIN
     CREATE ROLE kpa LOGIN;
   END IF;
 END \$\$;
-ALTER ROLE kpa WITH PASSWORD '$KPA_PASSWORD' NOSUPERUSER NOCREATEROLE;
+ALTER ROLE kpa WITH PASSWORD '$SUKKAL_PASSWORD' NOSUPERUSER NOCREATEROLE;
 SELECT 'kpa' AS role, rolsuper FROM pg_roles WHERE rolname = 'kpa';
 SQLEOF
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
-import { connect } from '../src/db/connect.ts';
+import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, readMigrations, up } from '../src/db/migrate.ts';
 import { type FactRow, factState } from '../src/memory/state.ts';
 
@@ -83,8 +83,7 @@ describe('the fact_state migration', { skip: url ? false : 'DATABASE_URL_TEST is
   before(async () => {
     client = connect('DATABASE_URL_TEST');
     await client.connect();
-    const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-    assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+    await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
   });

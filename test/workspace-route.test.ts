@@ -5,7 +5,7 @@ import pg, { type ClientBase } from 'pg';
 import { routeWorkspace } from '../apps/web/lib/route-workspace.ts';
 import { readWorkspaceFields } from '../apps/web/lib/tree.ts';
 import { WORKSPACES, workspaceNamed } from '../apps/web/lib/workspaces.ts';
-import { connect, connectionString } from '../src/db/connect.ts';
+import { connect, connectionString, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
 // Which workspace a `/projects/[key]` route edits the custom fields of.
@@ -108,8 +108,7 @@ describe(
     before(async () => {
       client = connect('DATABASE_URL_TEST');
       await client.connect();
-      const current = await client.query<{ name: string }>('SELECT current_database() AS name');
-      assert.notEqual(current.rows[0]?.name, 'kpa', 'tests must run against kpa_dev, never kpa');
+      await refuseProduction(client);
       await down(client, MIGRATIONS);
       await up(client, MIGRATIONS);
       pool = new pg.Pool({ connectionString: connectionString('DATABASE_URL_TEST') });

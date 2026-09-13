@@ -20,7 +20,7 @@ no restore over `kpa`.
 | `pg_dump -Fc` runs against `kpa` | `sudo -u postgres pg_dump -Fc -d kpa \| wc -c` | 1292 bytes. Piped to `wc`, so nothing was written to disk |
 | `pg_dumpall -r` emits the `kpa` role | `sudo -u postgres pg_dumpall -r \| grep "^CREATE ROLE"` | `CREATE ROLE kpa;` and `CREATE ROLE postgres;`. The password hash was not printed |
 | `pg_restore -l` inspects an archive without touching a database | `pg_dump -Fc -d kpa \| pg_restore -l` | `Format: CUSTOM`, `TOC Entries: 6`, `dbname: kpa` |
-| The row-count comparison query runs | `psql -tAX -d $db -c 'SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY relname'` | Zero rows for `kpa` and for `kpa_dev`. Both hold no user tables yet |
+| The row-count comparison query runs | `psql -tAX -d $db -c 'SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY relname'` | Zero rows for `kpa` and for `sukkal_dev`. Both hold no user tables yet |
 | `~postgres` is `/var/lib/postgresql` | `sudo -u postgres bash -c 'echo $HOME'` | `/var/lib/postgresql`, so the `scp` path in the runbook is right |
 | The freshness check reports no backup today | `sudo -u postgres ls -lt /var/lib/postgresql/backups/` | `No such file or directory`. The runbook says to expect this, and why |
 | `kpa`'s `public` schema is empty | `SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace` | `0`. This is why the drill's comparison was vacuous |
@@ -42,10 +42,10 @@ no restore over `kpa`.
 | The connection is encrypted | `SELECT ssl, version, cipher FROM pg_stat_ssl WHERE pid=pg_backend_pid()` | `true`, `TLSv1.3`, `TLS_AES_256_GCM_SHA384` |
 | `kpa` is not a superuser | `SELECT rolsuper, rolcreaterole, rolcanlogin FROM pg_roles WHERE rolname='kpa'` | `false`, `false`, `true` |
 | No read-only role exists | Same query for `kpa_ro` | No row returned |
-| Both databases exist and are owned by `kpa` | `SELECT datname, pg_get_userbyid(datdba) FROM pg_database WHERE datname LIKE 'kpa%'` | `kpa` and `kpa_dev`, both owned by `kpa` |
+| Both databases exist and are owned by `kpa` | `SELECT datname, pg_get_userbyid(datdba) FROM pg_database WHERE datname LIKE 'kpa%'` | `kpa` and `sukkal_dev`, both owned by `kpa` |
 | Both carry pgvector | `SELECT extversion FROM pg_extension WHERE extname='vector'` in each | `0.8.6` in both |
 | The server never listens on `0.0.0.0` | `ss -ltnp \| grep 5432` | `127.0.0.1:5432` and `192.168.20.110:5432` only |
-| `pg_hba` holds two `hostssl` lines | `grep -A3 '^# KPA' /etc/postgresql/18/main/pg_hba.conf` | `hostssl kpa` and `hostssl kpa_dev`, both `192.168.20.0/24 scram-sha-256` |
+| `pg_hba` holds two `hostssl` lines | `grep -A3 '^# KPA' /etc/postgresql/18/main/pg_hba.conf` | `hostssl kpa` and `hostssl sukkal_dev`, both `192.168.20.0/24 scram-sha-256` |
 | An unencrypted client is refused | `psql "...?sslmode=disable"` | `FATAL: no pg_hba.conf entry for host "192.168.20.107", user "kpa", database "kpa", no encryption` |
 | The Mac is on Wi-Fi inside that `/24` | `ssh amaterasu 'echo $SSH_CLIENT'` | `192.168.20.107`, which the `/24` covers. This is the evidence for the correction |
 | The post-reboot check runs | `systemctl is-active postgresql@18-main`, then the `extversion` query | `active`, then `0.8.6` |
@@ -121,7 +121,7 @@ and `npm run migrate` read `.env`.
 |---|---|
 | `npm run lint` | `oxlint` finds no fault in `src` or `test`. A warning fails the run |
 | `npm run build` | `tsc --noEmit` type-checks under `strict`. It emits nothing |
-| `npm test` | `node --test` runs the suite against `DATABASE_URL_TEST`, which is `kpa_dev` |
+| `npm test` | `node --test` runs the suite against `DATABASE_URL_TEST`, which is `sukkal_dev` |
 | `npm run migrate` | Applies pending migrations to `DATABASE_URL`, which is `kpa` |
 
 ## KPA-3: scaffold the repository and migration tooling
@@ -143,7 +143,7 @@ Commit 6862fb8.
 ### The CLI rehearsal
 
 The suite exercises the exported functions. This exercises the command a person
-types. It ran against `kpa_dev`, never `kpa`, with a scratch migration file that
+types. It ran against `sukkal_dev`, never `kpa`, with a scratch migration file that
 was removed afterwards.
 
 ```
@@ -195,7 +195,7 @@ The two remaining criteria are below.
 
 ```
 $ node --env-file-if-exists=.env -e "<connect('DATABASE_URL_TEST'), then pg_stat_ssl>"
-{ db: 'kpa_dev', ssl: true, version: 'TLSv1.3', cipher: 'TLS_AES_256_GCM_SHA384' }
+{ db: 'sukkal_dev', ssl: true, version: 'TLSv1.3', cipher: 'TLS_AES_256_GCM_SHA384' }
 ```
 
 ### One thing found while proving it
@@ -223,7 +223,7 @@ carries it.
 | Acceptance criterion | Command | Result |
 |---|---|---|
 | `.env.example` names every variable and carries no value | `cat .env.example` | Two variables, both empty. The format sits in a comment |
-| Real values live outside the repository, readable by the owner only | `stat -f '%Sp %Su' ~/.config/kpa/env` | `-rw------- shanedolley`. The directory is `drwx------` |
+| Real values live outside the repository, readable by the owner only | `stat -f '%Sp %Su' ~/.config/sukkal/env` | `-rw------- shanedolley`. The directory is `drwx------` |
 | A runbook records the `EnvironmentFile=` pattern, mode 0600, root owned | `docs/runbooks/secrets.md` | Written. That section is marked untested, because no unit exists yet |
 | A scan of the whole history finds no key | `./scripts/scan-history.sh` | `PASS: three checks, no finding`, exit 0 |
 | `.gitignore` covers `.env` and every variant | `git check-ignore` on four names | `.env`, `.env.local` and `.env.production` ignored. `.env.example` tracked, which is correct |
@@ -231,9 +231,9 @@ carries it.
 
 ### The move
 
-`~/.config/kpa/env` was created from the repository's `.env`, `cmp` proved the
+`~/.config/sukkal/env` was created from the repository's `.env`, `cmp` proved the
 two byte for byte identical, and the repository copy then went, by absolute
-path. `package.json` passes `--env-file-if-exists=$HOME/.config/kpa/env` to
+path. `package.json` passes `--env-file-if-exists=$HOME/.config/sukkal/env` to
 Node, and 14 tests pass in a fresh shell with nothing exported, which is what
 proves the new location is the one being read.
 
@@ -243,7 +243,7 @@ A scan that only ever passes proves nothing, so each check was made to fail.
 
 | Check | Made to fail by | Result |
 |---|---|---|
-| 2, the credentials in use | `KPA_ENV_FILE` pointing at a file whose password is `secret`, which commit `cecd24f` contains | `FAIL: a password ... appears in the history`, exit 1 |
+| 2, the credentials in use | `SUKKAL_ENV_FILE` pointing at a file whose password is `secret`, which commit `cecd24f` contains | `FAIL: a password ... appears in the history`, exit 1 |
 | 3, connection strings | Running it before the `reviewed` list existed | Named `cecd24f:test/connect.test.ts:25` and exited 1 |
 
 ### gitleaks alone is not enough, and that was proved the hard way
@@ -266,7 +266,7 @@ as proof that no connection string was committed.
 ### One thing this changes for other sessions
 
 **The repository no longer holds a `.env`.** Anything reading one finds nothing.
-The values are at `~/.config/kpa/env`, and `docs/runbooks/secrets.md` says so.
+The values are at `~/.config/sukkal/env`, and `docs/runbooks/secrets.md` says so.
 
 ## KPA-17: run the checks on every push, and record the conventions
 
@@ -363,7 +363,7 @@ of its own.
 | `owner_id` on `sources`, `facts` and `tasks`, defaulted to one row | `npm test` | `seeds exactly one user` asserts those three tables and no others, each defaulting to `1` |
 | `edges` are typed and directional | Read the migration | `from_id`, `to_id`, `kind`, unique together, and no self-edge |
 | pgvector columns with an HNSW index on each | `npm test` | Both declare `vector(1024)`, and both carry an HNSW index |
-| The migration applies to an empty database and rolls back cleanly | The CLI, against `kpa_dev` | Applied, then reversed. Zero relations, zero enum types, zero functions afterwards |
+| The migration applies to an empty database and rolls back cleanly | The CLI, against `sukkal_dev` | Applied, then reversed. Zero relations, zero enum types, zero functions afterwards |
 | `docs/schema.md` explains every table in a sentence | Read it | Ten rows, one sentence each, plus the enums and three decisions |
 
 ### The registry, proved rather than asserted
@@ -430,7 +430,7 @@ name and not the schema.
 
 ### What was deliberately not done
 
-**The migration has not been applied to `kpa`.** It ran against `kpa_dev` only,
+**The migration has not been applied to `kpa`.** It ran against `sukkal_dev` only,
 per the instruction covering this session, and `kpa` still holds zero relations.
 The story asks for the migration to apply and roll back, and it does. Whoever
 runs KPA-5 applies it to `kpa` for the first time.

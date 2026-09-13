@@ -340,7 +340,7 @@ and adding one provider twice is the normal case.
 
 **The key is never in a column.** `src/connections/crypto.ts` seals the secret
 with AES-256-GCM before it reaches the database, under a 32-byte key read from
-`KPA_SECRET_KEY`. ADR-0020 set the precedent for taking the algorithm from
+`SUKKAL_SECRET_KEY`. ADR-0020 set the precedent for taking the algorithm from
 node's own `crypto`: this repository has two dependencies, neither compiles,
 and a credential store is a poor reason to add a third. pgcrypto was the
 alternative, and it puts the key in the statement, which lands it in

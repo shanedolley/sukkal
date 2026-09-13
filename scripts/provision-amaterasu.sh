@@ -185,7 +185,7 @@ finish() {
 
 TOTAL_STAGES=6
 
-HOST="${KPA_HOST:-amaterasu}"
+HOST="${SUKKAL_HOST:-amaterasu}"
 PGVER=18
 REMOTE_SCRIPT=/tmp/kpa-provision-root.sh
 
@@ -253,15 +253,15 @@ say "It is written to .env here and set on the server. It is never printed."
 # head closes the pipe once it has 32 bytes, so tr takes SIGPIPE and exits 141.
 # With pipefail that kills the wizard here on every single run. Guard it, then
 # check the result: a silently empty password would be set on the role.
-KPA_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 || true)
-if [[ ${#KPA_PASSWORD} -ne 32 ]]; then
+SUKKAL_PASSWORD=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 || true)
+if [[ ${#SUKKAL_PASSWORD} -ne 32 ]]; then
   say "  ${RED}no${RESET}  could not generate a password. Nothing was changed."
   exit 1
 fi
 
 say "Copying the root script to $HOST."
 sed -e "s|@@PGVER@@|$PGVER|g" -e "s|@@SRCNET@@|$SRC_NET|g" \
-    -e "s|@@PASSWORD@@|$KPA_PASSWORD|g" \
+    -e "s|@@PASSWORD@@|$SUKKAL_PASSWORD|g" \
     "$(dirname "$0")/provision-amaterasu-root.sh" \
   | ssh -o BatchMode=yes "$HOST" "cat > $REMOTE_SCRIPT && chmod 600 $REMOTE_SCRIPT"
 
@@ -281,7 +281,7 @@ if [[ ! "$HOST_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   say "  ${RED}no${RESET}  could not read $HOST's own address. Cannot verify."
   exit 1
 fi
-export PGPASSWORD="$KPA_PASSWORD"
+export PGPASSWORD="$SUKKAL_PASSWORD"
 PSQL_BASE="psql -h $HOST_IP -U kpa -d kpa -tAX"
 
 run_check() {  # run_check "label" "sql" "expected"
@@ -314,8 +314,8 @@ pause "Write the connection details?"
 # ── 4 ─────────────────────────────────────────────────────────────────────
 stage "Write the connection details"
 say "These go into .env, which is git-ignored. Nothing is committed."
-write_env DATABASE_URL      "postgresql://kpa:${KPA_PASSWORD}@${HOST_IP}:5432/kpa?sslmode=require"
-write_env DATABASE_URL_TEST "postgresql://kpa:${KPA_PASSWORD}@${HOST_IP}:5432/kpa_dev?sslmode=require"
+write_env DATABASE_URL      "postgresql://kpa:${SUKKAL_PASSWORD}@${HOST_IP}:5432/kpa?sslmode=require"
+write_env DATABASE_URL_TEST "postgresql://kpa:${SUKKAL_PASSWORD}@${HOST_IP}:5432/kpa_dev?sslmode=require"
 say "Tests point at kpa_dev, so a test run never writes into the migration's data."
 pause "Continue to the reboot check?"
 

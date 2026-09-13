@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-VAULT="${KPA_VAULT:-$HOME/Development/obsidian_vaults/Memory}"
+VAULT="${SUKKAL_VAULT:-$HOME/Development/obsidian_vaults/Memory}"
 STAMP="$(cd "$(dirname "$0")/.." && pwd)/docs/vault-freeze.txt"
 AGENTS="$HOME/Library/LaunchAgents"
 UID_="$(id -u)"

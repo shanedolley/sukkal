@@ -185,8 +185,8 @@ finish() {
 
 TOTAL_STAGES=6
 
-HOST="${KPA_HOST:-amaterasu}"
-REMOTE_USER="${KPA_REMOTE_USER:-shanedolley}"
+HOST="${SUKKAL_HOST:-amaterasu}"
+REMOTE_USER="${SUKKAL_REMOTE_USER:-shanedolley}"
 CANDIDATE=/tmp/kpa-sudoers
 TARGET=/etc/sudoers.d/kpa
 

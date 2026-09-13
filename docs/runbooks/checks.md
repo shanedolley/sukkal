@@ -103,7 +103,7 @@ hit.
 ## Checked against the frozen vault
 
 The strongest test for this port runs `advisories()` against the frozen vault
-(`docs/runbooks/vault-freeze.md`), loaded into `kpa_dev` the same way
+(`docs/runbooks/vault-freeze.md`), loaded into `sukkal_dev` the same way
 `test/edges.test.ts`'s backlinks test does, and compares the result to
 `scripts/check.py --review`.
 
