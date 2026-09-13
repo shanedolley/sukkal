@@ -42,9 +42,29 @@ import type { ClientBase } from 'pg';
  */
 export const LIFETIME_DAYS = 14;
 
-/** The cookie the browser carries. Named for the product, not the framework,
- *  so nothing infers a library from it. */
-export const COOKIE = 'kpa_session';
+/**
+ * The cookie the browser carries.
+ *
+ * Named for the product, not the framework, so nothing infers a library from
+ * it. KPA-156 moved it off `kpa_session` with the rest of the machine names,
+ * and took the prefix while every browser holding one was a single laptop.
+ *
+ * `__Host-` is an instruction to the browser rather than a label. It refuses
+ * the cookie unless it arrives with `Secure`, with `Path=/`, and with no
+ * `Domain`, and it then binds it to this exact origin. A subdomain can no
+ * longer overwrite the session. Every set call already passed those three, so
+ * the prefix changed the name and nothing else.
+ *
+ * It also means a browser silently drops this cookie over plain HTTP on any
+ * host but localhost, and sign-in then fails with a response that looks
+ * correct. `secure: true` on the set calls already had that property, so the
+ * prefix added no failure. KPA-147 is the HTTPS story.
+ *
+ * `apps/web/scripts/check-session-cookie.ts` holds the three conditions,
+ * because a `domain` added to any set call breaks sign-in and nothing else
+ * would say so.
+ */
+export const COOKIE = '__Host-sukkal_session';
 
 /** 32 bytes, which is 256 bits of entropy. Nothing brute-forces that. */
 const TOKEN_BYTES = 32;

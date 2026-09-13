@@ -145,10 +145,21 @@ rule in `apps/web/lib/local-store.ts`, and `kpa.appearance` needs none: KPA-126
 made it a cache of a server value, so losing it costs one green paint on one
 load.
 
-The fifth is the session cookie, `COOKIE = 'kpa_session'` in
-`src/auth/session.ts`, which `test/session.test.ts` asserts. Nobody ruled on
-it: KPA-153 did not list it. A rename signs every browser out once and loses
-nothing else. Found on 13 September 2026.
+**The session cookie moved too, in KPA-156.** It is
+`__Host-sukkal_session` now. KPA-153 did not list it, another session found it
+on 13 September 2026, and Shane ruled the same day: rename it while the only
+browser holding one was a laptop, and take the prefix at the same time.
+
+`__Host-` is an instruction rather than a label. The browser refuses the cookie
+unless it arrives with `Secure`, with `Path=/`, and with no `Domain`, and then
+binds it to this exact origin, so a subdomain can never overwrite the session.
+All three set calls already passed those, so the prefix changed the name and
+nothing else.
+
+**It makes three attributes load-bearing.** Add a `domain` to any set call and
+the browser discards the cookie: the response still says `{"ok":true}`, the
+status is still 200, and nobody is signed in.
+`apps/web/scripts/check-session-cookie.ts` is what says so.
 
 ## One decision waiting
 
@@ -338,7 +349,10 @@ one inline script this app runs, in
 **A signed-in screen needs no password.** Insert a `sessions` row into
 `sukkal_local` whose `id` is the SHA-256 hex of a random token, with a one-hour
 `expires_at` and a `user_agent` naming the story. Send the token as the
-`kpa_session` cookie, and delete the row by its `user_agent` afterwards.
+`__Host-sukkal_session` cookie, and delete the row by its `user_agent`
+afterwards. The prefix constrains what a browser accepts from `Set-Cookie` and
+not what a request may carry, so `curl -H 'Cookie: __Host-sukkal_session=...'`
+works unchanged.
 KPA-146 saw the briefing, the connections dialog and the OAuth callback this
 way on 13 September 2026, and it left the owner's password alone.
 

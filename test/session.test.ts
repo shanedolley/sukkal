@@ -197,8 +197,12 @@ describe('a session', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
     });
   });
 
-  test('the cookie is named for the product', () => {
-    assert.equal(COOKIE, 'kpa_session');
+  test('the cookie is named for the product, behind the __Host- prefix', () => {
+    assert.equal(COOKIE, '__Host-sukkal_session');
+    // The prefix is what makes the three attributes load-bearing rather than
+    // good practice, so the name and the conditions are asserted together.
+    // `apps/web/scripts/check-session-cookie.ts` holds the other end.
+    assert.ok(COOKIE.startsWith('__Host-'), 'the prefix has gone');
   });
 
   test('comparing two tokens says the same thing as a lookup', () => {
