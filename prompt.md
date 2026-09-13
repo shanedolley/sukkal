@@ -123,14 +123,16 @@ repeating it as fact.
 
 ## Start here
 
-**[KPA-146](https://koinon.atlassian.net/browse/KPA-146) is done.** Every path
-carries `nosniff` and `X-Frame-Options: DENY`, beside the referrer policy.
+**[KPA-155](https://koinon.atlassian.net/browse/KPA-155) is done.** Every
+browser storage key reads `sukkal.` and nine of the ten carry their saved value.
+`apps/web/scripts/check-local-store.ts` proves it.
 
 1. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points,
    and the only thing blocking it is a reachable amaterasu. Rename the two
    databases and the role on the box, then drop `kpa` from `PRODUCTION` in
-   `src/db/connect.ts`. Try the box first: it did not answer on
-   13 September 2026.
+   `src/db/connect.ts`. Try the box first: it answered neither ping nor port
+   5432 on 13 September 2026, and it is now the last thing holding the epic
+   open.
 2. **[KPA-148](https://koinon.atlassian.net/browse/KPA-148)**, the
    Content-Security-Policy, and KPA-146 unblocked it. It carries an
    architecture decision first: a nonce makes eleven prerendered routes
@@ -144,15 +146,17 @@ carries `nosniff` and `X-Frame-Options: DENY`, beside the referrer policy.
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
    ticket anywhere on the board creates it.
 
-**Nothing waits on a ruling from Shane.** He answered both open questions on
-13 September 2026. [KPA-155](https://koinon.atlassian.net/browse/KPA-155)
-carries the browser storage keys and is To Do.
+**Nothing waits on a ruling from Shane**, beyond
+[KPA-143](https://koinon.atlassian.net/browse/KPA-143) in the decision queue. He
+answered both questions raised on 13 September 2026, and both stories shipped
+the same day: [KPA-155](https://koinon.atlassian.net/browse/KPA-155) renamed the
+browser storage keys and
 [KPA-156](https://koinon.atlassian.net/browse/KPA-156) renamed the session
-cookie to `__Host-sukkal_session` and shipped the same day.
+cookie to `__Host-sukkal_session`.
 
 Most of what is left needs something only Shane can supply. Thirty-eight stories
 are open: 37 To Do and one Decision required. Counted from Jira on
-13 September 2026, paged, against 120 stories and 23 In Review. They wait on one
+13 September 2026, paged, against 122 stories and 25 In Review. They wait on one
 OAuth grant, a metered key, a live Jira site, a deployment, a reachable
 amaterasu, or Shane at both ends of nabium. Read the blockers before picking,
 and prefer what unblocks the most.

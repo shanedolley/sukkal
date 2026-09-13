@@ -293,9 +293,10 @@ what lets `tsc` accept it.
 JSX alone, so an import of a component answers
 `ERR_UNKNOWN_FILE_EXTENSION: Unknown file extension ".tsx"`. A check on a
 component reads its source instead, which
-`apps/web/scripts/check-avatar.ts` shows. The nineteen other checks import a
-real module because every one of them names a `.ts`. KPA-151,
-12 September 2026.
+`apps/web/scripts/check-avatar.ts` shows: it is the one check that imports
+nothing from the application. Three others read a source file beside importing a
+real module, because part of what they assert lives in a string rather than in an
+export. KPA-151, 12 September 2026.
 
 **A Tailwind size class is not a pixel count.** `size-16` renders at 64px and
 `size-24` at 96px, because `--spacing` is `0.25rem` and the class multiplies
@@ -308,7 +309,7 @@ the class name.
 KPA-139 added the field on 3 September 2026. Node and `tsc` both read the
 package as ESM now, which ends two things: a file under `test/` reaches a
 constant in `apps/web/lib` through a plain static import, and `npm run check`
-runs its seventeen scripts in silence. Before, that import needed a variable
+runs its scripts in silence. Before, that import needed a variable
 specifier to dodge `TS1287`, which `tsc` reported in the imported file rather
 than the importing one, and fifteen of those scripts each printed
 `MODULE_TYPELESS_PACKAGE_JSON`. `test/workspaces.test.ts` shows the import.

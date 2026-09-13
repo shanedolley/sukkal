@@ -193,8 +193,15 @@ export function customChart(hex: string): Preset {
  * second device. This one stays, because the bootstrap script reads it before
  * React runs and a theme read from the network flashes. It is a cache of a
  * decision held elsewhere rather than the decision itself.
+ *
+ * KPA-155 RENAMED IT AND CARRIED NOTHING FORWARD, because a cache is the one
+ * thing worth losing. A browser holding the `kpa.` name paints the
+ * stylesheet's green once on the first load after the rename, and the provider
+ * corrects it, which is the same single wrong paint a second device already
+ * takes. Carrying it would cost a second `getItem` inside the inline script
+ * KPA-148 is about to put under a Content-Security-Policy, to buy one paint.
  */
-export const RESOLVED_KEY = "kpa.appearance";
+export const RESOLVED_KEY = "sukkal.appearance";
 
 /** Every property any preset can set, so a change clears the last one. */
 const ALL_KEYS = [

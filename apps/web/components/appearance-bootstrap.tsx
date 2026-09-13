@@ -17,6 +17,13 @@
 // and caches it, so the wrong colour is one paint on one load rather than a
 // flash on every load. ADR-0022 accepts that trade in as many words.
 //
+// KPA-155 RENAMED THE KEY AND CARRIED NOTHING FORWARD, so a browser used
+// before the rename takes exactly that one paint once. Reading the former name
+// as well would put a second getItem in front of the first paint, inside the
+// one inline script KPA-148 has to account for, and it would buy one paint.
+// Every other key renamed in KPA-155 carries its value, because every other
+// key holds a choice rather than a cache.
+//
 // It goes through next/script with beforeInteractive rather than a bare
 // <script>. React does not execute a script tag rendered by a component and
 // warns about it; this is the supported way to run something before
@@ -48,7 +55,7 @@ export function AppearanceBootstrap() {
     // the App Router the root layout is the documented place for a script the
     // whole site needs. .oxlintrc.json turns the rule off for this file.
     <Script
-      id="kpa-appearance"
+      id="sukkal-appearance"
       strategy="beforeInteractive"
       dangerouslySetInnerHTML={{ __html: SCRIPT }}
     />

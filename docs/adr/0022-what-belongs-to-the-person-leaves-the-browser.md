@@ -19,6 +19,27 @@ resolved it. The data question sorts by what a value looks like. The person
 question sorts by who it belongs to, which is what a second device actually
 tests.
 
+## Every key below reads `sukkal.` now
+
+**KPA-155 renamed the ten remaining keys on 13 September 2026, and the names in
+this record are the ones they carried when the decision was made.** The table
+and the argument below are left as they were written, because a decision record
+that is edited to match later code stops recording the decision.
+
+Nine of the ten carry their saved value across the rename. `readCarried` in
+`apps/web/lib/local-store.ts` reads the `sukkal.` name, falls back to the `kpa.`
+one, writes the value forward and removes the old key, so the move runs once per
+key per browser and no stale value can overwrite a newer one.
+`apps/web/scripts/check-local-store.ts` proves it.
+
+The tenth, the appearance cache, renamed and carried nothing. That is this
+decision's own reasoning applied again: it caches a server value, so losing it
+costs the one wrong paint the section below already accepts, and carrying it
+would have put a second `getItem` in front of the first paint.
+
+The eight that moved to the server never took the new prefix, because the
+decision below removed them from the browser entirely.
+
 ## The nineteen keys
 
 Eighteen carry the `kpa.` prefix. The nineteenth is `theme`, which

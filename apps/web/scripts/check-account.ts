@@ -165,7 +165,7 @@ assert.deepEqual(paint(resolved, "dark"), resolved.dark);
 // 3. No network read reached the paint path. The script names one storage key
 //    and the theme, and it calls nothing else. A `fetch` here would be a round
 //    trip in front of the first paint, which is the whole reason
-//    `kpa.appearance` stayed in the browser.
+//    `sukkal.appearance` stayed in the browser.
 const script = prePaintScript();
 for (const reach of ["fetch", "XMLHttpRequest", "/api/"]) {
   assert.ok(!script.includes(reach), `the pre-paint script reaches ${reach}`);

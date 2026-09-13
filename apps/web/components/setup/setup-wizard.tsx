@@ -30,8 +30,8 @@
 // rather than the "already set up" card, and `POST /api/account` answers 401.
 // The card below is what the owner sees, because the owner holds a session.
 //
-// THE WIZARD ASKS FRESH. A browser that already held an account under
-// `kpa.account` is not read here, so nothing is pre-filled from it. ADR-0022
+// THE WIZARD ASKS FRESH. A browser that already held an account in its own
+// storage is not read here, so nothing is pre-filled from it. ADR-0022
 // states the half that follows from ADR-0009: that account carried no password,
 // so it could not sign anybody in and the first boot has to ask again. Whether
 // the three other fields are worth pre-filling for the typing they save is a

@@ -18,14 +18,14 @@ a loopback database needs none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **120 stories, 82 shipped, which is 68%
-by count.** Counted from Jira on 13 September 2026, paged, after KPA-146
+Project KPA on `koinon.atlassian.net`. **122 stories, 84 shipped, which is 69%
+by count.** Counted from Jira on 13 September 2026, paged, after KPA-155
 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 23 |
+| In Review | 25 |
 | To Do | 37 |
 | Decision required | 1 |
 
@@ -35,7 +35,8 @@ blocked.
 
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
-    KPA-138 KPA-139 KPA-144 KPA-146 KPA-150 KPA-151 KPA-153
+    KPA-138 KPA-139 KPA-144 KPA-146 KPA-150 KPA-151 KPA-153 KPA-155
+    KPA-156
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -51,7 +52,7 @@ blocked.
 | KPA-75 | 5/6 | Let the installation authenticate its owner |
 | KPA-145 | 1/3 | Harden what the installation exposes |
 | KPA-149 | 2/2 | Become Sukkal. In Review itself |
-| KPA-152 | 1/2 | Move the machine identifiers off KPA |
+| KPA-152 | 3/4 | Move the machine identifiers off KPA |
 
 **Paging matters.** `/rest/api/3/search/jql` caps a page at 100 issues whatever
 `maxResults` says, and answers with a `nextPageToken` rather than an error. An
@@ -136,14 +137,30 @@ names inside the avatar, which never leave the component. `kpa-worker`, the
 `application_name` the worker reports to PostgreSQL. And `docs/decisions.md`,
 which `npm run decisions` rewrites from Jira on every run.
 
-**Ten browser storage keys move in KPA-155**, which Shane asked for on
-13 September 2026: eight `kpa.issues` keys, `kpa.space` and `kpa.appearance`.
-Counted from the code rather than from ADR-0022, which lists every key that
-ever existed and four of which have since moved to the server. A first count
-said eleven for exactly that reason. Nine carry their value forward through one
-rule in `apps/web/lib/local-store.ts`, and `kpa.appearance` needs none: KPA-126
-made it a cache of a server value, so losing it costs one green paint on one
-load.
+**The ten browser storage keys moved in KPA-155**, on 13 September 2026. Eight
+`kpa.issues` keys, `kpa.space` and `kpa.appearance` all read `sukkal.` now.
+
+Nine of the ten carry their saved value. `readCarried` in
+`apps/web/lib/local-store.ts` reads the new name, falls back to the old one,
+writes the value forward and removes the old key. Every key renamed the same
+way, so one rule covers every caller, and removing the old key is what stops a
+stale value overwriting a newer one on some later read.
+
+`sukkal.appearance` carries nothing, because it caches a server value. A browser
+used before the rename paints the stylesheet's green once, then the provider
+corrects it, which is the single wrong paint ADR-0022 already accepts.
+
+**The rule writes during a render, and React raises nothing.** The store reads
+in `getSnapshot` so the first render holds the saved value, and carrying forward
+means writing there too. The write is idempotent, so consecutive snapshots
+return the same string and `useSyncExternalStore` is satisfied. Proved in Chrome
+rather than reasoned about: the console carried no hydration warning and no
+React error.
+
+`apps/web/scripts/check-local-store.ts` is the twenty-second web check. It
+builds a real store over a stub browser and reads through it, because a check
+that only exercised the rule would pass a `createLocalStore` that never called
+it. Seven mutations each failed it once.
 
 **The session cookie moved too, in KPA-156.** It is
 `__Host-sukkal_session` now. KPA-153 did not list it, another session found it
@@ -221,7 +238,7 @@ npm run decisions             # rebuilds docs/decisions.md from Jira
 ```
 
 In `apps/web`: `npm run lint`, `npm run build`, and `npm run check`, which runs
-nineteen scripts under plain node.
+twenty-two scripts under plain node.
 
 Run the suite the way CI runs it, which is without the vault:
 
@@ -355,6 +372,23 @@ not what a request may carry, so `curl -H 'Cookie: __Host-sukkal_session=...'`
 works unchanged.
 KPA-146 saw the briefing, the connections dialog and the OAuth callback this
 way on 13 September 2026, and it left the owner's password alone.
+
+**A dev server started before KPA-153 still names the old database and answers
+500 on every route.** One was found on port 3000 on 13 September 2026, holding
+`DATABASE_URL` for `kpa_local`, which KPA-153 renamed to `sukkal_local`. Nothing
+in the response says which database: the page is a plain 500 and the name
+appears only in `apps/web/.next/dev/logs/next-development.log`. Read that log
+before assuming the code is at fault.
+
+**`next dev` refuses a second server for the same directory**, whatever `PORT`
+says, and names the running process and its log. So the handover's advice to
+take another port does not apply to this one: either reuse the server or stop
+the process it names.
+
+**`__Host-` costs nothing on `http://localhost`.** Chrome counts localhost a
+secure context, so `document.cookie = "__Host-sukkal_session=...; Path=/;
+Secure"` is accepted there and a signed-in screen needs no HTTPS to reach.
+Proved in Chrome on 13 September 2026 while KPA-155 read a real board.
 
 **`node_modules` was found empty once**, on 9 September, with no explanation.
 `npm install` restored 474 packages and the lockfile did not change. A

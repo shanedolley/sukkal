@@ -21,7 +21,7 @@ export { crossed, crosses, inSpace, type SpaceFilter } from "./space";
 // would mean nothing. ADR-0018.
 const VALID: string[] = ["all", "collibra", "koinon", "personal"];
 
-const store = createLocalStore<SpaceFilter>("kpa.space", "all", (value) =>
+const store = createLocalStore<SpaceFilter>("sukkal.space", "all", (value) =>
   VALID.includes(value)
 );
 

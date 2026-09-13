@@ -15,7 +15,7 @@
 // selection therefore means "do not touch the root element", and it covers the
 // read being in flight and the read having failed.
 //
-// A SECOND DEVICE PAINTS THE DEFAULT ONCE. It has no `kpa.appearance` in its
+// A SECOND DEVICE PAINTS THE DEFAULT ONCE. It has no `sukkal.appearance` in its
 // own storage, so the bootstrap script returns early and the stylesheet's own
 // green shows. The read then lands, the colour applies, and the resolved blob
 // is cached for every load after that. ADR-0022 accepts that one paint as the

@@ -1050,12 +1050,12 @@ function GroupSection({
 // The choice holds across a reload and across the three sprint views, because
 // a display preference that resets on every navigation reads as a fault.
 const groupStore = createLocalStore<GroupField>(
-  "kpa.issues.group",
+  "sukkal.issues.group",
   "status",
   isGroupField,
 );
 const subGroupStore = createLocalStore<GroupField>(
-  "kpa.issues.subgroup",
+  "sukkal.issues.subgroup",
   "none",
   isGroupField,
 );
@@ -1070,7 +1070,7 @@ const subGroupStore = createLocalStore<GroupField>(
 type GroupOrder = "auto" | "manual";
 
 const groupOrderStore = createLocalStore<GroupOrder>(
-  "kpa.issues.grouporder",
+  "sukkal.issues.grouporder",
   "auto",
   (value) => value === "auto" || value === "manual",
 );
@@ -1091,7 +1091,7 @@ const GROUP_SORT_LABELS: Record<GroupSort, string> = {
 };
 
 const groupSortStore = createLocalStore<GroupSort>(
-  "kpa.issues.groupsort",
+  "sukkal.issues.groupsort",
   "own",
   (value) => value === "own" || value === "name" || value === "count",
 );
@@ -1106,7 +1106,7 @@ function orderGroups(groups: IssueGroup[], by: GroupSort): IssueGroup[] {
 }
 
 const arrangedStore = createLocalStore<string>(
-  "kpa.issues.arranged",
+  "sukkal.issues.arranged",
   "{}",
   (value) => {
     try {
@@ -1119,7 +1119,7 @@ const arrangedStore = createLocalStore<string>(
 );
 
 const sortStore = createLocalStore<RowSort>(
-  "kpa.issues.sort",
+  "sukkal.issues.sort",
   "none",
   isRowSort,
 );
@@ -1142,11 +1142,7 @@ function rowKey(sort: RowSort): string {
 }
 
 function saveArranged(field: string, keys: string[]) {
-  const saved = readArranged(
-    typeof window === "undefined"
-      ? "{}"
-      : (window.localStorage.getItem("kpa.issues.arranged") ?? "{}"),
-  );
+  const saved = readArranged(arrangedStore.read());
   arrangedStore.set(JSON.stringify({ ...saved, [field]: keys }));
 }
 
@@ -1158,11 +1154,7 @@ function saveArranged(field: string, keys: string[]) {
  * group that is empty today may come back tomorrow, and its place with it.
  */
 function clearArranged(field: string) {
-  const saved = readArranged(
-    typeof window === "undefined"
-      ? "{}"
-      : (window.localStorage.getItem("kpa.issues.arranged") ?? "{}"),
-  );
+  const saved = readArranged(arrangedStore.read());
   delete saved[field];
   arrangedStore.set(JSON.stringify(saved));
 }
@@ -1180,7 +1172,7 @@ function arrange(groups: IssueGroup[], keys: string[]): IssueGroup[] {
 // task, and the pair is what the work actually is.
 type Tree = "on" | "off";
 const treeStore = createLocalStore<Tree>(
-  "kpa.issues.tree",
+  "sukkal.issues.tree",
   "on",
   (value) => value === "on" || value === "off",
 );
@@ -1224,7 +1216,7 @@ const ROW_FIELD_LABELS: Record<RowField, string> = {
 // What is hidden, not what is shown. A field added to a row later then
 // arrives visible, rather than hidden from everybody who saved a list back
 // when it did not exist.
-const hiddenStore = createLocalStore<string>("kpa.issues.hidden", "", (value) =>
+const hiddenStore = createLocalStore<string>("sukkal.issues.hidden", "", (value) =>
   value
     .split(",")
     .every((name) => name === "" || ROW_FIELDS.includes(name as RowField)),
