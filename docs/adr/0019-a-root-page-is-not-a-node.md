@@ -100,6 +100,11 @@ Each root page already has a destination, and not one of them is `nodes`:
   wikilink over the surrounding text, and every unresolved wikilink in a
   citation loses the same way, so the fix belongs to a story about citations
   rather than to this one.
+
+  KPA-131 fixed it on 13 September 2026 without changing this decision. The
+  target still resolves to an `unresolved` node holding `index`, and the whole
+  entry now sits beside it in `edges.citation`. It also found an eighth entry
+  losing its words the same way, one whose wikilink names a real source.
 - The decision expires with the vault. After the vault retires there is no
   `index.md` and no `log.md`, so nothing here needs reversing. That is also
   why option 1 would have built something with no second reader.

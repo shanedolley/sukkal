@@ -11,30 +11,31 @@ hook wants. Read the head with `git log --oneline -1` rather than from here: a
 commit hash written into a file is stale the moment the file is committed.
 Read CI with `gh run list --limit 1`.
 
-**[KPA-13](https://koinon.atlassian.net/browse/KPA-13) shipped on
-13 September 2026, and the migration agrees with the vault.** *The migration is
-proved* below says what that means and how to run it again.
+**[KPA-13](https://koinon.atlassian.net/browse/KPA-13) and
+[KPA-131](https://koinon.atlassian.net/browse/KPA-131) shipped on
+13 September 2026.** The migration agrees with the vault, and a citation keeps
+its words. *The migration is proved* below says what both mean.
 
-Twenty-eight migration files, numbered to `029`. Twenty-seven ADR files,
+Twenty-nine migration files, numbered to `030`. Twenty-seven ADR files,
 numbered to `0025`, because `0007` and `0008` each hold two. Counted with `ls`
 on 13 September 2026.
 
-The suite runs **621 tests with the vault and 603 without it**, measured on
-13 September 2026 after KPA-13. One test skips in both, and it is meant to:
+The suite runs **629 tests with the vault and 609 without it**, measured on
+13 September 2026 after KPA-131. One test skips in both, and it is meant to:
 `test/connect.test.ts` skips its TLS case because a loopback database needs
 none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **122 stories, 86 shipped, which is 70%
-by count.** Counted from Jira on 13 September 2026, two pages, after KPA-13
+Project KPA on `koinon.atlassian.net`. **122 stories, 87 shipped, which is 71%
+by count.** Counted from Jira on 13 September 2026, two pages, after KPA-131
 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 27 |
-| To Do | 35 |
+| In Review | 28 |
+| To Do | 34 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -44,11 +45,11 @@ blocked.
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
     KPA-138 KPA-139 KPA-144 KPA-146 KPA-148 KPA-150 KPA-151 KPA-153
-    KPA-155 KPA-156 KPA-13
+    KPA-155 KPA-156 KPA-13  KPA-131
 
 | Epic | Done/All | Title |
 |---|---|---|
-| KPA-1 | 17/20 | Slice one: migrate the memory |
+| KPA-1 | 18/20 | Slice one: migrate the memory |
 | KPA-35 | 8/8 | Build the web interface |
 | KPA-51 | 7/7 | Finish the memory schema |
 | KPA-52 | 16/22 | Join the halves: replace every fixture |
@@ -234,9 +235,22 @@ independence REQ-033 wants.
 the vault has never been written to amaterasu. That run is a person's, on a day
 amaterasu answers.
 
-**The vault is still frozen, on purpose.** `docs/runbooks/vault-freeze.md` says
-to unfreeze after KPA-13, and restoring starts three launchd jobs. KPA-131's last
-criterion compares against the frozen vault, so the freeze holds until it ships.
+**A citation keeps its words, since KPA-131.** Every `derived_from` edge holds
+its `sources:` entry verbatim in `edges.citation`, added by
+`migrations/030_edge_citation.sql`. Measured by classifying all 33 entries in
+the frozen vault: eight carry a wikilink with words around it. Seven name
+`[[index]]`, which ADR-0019 counted, and the eighth names a real source, which
+nobody had. Each still points where it did. `docs/schema.md` records the one
+ceiling: `edges_unique` keeps one sentence when a fact cites a target twice.
+
+The report did not move. `scripts/verify-migration.sh` gives the same two
+explained orphans and the same 84 edges after KPA-131 as before it.
+
+**The vault is still frozen, and nothing in the repository needs it frozen any
+longer.** KPA-13 and KPA-131 were the two stories reading the frozen vault as an
+oracle, and both have shipped. `docs/runbooks/vault-freeze.md` says to restore
+after KPA-13, and restoring starts three launchd jobs, so it is Shane's step.
+KPA-74 is the last story that compares against the frozen report.
 
 ## One decision waiting
 

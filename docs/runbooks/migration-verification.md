@@ -108,6 +108,5 @@ vault into production and verifying it there is a step for a person, on a day
 amaterasu answers.
 
 **It does not unfreeze the vault.** `vault-freeze.md` says to unfreeze after
-KPA-13, and that restarts three jobs, so it is Shane's step. Hold the freeze
-until KPA-131 ships as well: that story's last criterion compares the advisory
-report against the frozen vault.
+KPA-13, and that restarts three jobs, so it is Shane's step. KPA-131 has shipped
+too, so the one story left comparing against the frozen report is KPA-74.

@@ -32,6 +32,10 @@ export type RawTarget =
 export interface EdgeCandidate {
   kind: EdgeKind;
   target: RawTarget;
+  /** The `sources:` entry a `derived_from` candidate came from, verbatim, or
+   *  null on a `links_to`. KPA-131: the target alone loses the author, the
+   *  place and the date the entry stated. */
+  citation: string | null;
 }
 
 /**
@@ -50,6 +54,7 @@ export type ResolvedTarget =
 export interface ResolvedEdge {
   kind: EdgeKind;
   target: ResolvedTarget;
+  citation: string | null;
 }
 
 /**
@@ -76,7 +81,7 @@ function linksToCandidates(body: string): EdgeCandidate[] {
     const name = match[1]!.trim();
     if (!seen.has(name)) {
       seen.add(name);
-      candidates.push({ kind: 'links_to', target: { form: 'wikilink', name } });
+      candidates.push({ kind: 'links_to', target: { form: 'wikilink', name }, citation: null });
     }
   }
   return candidates;
@@ -90,6 +95,11 @@ function linksToCandidates(body: string): EdgeCandidate[] {
  * that, the entry names nothing machine-readable, so its raw text becomes
  * the target -- unconditionally producing an edge is the acceptance
  * criterion, and dropping a citation because it is prose would fail it.
+ *
+ * A winning wikilink drops the words around it from the target, and only
+ * from the target. KPA-131 keeps the whole entry as the candidate's
+ * `citation`, so "Shane, answers in [[index]], 23 August 2026" still points
+ * at `index` and still says who and when.
  */
 function targetOf(entry: string): RawTarget {
   const link = WIKILINK_FIRST.exec(entry);
@@ -119,7 +129,7 @@ function derivedFromCandidates(frontmatter: ParsedNote['frontmatter']): EdgeCand
   const entries = Array.isArray(raw) ? raw : [raw];
   return entries
     .filter((entry) => entry !== '')
-    .map((entry) => ({ kind: 'derived_from' as const, target: targetOf(entry) }));
+    .map((entry) => ({ kind: 'derived_from' as const, target: targetOf(entry), citation: entry }));
 }
 
 /** Every candidate edge one note names: `links_to` from its body, then
@@ -228,5 +238,6 @@ export function edgesFor(
   return edgeCandidates(note).map((candidate) => ({
     kind: candidate.kind,
     target: resolveTarget(candidate.target, known),
+    citation: candidate.citation,
   }));
 }

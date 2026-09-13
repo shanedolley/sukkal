@@ -112,6 +112,28 @@ describe('loading the vault', { skip: url ? false : 'DATABASE_URL_TEST is unset'
     assert.equal(await count('SELECT count(*) AS n FROM edges'), 3);
   });
 
+  test('a citation edge keeps its sources: entry, and a link edge keeps none', async () => {
+    await loadVault(
+      client,
+      {
+        facts: [
+          fact('koinon/a.md', { frontmatter: { sources: ['Shane, answers in [[index]], 23 August 2026'] }, body: 'See [[b]].' }),
+          fact('koinon/b.md'),
+        ],
+        sources: [],
+      },
+      null,
+    );
+    const rows = await client.query<{ kind: string; citation: string | null }>(
+      'SELECT kind, citation FROM edges ORDER BY kind',
+    );
+    // ORDER BY an enum follows its declaration, which puts derived_from first.
+    assert.deepEqual(rows.rows, [
+      { kind: 'derived_from', citation: 'Shane, answers in [[index]], 23 August 2026' },
+      { kind: 'links_to', citation: null },
+    ]);
+  });
+
   test('a fact starts on the day it was generated, not the day it migrated', async () => {
     await loadVault(client, { facts: [fact('koinon/a.md')], sources: [] }, null);
     const row = await client.query<{ valid_from: string; tags: string[] }>(

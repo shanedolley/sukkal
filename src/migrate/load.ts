@@ -21,7 +21,8 @@
  *   reads that column.
  * - An edge resolves through `edgesFor`. A `url` or `unresolved` target is one
  *   node per distinct ref, shared by every edge naming it, and a fact linking
- *   itself is no edge, which is what `edges_not_self` says.
+ *   itself is no edge, which is what `edges_not_self` says. A `derived_from`
+ *   edge keeps its `sources:` entry verbatim in `citation` (KPA-131).
  * - A task is a `tasks` row on the fact whose body holds it.
  * - An open question on `index.md` is a `needs_you` row of kind `question`
  *   (ADR-0012), on the fact its Note cell names.
@@ -204,9 +205,13 @@ export async function loadVault(
         if (toId === fromId) {
           continue;
         }
+        // ponytail: `edges_unique` is (from, to, kind), so a fact citing one
+        // target twice in two sentences keeps the first sentence and drops the
+        // second. No fact in the frozen vault does; widen the constraint to
+        // include `citation` when one does.
         const written = await client.query(
-          'INSERT INTO edges (from_id, to_id, kind) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-          [fromId, toId, edge.kind],
+          'INSERT INTO edges (from_id, to_id, kind, citation) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+          [fromId, toId, edge.kind, edge.citation],
         );
         counts.edges += written.rowCount ?? 0;
       }

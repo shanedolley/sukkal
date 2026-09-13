@@ -76,6 +76,18 @@ check constraint here rather than an instruction in a prompt.
 `derived_from` comes from a `sources:` entry, `links_to` from a `[[wikilink]]`
 in the body, and `supersedes` from a replacement to the fact it retires.
 
+**A `derived_from` edge keeps its entry in `edges.citation`, verbatim.** A
+citation is a sentence, such as "Shane, answers in [[index]], 23 August 2026",
+and the target keeps only the name in brackets. Before KPA-131 the author, the
+place and the date went with the rest of the sentence: eight of the frozen
+vault's 33 entries lost them, seven naming `[[index]]` and one naming a real
+source. The target still resolves exactly as before, and the constraint
+`edges_citation_is_derived_from` keeps the column null on every other kind.
+
+`edges_unique` is `(from_id, to_id, kind)`, so a fact citing one target in two
+different sentences keeps the first and drops the second. No fact in the frozen
+vault does. Widen the constraint to include `citation` when one does.
+
 `node_kind` has no value for a root page. The vault's `index.md`, `log.md`,
 `CLAUDE.md` and `README.md` belong to none of the memory's three layers, so a
 wikilink naming one resolves `unresolved`. ADR-0019 decided that and measures

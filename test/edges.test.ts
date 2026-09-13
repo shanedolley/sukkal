@@ -27,8 +27,8 @@ describe('edgeCandidates: what one note names, before resolving it', () => {
       body: 'Cites [[a-note]] twice: [[a-note]] again, and once more [[b-note]].',
     });
     assert.deepEqual(candidates, [
-      { kind: 'links_to', target: { form: 'wikilink', name: 'a-note' } },
-      { kind: 'links_to', target: { form: 'wikilink', name: 'b-note' } },
+      { kind: 'links_to', target: { form: 'wikilink', name: 'a-note' }, citation: null },
+      { kind: 'links_to', target: { form: 'wikilink', name: 'b-note' }, citation: null },
     ]);
   });
 
@@ -38,7 +38,7 @@ describe('edgeCandidates: what one note names, before resolving it', () => {
       body: 'See [[a-note|the note]] and [[a-note#a-heading]].',
     });
     assert.deepEqual(candidates, [
-      { kind: 'links_to', target: { form: 'wikilink', name: 'a-note' } },
+      { kind: 'links_to', target: { form: 'wikilink', name: 'a-note' }, citation: null },
     ]);
   });
 
@@ -54,16 +54,61 @@ describe('edgeCandidates: what one note names, before resolving it', () => {
       body: '',
     });
     assert.deepEqual(candidates, [
-      { kind: 'derived_from', target: { form: 'wikilink', name: 'a-source' } },
-      { kind: 'derived_from', target: { form: 'url', url: 'https://example.com/page' } },
-      { kind: 'derived_from', target: { form: 'text', text: 'Shane, 20 August 2026' } },
+      {
+        kind: 'derived_from',
+        target: { form: 'wikilink', name: 'a-source' },
+        citation: '[[a-source]], read on 20 August 2026',
+      },
+      {
+        kind: 'derived_from',
+        target: { form: 'url', url: 'https://example.com/page' },
+        citation: 'https://example.com/page',
+      },
+      {
+        kind: 'derived_from',
+        target: { form: 'text', text: 'Shane, 20 August 2026' },
+        citation: 'Shane, 20 August 2026',
+      },
     ]);
+  });
+
+  // KPA-131. The three shapes of entry, each asserted on both halves: where
+  // the edge points, which must not move, and the words it keeps, which it
+  // used to lose.
+  test('an entry with a wikilink and words around it points at the link and keeps the words', () => {
+    const [candidate] = edgeCandidates({
+      frontmatter: { sources: ['Shane, answers in [[index]], 23 August 2026'] },
+      body: '',
+    });
+    assert.deepEqual(candidate?.target, { form: 'wikilink', name: 'index' }, 'the target moved');
+    assert.equal(candidate?.citation, 'Shane, answers in [[index]], 23 August 2026', 'the words were lost');
+  });
+
+  test('an entry that is only a wikilink points where it did, and keeps the entry as written', () => {
+    const [candidate] = edgeCandidates({ frontmatter: { sources: ['[[collibra-engagement-drive]]'] }, body: '' });
+    assert.deepEqual(candidate?.target, { form: 'wikilink', name: 'collibra-engagement-drive' });
+    assert.equal(candidate?.citation, '[[collibra-engagement-drive]]');
+  });
+
+  test('an entry with no wikilink points where it did, whether it holds a url or plain text', () => {
+    const [url, text] = edgeCandidates({
+      frontmatter: { sources: ['see https://example.com/x on 3 May', 'Shane, 20 August 2026'] },
+      body: '',
+    });
+    assert.deepEqual(url?.target, { form: 'url', url: 'https://example.com/x' });
+    assert.deepEqual(text?.target, { form: 'text', text: 'Shane, 20 August 2026' });
+    assert.equal(url?.citation, 'see https://example.com/x on 3 May');
+  });
+
+  test('a body wikilink is a link and not a citation, so it carries none', () => {
+    const [candidate] = edgeCandidates({ frontmatter: {}, body: 'See [[koinon-clients]].' });
+    assert.equal(candidate?.citation, null);
   });
 
   test('a scalar sources: value counts as one entry', () => {
     const candidates = edgeCandidates({ frontmatter: { sources: 'https://example.com' }, body: '' });
     assert.deepEqual(candidates, [
-      { kind: 'derived_from', target: { form: 'url', url: 'https://example.com' } },
+      { kind: 'derived_from', target: { form: 'url', url: 'https://example.com' }, citation: 'https://example.com' },
     ]);
   });
 
@@ -125,11 +170,12 @@ describe('edgesFor: a fixture note linking a real note, a missing note and a sou
     );
 
     const expected: ResolvedEdge[] = [
-      { kind: 'links_to', target: { kind: 'fact', path: 'koinon/koinon-clients.md' } },
-      { kind: 'links_to', target: { kind: 'unresolved', ref: 'this-note-does-not-exist' } },
+      { kind: 'links_to', target: { kind: 'fact', path: 'koinon/koinon-clients.md' }, citation: null },
+      { kind: 'links_to', target: { kind: 'unresolved', ref: 'this-note-does-not-exist' }, citation: null },
       {
         kind: 'derived_from',
         target: { kind: 'source', path: 'sources/collibra/bhp-dlm-demo-transcript-2026-08-21.md' },
+        citation: '[[bhp-dlm-demo-transcript-2026-08-21]], the demo transcript',
       },
     ];
     assert.deepEqual(edges, expected);
@@ -170,6 +216,55 @@ describe('against the frozen vault, compared with scripts/check.py', { skip: vau
     // come from a root page's outbound links rather than from these.
     assert.equal(unresolvedWikilinks, 9, `expected 9 links to a root page, found ${unresolvedWikilinks}`);
     assert.deepEqual(targets, new Set(['index']));
+  });
+});
+
+describe('KPA-131 against the frozen vault: the citations that lost their words', { skip: vaultReason }, () => {
+  // Measured on 13 September 2026 by classifying all 33 sources: entries in
+  // the frozen vault at da7afce. Eight carry a wikilink with words around it.
+  // ADR-0019 counted the seven naming [[index]]; the eighth names a real
+  // source and lost its words the same way. Before KPA-131 each edge kept
+  // only its target, so each lost everything but the name in brackets.
+  const AFFECTED: { note: string; target: ResolvedEdge['target']; entry: string }[] = [
+    {
+      note: 'collibra/bhp-dlm-meridian.md',
+      target: { kind: 'source', path: 'sources/collibra/bhp-dlm-demo-transcript-2026-08-21.md' },
+      entry: '[[bhp-dlm-demo-transcript-2026-08-21]], the demo Shane delivered on 21 August 2026',
+    },
+    { note: 'collibra/collibra-meeting-defaults.md', target: { kind: 'unresolved', ref: 'index' }, entry: 'Shane, answers in [[index]], 23 August 2026' },
+    { note: 'collibra/collibra-people.md', target: { kind: 'unresolved', ref: 'index' }, entry: 'Shane, answers on [[index]], 23 August 2026' },
+    { note: 'collibra/sow-nexus-q47405.md', target: { kind: 'unresolved', ref: 'index' }, entry: 'Shane, answers in [[index]], 23 August 2026' },
+    { note: 'koinon/koinon-business-systems.md', target: { kind: 'unresolved', ref: 'index' }, entry: 'Shane, answers in [[index]], 23 August 2026' },
+    { note: 'koinon/koinon-engineering-entity.md', target: { kind: 'unresolved', ref: 'index' }, entry: 'Shane, answers on [[index]], 23 August 2026' },
+    { note: 'koinon/koinon-people.md', target: { kind: 'unresolved', ref: 'index' }, entry: 'Shane, answers in [[index]], 23 August 2026' },
+    { note: 'koinon/marinucci-data-warehouse-proposal.md', target: { kind: 'unresolved', ref: 'index' }, entry: 'Shane, answers on [[index]], 23 August 2026' },
+  ];
+
+  test('each of the eight still points where it did, and now keeps the author, the place and the date', async () => {
+    const report = await readVault();
+    const known = knownTargets(report.facts, report.sources);
+
+    for (const { note, target, entry } of AFFECTED) {
+      const fact = report.facts.find((one) => one.file === note);
+      assert.ok(fact, `${note} is no longer in the frozen vault`);
+      const edge = edgesFor(fact, known).find(
+        (one) => one.kind === 'derived_from' && JSON.stringify(one.target) === JSON.stringify(target),
+      );
+      assert.ok(edge, `${note} no longer cites ${JSON.stringify(target)}`);
+      // What it lost before: everything but the target. What it keeps now:
+      assert.equal(edge.citation, entry, `${note} lost its words`);
+    }
+  });
+
+  test('no other entry carries a wikilink with words around it, so the eight are the whole of it', async () => {
+    const report = await readVault();
+    const wrapped = report.facts.flatMap((fact) =>
+      edgeCandidates(fact).filter(
+        (one) =>
+          one.kind === 'derived_from' && one.target.form === 'wikilink' && one.citation !== `[[${one.target.name}]]`,
+      ).map(() => fact.file),
+    );
+    assert.deepEqual(wrapped.sort(), AFFECTED.map((one) => one.note).sort());
   });
 });
 
@@ -262,6 +357,21 @@ describe('edges against the registry', { skip: url ? false : 'DATABASE_URL_TEST 
     assert.ok(node.rows[0]?.id, 'the insert itself succeeds; the trigger is deferred');
     await assert.rejects(client.query('COMMIT'), /has kind fact and no fact row to match it/);
     await client.query('ROLLBACK');
+  });
+
+  test('only a derived_from edge may carry a citation', async () => {
+    const from = await client.query<{ id: string }>("INSERT INTO nodes (kind, ref) VALUES ('unresolved', 'from') RETURNING id");
+    const to = await client.query<{ id: string }>("INSERT INTO nodes (kind, ref) VALUES ('unresolved', 'to') RETURNING id");
+    const ends = [from.rows[0]!.id, to.rows[0]!.id];
+
+    await client.query(
+      "INSERT INTO edges (from_id, to_id, kind, citation) VALUES ($1, $2, 'derived_from', 'Shane, 23 August 2026')",
+      ends,
+    );
+    await assert.rejects(
+      client.query("INSERT INTO edges (from_id, to_id, kind, citation) VALUES ($2, $1, 'links_to', 'words')", ends),
+      /edges_citation_is_derived_from/,
+    );
   });
 
   test('edge_kind admits no fourth value', async () => {
