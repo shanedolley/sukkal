@@ -6,7 +6,7 @@ import type { ClientBase } from 'pg';
 import { advisories, crossSpaceLinks, orphans, reviewPileUp, uncompiledSources } from '../src/checks/advisories.ts';
 import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
-import { edgesFor, knownTargets } from '../src/migrate/edges.ts';
+import { loadVault } from '../src/migrate/load.ts';
 import { readVault } from '../src/migrate/read-vault.ts';
 import { vaultPath } from '../src/vault-mapping.ts';
 
@@ -228,51 +228,9 @@ describe(
       await down(client, MIGRATIONS);
       await up(client, MIGRATIONS);
 
-      const report = await readVault();
-      const known = knownTargets(report.facts, report.sources);
-      const nodeIdByPath = new Map<string, string>();
-
-      await client.query('BEGIN');
-
-      for (const s of report.sources) {
-        const node = await client.query<{ id: string }>("INSERT INTO nodes (kind) VALUES ('source') RETURNING id");
-        const id = node.rows[0]!.id;
-        nodeIdByPath.set(s.file, id);
-        await client.query('INSERT INTO sources (id, path, body) VALUES ($1, $2, $3)', [id, s.file, s.body]);
-      }
-
-      for (const f of report.facts) {
-        const node = await client.query<{ id: string }>("INSERT INTO nodes (kind) VALUES ('fact') RETURNING id");
-        const id = node.rows[0]!.id;
-        nodeIdByPath.set(f.file, id);
-        await client.query(
-          `INSERT INTO facts (id, path, type, title, description, space, state)
-           VALUES ($1, $2, $3, $4, $5, $6, 'proposed')`,
-          [id, f.file, f.frontmatter['type'], f.frontmatter['title'], f.frontmatter['description'], f.space],
-        );
-      }
-
-      for (const f of report.facts) {
-        const fromId = nodeIdByPath.get(f.file)!;
-        for (const edge of edgesFor(f, known)) {
-          let toId: string;
-          if (edge.target.kind === 'fact' || edge.target.kind === 'source') {
-            toId = nodeIdByPath.get(edge.target.path)!;
-          } else {
-            const target = await client.query<{ id: string }>(
-              'INSERT INTO nodes (kind, ref) VALUES ($1, $2) RETURNING id',
-              [edge.target.kind, edge.target.ref],
-            );
-            toId = target.rows[0]!.id;
-          }
-          await client.query(
-            'INSERT INTO edges (from_id, to_id, kind) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
-            [fromId, toId, edge.kind],
-          );
-        }
-      }
-
-      await client.query('COMMIT');
+      // The load the migration runs, not a copy of it. Before KPA-13 this
+      // block wrote the rows itself, and the report below proved that copy.
+      await loadVault(client, await readVault(), null);
     });
 
     after(async () => {

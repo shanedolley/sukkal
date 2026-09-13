@@ -145,9 +145,11 @@ two disagree from the first character outside ASCII.
 `chunk_id` left by a data error resolves to nothing rather than to the wrong
 passage.
 
-The five columns `sources` gained are all nullable. KPA-5 fills them, and a
-`NOT NULL` column with no default would reject every row written before this
-migration existed.
+The five columns `sources` gained are all nullable, and nothing fills them yet.
+`src/migrate/load.ts` is the only writer of `sources`, measured on
+13 September 2026, and it stores a vault source's body verbatim with the five
+left null: `src/vault-mapping.ts` says a source has no schema to fit. A
+`NOT NULL` column with no default would reject every one of those rows.
 
 **The drawer cuts the passage out of the body.** `apps/web/lib/sources.ts`
 reads the source and its chunks and calls `chunkText`, which is the one place

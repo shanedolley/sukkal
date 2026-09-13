@@ -11,32 +11,29 @@ hook wants. Read the head with `git log --oneline -1` rather than from here: a
 commit hash written into a file is stale the moment the file is committed.
 Read CI with `gh run list --limit 1`.
 
-**[KPA-13](https://koinon.atlassian.net/browse/KPA-13) is In Progress and
-nothing of it is built.** It was claimed in the main tree on `main` on
-13 September 2026, and the session stopped before writing any code. Its claim
-comment names the main tree, so a session working there finishes it rather than
-passing over it. What that session found is under *KPA-13* below.
+**[KPA-13](https://koinon.atlassian.net/browse/KPA-13) shipped on
+13 September 2026, and the migration agrees with the vault.** *The migration is
+proved* below says what that means and how to run it again.
 
 Twenty-eight migration files, numbered to `029`. Twenty-seven ADR files,
 numbered to `0025`, because `0007` and `0008` each hold two. Counted with `ls`
 on 13 September 2026.
 
-The suite runs **593 tests with the vault and 575 without it**, measured again
-on 13 September 2026 after KPA-148. One test skips in both, and it is meant to:
+The suite runs **621 tests with the vault and 603 without it**, measured on
+13 September 2026 after KPA-13. One test skips in both, and it is meant to:
 `test/connect.test.ts` skips its TLS case because a loopback database needs
 none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **122 stories, 85 shipped, which is 70%
-by count.** Counted from Jira on 13 September 2026, two pages, after KPA-13 was
-claimed.
+Project KPA on `koinon.atlassian.net`. **122 stories, 86 shipped, which is 70%
+by count.** Counted from Jira on 13 September 2026, two pages, after KPA-13
+shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 26 |
-| In Progress | 1 |
+| In Review | 27 |
 | To Do | 35 |
 | Decision required | 1 |
 
@@ -47,11 +44,11 @@ blocked.
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
     KPA-138 KPA-139 KPA-144 KPA-146 KPA-148 KPA-150 KPA-151 KPA-153
-    KPA-155 KPA-156
+    KPA-155 KPA-156 KPA-13
 
 | Epic | Done/All | Title |
 |---|---|---|
-| KPA-1 | 16/20 | Slice one: migrate the memory |
+| KPA-1 | 17/20 | Slice one: migrate the memory |
 | KPA-35 | 8/8 | Build the web interface |
 | KPA-51 | 7/7 | Finish the memory schema |
 | KPA-52 | 16/22 | Join the halves: replace every fixture |
@@ -189,34 +186,57 @@ the browser discards the cookie: the response still says `{"ok":true}`, the
 status is still 200, and nobody is signed in.
 `apps/web/scripts/check-session-cookie.ts` is what says so.
 
-## KPA-13
+## The migration is proved
 
-**The story that proves slice one, and KPA-131 waits on it.** A `Blocks` link
-says so, proved with
-`issue in linkedIssues("KPA-131", "is blocked by")`, which answers KPA-13.
-KPA-131's own description gives the reason: seven of the nine unresolved
-wikilinks stop being candidates once it lands, so the diff has to come first.
+**`scripts/verify-migration.sh` exits 0 against the vault frozen at `da7afce`.**
+Run on 13 September 2026, KPA-13. The two reports differ by exactly the two
+orphans ADR-0019 permits, and five counts agree:
 
-What is in place, measured on 13 September 2026:
+| Count | Vault, by `scripts/count-vault.py` | Postgres, after the load |
+|---|---|---|
+| Facts | 19 | 19 |
+| Sources | 32 | 32 |
+| Tasks | 3 | 3 |
+| Questions | 2 | 2 |
+| Edges | 84 | 84 |
 
-- **The frozen vault** is at `~/Development/obsidian_vaults/Memory`, the
-  default `vaultPath()` in `src/vault-mapping.ts` falls back to when
-  `VAULT_PATH` is unset. `VAULT_PATH` is not in `~/.config/sukkal/env`.
-- **`check.py`** is at `scripts/check.py` inside it. It reports 19 notes, 0
-  problems, 1 note past its review date, and 5 worth a look: four cross-space
-  links and 31 of 32 sources cited by no fact.
-- **Both sides of the diff exist.** `src/checks/problems.ts` reads the vault.
-  `src/checks/advisories.ts` queries Postgres.
-- **Nothing under `src/` writes the vault into Postgres.** `src/migrate/` reads
-  and resolves, and holds no `INSERT`. The only load is inline in
-  `test/advisories.test.ts`, from line 231: `readVault()`, then rows into
-  `nodes`, `sources`, `facts` and `edges`. Lifting that into something
-  repeatable is most of the story.
+`docs/runbooks/migration-verification.md` says how to read a failure.
 
-**The diff is two lines, not zero.** ADR-0019 permits exactly two, both orphan
-advisories, for `collibra/bhp-unstructured-declined.md` and
-`collibra/collibra-meeting-defaults.md`. The script must name both, and ADR-0019
-calls any third difference a defect.
+**No story had built the load, and KPA-13 built it.** KPA-5 read the vault,
+KPA-6 resolved links and KPA-7 parsed tasks, and none wrote a row. The only load
+lived inline in `test/advisories.test.ts`. `src/migrate/load.ts` is the load
+now, and that test calls it, so its pinned seven-line report proves the real
+load rather than a copy.
+
+**KPA-8 is Done and its parser never existed.** The story names
+`src/migrate/index-tables.ts`, and git has no history of that file. ADR-0012
+then folded `questions` into `needs_you`. The load reads `index.md`'s
+*Questions for you* table itself, and each row becomes an open `needs_you`
+question on its fact. Both of the vault's questions carry an answer that was
+never written back to the fact, so each loads open with the answer in its
+detail.
+
+**Three choices the load makes that no ticket stated:**
+
+- `valid_from` takes `generated`, because `asAt` reads it and the day of the
+  migration is not the day a fact became true.
+- One `url` or `unresolved` node serves every edge naming that ref. The inline
+  load made one per edge.
+- A fact linking itself is no edge, because `edges_not_self` would refuse the
+  row and roll back the whole load.
+
+**The counter lives in this repository, not beside `check.py`.** REQ-033 says
+beside it, and writing a file into the frozen vault is the drift REQ-032 checks
+for. It is still Python and still reads the files directly, which is the
+independence REQ-033 wants.
+
+**Production has not been loaded.** The script refuses `kpa` and `sukkal`, and
+the vault has never been written to amaterasu. That run is a person's, on a day
+amaterasu answers.
+
+**The vault is still frozen, on purpose.** `docs/runbooks/vault-freeze.md` says
+to unfreeze after KPA-13, and restoring starts three launchd jobs. KPA-131's last
+criterion compares against the frozen vault, so the freeze holds until it ships.
 
 ## One decision waiting
 
@@ -281,6 +301,9 @@ npm run decisions             # rebuilds docs/decisions.md from Jira
 In `apps/web`: `npm run lint`, `npm run build`, and `npm run check`, which runs
 twenty-three scripts under plain node.
 
+`./scripts/verify-migration.sh` verifies the migration against the frozen vault.
+It needs the vault and local PostgreSQL, and it recreates `sukkal_verify`.
+
 Run the suite the way CI runs it, which is without the vault:
 
 ```
@@ -297,6 +320,7 @@ how the trunk went red on 2 September 2026 and stayed red across two pushes.
 | `kpa` on amaterasu | The migration. Production. Five migrations behind |
 | `sukkal_dev` | Every test. The suite drops every table in it |
 | `sukkal_local` | The running application. No test names it |
+| `sukkal_verify` | `scripts/verify-migration.sh`, which drops and recreates it on every run |
 
 **amaterasu still calls its two `kpa` and `kpa_dev`**, because KPA-153 could
 not reach the box. Only this Mac's databases moved. `DATABASE_URL` and
@@ -374,11 +398,7 @@ in one Bash call was rejected whole, so an edit that reported success had never
 run. The tool result says `Could not parse this command to verify delete
 safety`; read it as "nothing happened", not as "the delete was skipped".
 
-**It bit twice more on 13 September 2026, with no `rm` in either command.** One
-heredoc wrote a TypeScript check holding the JavaScript `delete` operator, and
-one passed a commit message to `git commit -F -`. Both were refused whole. Write
-the text to a file with the Write tool and pass the path, which worked both
-times. It has now bitten three times, so `CLAUDE.md` is where it belongs next.
+It bit twice more on 13 September 2026 and now lives in `CLAUDE.md`.
 
 **A grep check can pass for the wrong reason.** Checking that a banner read
 "That account is connected" passed against the old code, because the old
@@ -482,6 +502,18 @@ the process it names.
 secure context, so `document.cookie = "__Host-sukkal_session=...; Path=/;
 Secure"` is accepted there and a signed-in screen needs no HTTPS to reach.
 Proved in Chrome on 13 September 2026 while KPA-155 read a real board.
+
+**The Write tool overwrote a tracked file without refusing.** On
+13 September 2026 it replaced `test/verify.test.ts`, the vendor-key suite, with
+an unrelated file, and reported "updated" where a new file reports "created".
+Its description says an unread existing file fails to write, and this one did
+not. `git show HEAD:test/verify.test.ts` restored it before anything was
+staged. Check `git ls-files <path>` before writing a file you believe is new.
+
+**`vault-freeze.sh check` exits 128 rather than naming the drift when the
+recorded commit does not exist.** Its `git log want..have` fails first under
+`set -e`. A real drift names a commit that exists, so this bites only when
+`docs/vault-freeze.txt` is corrupted, which is how a KPA-13 mutation found it.
 
 **`node_modules` was found empty once**, on 9 September, with no explanation.
 `npm install` restored 474 packages and the lockfile did not change. A

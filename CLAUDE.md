@@ -76,6 +76,7 @@ Shane and never Claude Code, and end with the `Claude-Session` line.
 | `./scripts/scan-history.sh` | Scans every commit for a credential. Run it before you push |
 | `./scripts/reset-password.sh` | Sets the owner's password on the box itself. `--link` prints a reset link, `--unlock` ends a run of failed sign-ins |
 | `npm run decisions` | Rebuilds `docs/decisions.md` from the decision blocks in Jira |
+| `./scripts/verify-migration.sh` | Loads the frozen vault into a fresh `sukkal_verify` and diffs it against `check.py`. `docs/runbooks/migration-verification.md` |
 
 Run the lint, the build and the tests before you report anything finished, and
 watch the run afterwards with `gh run list --limit 1`. A push nobody watches is
@@ -181,7 +182,7 @@ src/auth/       Hashing a password, holding a session, and resetting one
 src/connections/  Sealing a provider's credential, and reading it back
 src/db/         The connection module and the migration runner
 src/memory/     The four gates, the inference seam, the state rule and the sweep
-src/migrate/    The vault reader, and what it turns notes into
+src/migrate/    The vault reader, the load into Postgres, and the verification
 src/checks/     check.py ported: six problems that fail, four advisories that do not
 src/webhooks/   What an inbound delivery is authenticated and stored by
 src/worker/     The worker process, and the jobs pg-boss runs in it
@@ -189,7 +190,7 @@ test/           The suite, and its fixtures under test/fixtures/
 docs/adr/       Decisions that were hard to reverse
 docs/decisions.md  Every lighter ruling, generated from Jira by npm run decisions
 docs/runbooks/  Operating the server, and where the secrets live
-scripts/        Provisioning and checks. Bash, plus the decision register
+scripts/        Provisioning and checks. Bash, the decision register, and the migration verification
 ```
 
 **A `date` comes back as a string, not a `Date`.** `src/db/connect.ts` says so
@@ -259,6 +260,15 @@ is how a run reported 360 tests when the true count was 407. It cost an agent
 a cycle on 3 September 2026 and cost this session one the same night. Use `>|`
 to overwrite deliberately, or write to a new path. It is the same family as the
 `tail` trap below: the command reports a number and the number is from before.
+
+**The delete guard refuses a whole Bash call it cannot parse, and it has done so
+with no `rm` in the command.** Three calls were refused on 12 and
+13 September 2026: a `python3` heredoc followed by a delete, a heredoc writing a
+TypeScript file holding the JavaScript `delete` operator, and a commit message
+passed to `git commit -F -`. The result reads `Could not parse this command to
+verify delete safety`, and nothing in the call ran, including what came before
+the part it objected to. Write long text through the Write tool and pass the
+path, as in `git commit -F <file>`.
 
 **A test run piped into `tail` reports `tail`'s exit code, not the test's.**
 `node --test ... | tail -6` exits 0 on a run that failed. Read `# fail N` in

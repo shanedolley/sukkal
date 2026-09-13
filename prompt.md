@@ -36,10 +36,9 @@ then watch the run with `gh run list --limit 1`.
 **Ask the source rather than a summary.** Open the file, run the statement,
 call the API. A subagent that contradicts you has been right before.
 
-**Write long text through a file, not a heredoc.** The delete guard refuses a
-whole Bash call it cannot parse, and a heredoc holding code or a commit message
-has tripped it three times, once with no `rm` anywhere in it. Use the Write tool,
-then pass the path: `git commit -F <file>`.
+**Write long text through a file, not a heredoc.** `CLAUDE.md` says why. Check
+`git ls-files <path>` before writing a file you believe is new, because the Write
+tool overwrote a tracked one on 13 September 2026 without refusing.
 
 ## The loop, per story
 
@@ -131,30 +130,26 @@ repeating it as fact.
 Measured on 13 September 2026: the board paged in full, amaterasu tested with
 `nc -z -w 3 192.168.20.110 5432`, and CI read with `gh run list --limit 1`.
 
-**[KPA-148](https://koinon.atlassian.net/browse/KPA-148) and
-[KPA-155](https://koinon.atlassian.net/browse/KPA-155) shipped** and are In
-Review. Every response carries a Content-Security-Policy with a per-request
-nonce, and ADR-0025 says why nothing is prerendered any more.
+**[KPA-13](https://koinon.atlassian.net/browse/KPA-13) shipped, and the migration
+agrees with the vault.** `scripts/verify-migration.sh` exits 0 with ADR-0019's two
+orphans explained and five counts agreeing. It also built the load no story had,
+in `src/migrate/load.ts`.
 
-1. **[KPA-13](https://koinon.atlassian.net/browse/KPA-13)**, five points, In
-   Progress with nothing built. Its claim names the main tree on `main`, so
-   finish it there before claiming anything else. Lift the vault load out of
-   `test/advisories.test.ts` into something repeatable, run `check.py` and
-   `src/checks` side by side, and explain every line of the diff. `handover.md`
-   says what is already in place under *KPA-13*.
-2. **[KPA-131](https://koinon.atlassian.net/browse/KPA-131)**, three points, and
-   KPA-13 blocks it. A citation carrying a wikilink loses its author and date in
-   `targetOf` in `src/migrate/edges.ts`. Take it straight after KPA-13.
-3. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points, and
-   the only thing blocking it is a reachable amaterasu. It refused port 5432
-   all four times it was tried on 13 September 2026. Rename the two databases and the role on
-   the box, then drop `kpa` from `PRODUCTION` in `src/db/connect.ts`. It is the
-   last story holding epic KPA-152 open.
-4. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
+1. **[KPA-131](https://koinon.atlassian.net/browse/KPA-131)**, three points, and
+   KPA-13 no longer blocks it. A citation carrying a wikilink loses its author
+   and date in `targetOf` in `src/migrate/edges.ts`. Run
+   `scripts/verify-migration.sh` before and after: the edge count moves, and the
+   story's last criterion wants that change stated.
+2. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points, and
+   the only thing blocking it is a reachable amaterasu. It refused port 5432 all
+   four times it was tried on 13 September 2026. Rename the two databases and
+   the role on the box, then drop `kpa` from `PRODUCTION` in
+   `src/db/connect.ts`. It is the last story holding epic KPA-152 open.
+3. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
    criteria remain, and `handover.md` says which. One needs a consent screen,
    which is Shane's to press. The other is a refresh before expiry, which
    nothing calls.
-5. **Raise the deployment story.** Nothing serves the web tier, no tunnel
+4. **Raise the deployment story.** Nothing serves the web tier, no tunnel
    exists, and `SUKKAL_URL` names localhost because there is no other address.
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
    ticket on the board creates it. It also owns `upgrade-insecure-requests`,
@@ -166,12 +161,15 @@ KPA-57, which has shipped none of its seven stories.
 [KPA-129](https://koinon.atlassian.net/browse/KPA-129) names "all twelve checks"
 and the web tier runs twenty-three, so rewrite its criteria before building it.
 
+**Two steps wait on Shane, and neither is a ticket.** Unfreezing the vault
+restarts three launchd jobs, and it should wait for KPA-131. Loading the vault
+into production needs amaterasu and a person.
+
 **Nothing waits on a ruling from Shane** beyond
 [KPA-143](https://koinon.atlassian.net/browse/KPA-143), still in the decision
 queue.
 
-Thirty-seven stories are open: 35 To Do, one In Progress and one Decision
-required, against 122 stories and 26 In Review. Most wait on one OAuth grant, a
-metered key, a live Jira site, a deployment, a reachable amaterasu, or Shane at
-both ends of nabium. Read the blockers before picking, and prefer what unblocks
-the most.
+Thirty-six stories are open: 35 To Do and one Decision required, against 122
+stories and 27 In Review. Most wait on one OAuth grant, a metered key, a live
+Jira site, a deployment, a reachable amaterasu, or Shane at both ends of nabium.
+Read the blockers before picking, and prefer what unblocks the most.
