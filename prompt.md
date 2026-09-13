@@ -130,17 +130,18 @@ repeating it as fact.
 Measured on 13 September 2026: the board paged in full, amaterasu tested with
 `nc -z -w 3 192.168.20.110 5432`, and CI read with `gh run list --limit 1`.
 
-**[KPA-13](https://koinon.atlassian.net/browse/KPA-13) and
-[KPA-131](https://koinon.atlassian.net/browse/KPA-131) shipped.**
-`scripts/verify-migration.sh` proves the migration agrees with the vault, and a
-citation's author and date survive in `edges.citation`.
+**[KPA-13](https://koinon.atlassian.net/browse/KPA-13),
+[KPA-131](https://koinon.atlassian.net/browse/KPA-131) and
+[KPA-74](https://koinon.atlassian.net/browse/KPA-74) shipped.** Slice one has one
+story left, [KPA-12](https://koinon.atlassian.net/browse/KPA-12), and it spends
+metered money, so it is not a session's to take alone.
 
-1. **[KPA-74](https://koinon.atlassian.net/browse/KPA-74)**, two points, and KPA-13
-   unblocked it. Decide whether `src/checks/problems.ts` keeps its own reader or
-   moves onto `src/migrate/read-vault.ts`. Its third criterion wants the report
-   proved unchanged if it moves, which is one run of
-   `scripts/verify-migration.sh` before and after. `scripts/count-vault.py` is a
-   third reader and stays one on purpose: REQ-033 wants its independence.
+1. **Read the blockers on [KPA-89](https://koinon.atlassian.net/browse/KPA-89),
+   [KPA-107](https://koinon.atlassian.net/browse/KPA-107) and
+   [KPA-108](https://koinon.atlassian.net/browse/KPA-108) first.** Nobody has
+   measured them against *What not to touch alone* above. Keeping a
+   conversation, re-verifying a credential on a schedule and raising an expired
+   one may each need no vendor, no model and no grant.
 2. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points, and
    the only thing blocking it is a reachable amaterasu. It refused port 5432 all
    four times it was tried on 13 September 2026. Rename the two databases and
@@ -163,15 +164,14 @@ KPA-57, which has shipped none of its seven stories.
 and the web tier runs twenty-three, so rewrite its criteria before building it.
 
 **Two steps wait on Shane, and neither is a ticket.** Unfreezing the vault
-restarts three launchd jobs; nothing in the repository needs the freeze once
-KPA-74 is settled. Loading the vault into production needs amaterasu and a
-person.
+restarts three launchd jobs, and nothing in the repository needs the freeze any
+longer. Loading the vault into production needs amaterasu and a person.
 
 **Nothing waits on a ruling from Shane** beyond
 [KPA-143](https://koinon.atlassian.net/browse/KPA-143), still in the decision
 queue.
 
-Thirty-five stories are open: 34 To Do and one Decision required, against 122
-stories and 28 In Review. Most wait on one OAuth grant, a metered key, a live
+Thirty-four stories are open: 33 To Do and one Decision required, against 122
+stories and 29 In Review. Most wait on one OAuth grant, a metered key, a live
 Jira site, a deployment, a reachable amaterasu, or Shane at both ends of nabium.
 Read the blockers before picking, and prefer what unblocks the most.

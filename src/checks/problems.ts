@@ -22,6 +22,34 @@
  * and a note schema.ts rejects for an unrelated reason must still be
  * checked for these six.
  *
+ * **IT READS A NOTE THE WAY THE MIGRATION READS IT, AND THAT IS KPA-74's
+ * RULING.** Until 13 September 2026 this file carried its own copy of
+ * `check.py`'s frontmatter reader, which keeps quotes on and reads no lists,
+ * so that this report would match `check.py`'s on any input. It now reads
+ * through `parseNote` in `src/migrate/read-vault.ts`, the reader the load
+ * uses, and there is one reader of a note's frontmatter in TypeScript.
+ *
+ * The copy was hiding the defect the verification exists to find. Given
+ * `type: "reference"`, `check.py` reports a problem and so did the copy, so
+ * the two reports agreed and `scripts/verify-migration.sh` said the migration
+ * agreed with the vault. The migration had read the same note as a valid
+ * `reference` and loaded it. Reading as the migration reads, this report
+ * prints nothing for that note, `check.py` still prints its line, and the
+ * verification names the note as UNEXPLAINED. Parity with `check.py` is what
+ * the diff guards, and it needs no private reader to guard it.
+ *
+ * Measured before the change: against the frozen vault the report was
+ * identical under both readers, and all fifteen ported fixtures passed under
+ * both, because no note the vault or the fixtures hold quotes a value this
+ * file reads, writes a list there, or leaves out the space after a colon.
+ *
+ * `scripts/count-vault.py` is a third reader, in Python, and stays one: its
+ * independence from this code is the point of it (REQ-033).
+ *
+ * The file listing still copies `check.py`, recursive where it recurses and
+ * flat where it does not, because which files a report covers is not a
+ * matter of reading one.
+ *
  * `type` reuses `FACT_TYPES` and `status` reuses `VAULT_STATUSES` from
  * `src/migrate/schema.ts` rather than repeating either list: ADR-0010 and
  * ADR-0011 are why `status` checks against the vault's vocabulary and not
@@ -43,6 +71,7 @@
  */
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parseNote } from '../migrate/read-vault.ts';
 import { FACT_TYPES, VAULT_STATUSES } from '../migrate/schema.ts';
 import { vaultPath } from '../vault-mapping.ts';
 
@@ -123,28 +152,10 @@ async function linkTargets(vault: string): Promise<Set<string>> {
   return names;
 }
 
-/**
- * Reads a note's top-level `key: value` frontmatter, exactly as `check.py`
- * does: no quote-unescaping, no list parsing, and a nested or list-valued
- * line is ignored. `src/migrate/read-vault.ts`'s `parseNote` does more than
- * this on purpose, which is why this file does not reuse it -- a value
- * check.py reads with its quotes still on must not read differently here.
- */
-function frontmatter(text: string): Record<string, string> {
-  if (!text.startsWith('---\n')) {
-    return {};
-  }
-  const splitAt = text.indexOf('\n---');
-  const head = (splitAt === -1 ? text : text.slice(0, splitAt)).slice(4);
-  const fields: Record<string, string> = {};
-  for (const line of head.split(/\r\n|\r|\n/)) {
-    if (line.includes(': ') && !/^[ \t-]/.test(line)) {
-      const separator = line.indexOf(': ');
-      const key = line.slice(0, separator).trim();
-      fields[key] = line.slice(separator + 2).trim();
-    }
-  }
-  return fields;
+/** One frontmatter value as the message prints it. A list prints as the
+ *  migration read it, so a problem names what was actually loaded. */
+function shown(value: string | readonly string[] | undefined): string | undefined {
+  return Array.isArray(value) ? `[${value.join(', ')}]` : (value as string | undefined);
 }
 
 /**
@@ -171,7 +182,7 @@ export async function problems(vault: string = vaultPath()): Promise<string[]> {
   for (const file of files) {
     const text = await readFile(file, 'utf8');
     const where = `${path.basename(path.dirname(file))}/${path.basename(file)}`;
-    const fields = frontmatter(text);
+    const fields = parseNote(text).frontmatter;
 
     if (Object.keys(fields).length === 0) {
       // "no frontmatter" is not one of the six; check.py reports it and
@@ -180,17 +191,17 @@ export async function problems(vault: string = vaultPath()): Promise<string[]> {
       continue;
     }
 
-    const type = fields['type'];
+    const type = shown(fields['type']);
     if (type === undefined || !(TYPES_SORTED as readonly string[]).includes(type)) {
       found.push(`${where}: type \`${type ?? 'None'}\` is not one of ${pyList(TYPES_SORTED)}`);
     }
 
-    const status = fields['status'];
+    const status = shown(fields['status']);
     if (status === undefined || !(STATUSES_SORTED as readonly string[]).includes(status)) {
       found.push(`${where}: status \`${status ?? 'None'}\` is not one of ${pyList(STATUSES_SORTED)}`);
     }
 
-    if ((fields['description'] ?? '').length > DESCRIPTION_LIMIT) {
+    if ((shown(fields['description']) ?? '').length > DESCRIPTION_LIMIT) {
       found.push(`${where}: description over ${DESCRIPTION_LIMIT} characters; it is the index, keep it scannable`);
     }
 

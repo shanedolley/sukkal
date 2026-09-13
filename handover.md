@@ -11,31 +11,33 @@ hook wants. Read the head with `git log --oneline -1` rather than from here: a
 commit hash written into a file is stale the moment the file is committed.
 Read CI with `gh run list --limit 1`.
 
-**[KPA-13](https://koinon.atlassian.net/browse/KPA-13) and
-[KPA-131](https://koinon.atlassian.net/browse/KPA-131) shipped on
-13 September 2026.** The migration agrees with the vault, and a citation keeps
-its words. *The migration is proved* below says what both mean.
+**[KPA-13](https://koinon.atlassian.net/browse/KPA-13),
+[KPA-131](https://koinon.atlassian.net/browse/KPA-131) and
+[KPA-74](https://koinon.atlassian.net/browse/KPA-74) shipped on
+13 September 2026.** The migration agrees with the vault, a citation keeps its
+words, and one TypeScript reader reads a note's frontmatter. *The migration is
+proved* below says what all three mean.
 
 Twenty-nine migration files, numbered to `030`. Twenty-seven ADR files,
 numbered to `0025`, because `0007` and `0008` each hold two. Counted with `ls`
 on 13 September 2026.
 
-The suite runs **629 tests with the vault and 609 without it**, measured on
-13 September 2026 after KPA-131. One test skips in both, and it is meant to:
+The suite runs **632 tests with the vault and 612 without it**, measured on
+13 September 2026 after KPA-74. One test skips in both, and it is meant to:
 `test/connect.test.ts` skips its TLS case because a loopback database needs
 none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **122 stories, 87 shipped, which is 71%
-by count.** Counted from Jira on 13 September 2026, two pages, after KPA-131
+Project KPA on `koinon.atlassian.net`. **122 stories, 88 shipped, which is 72%
+by count.** Counted from Jira on 13 September 2026, two pages, after KPA-74
 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 28 |
-| To Do | 34 |
+| In Review | 29 |
+| To Do | 33 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -45,11 +47,11 @@ blocked.
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
     KPA-138 KPA-139 KPA-144 KPA-146 KPA-148 KPA-150 KPA-151 KPA-153
-    KPA-155 KPA-156 KPA-13  KPA-131
+    KPA-155 KPA-156 KPA-13  KPA-131 KPA-74
 
 | Epic | Done/All | Title |
 |---|---|---|
-| KPA-1 | 18/20 | Slice one: migrate the memory |
+| KPA-1 | 19/20 | Slice one: migrate the memory |
 | KPA-35 | 8/8 | Build the web interface |
 | KPA-51 | 7/7 | Finish the memory schema |
 | KPA-52 | 16/22 | Join the halves: replace every fixture |
@@ -246,11 +248,28 @@ ceiling: `edges_unique` keeps one sentence when a fact cites a target twice.
 The report did not move. `scripts/verify-migration.sh` gives the same two
 explained orphans and the same 84 edges after KPA-131 as before it.
 
+**One reader of a note's frontmatter, since KPA-74.** `src/checks/problems.ts`
+carried a private copy of `check.py`'s reader so its report would match
+`check.py`'s on any input, and it now reads through `parseNote`, as the load
+does. The ruling ran against the ticket's own framing, and a measurement is why.
+
+The copy hid the defect the verification exists to find. Given
+`type: "reference"`, `check.py` and the copy both report a problem, so the
+reports agree, while the load reads a valid `reference` and migrates it. After
+the move that note is an `UNEXPLAINED` line. Proved on a one-note vault: one
+unexplained line after, none before.
+
+Nothing moved for the frozen vault. Sukkal's report from
+`scripts/verify-migration.sh` is byte-identical to the first KPA-13 run, and
+all fifteen ported `check.py` fixtures pass under either reader.
+`scripts/count-vault.py` stays a separate Python reader, on purpose.
+
 **The vault is still frozen, and nothing in the repository needs it frozen any
-longer.** KPA-13 and KPA-131 were the two stories reading the frozen vault as an
-oracle, and both have shipped. `docs/runbooks/vault-freeze.md` says to restore
-after KPA-13, and restoring starts three launchd jobs, so it is Shane's step.
-KPA-74 is the last story that compares against the frozen report.
+longer.** KPA-13, KPA-131 and KPA-74 were the stories comparing against the
+frozen vault, and all three have shipped. `docs/runbooks/vault-freeze.md` says to
+restore after KPA-13, and restoring starts three launchd jobs, so it is Shane's
+step. `scripts/verify-migration.sh` fails on any vault that has moved, so run it
+once more before restoring if a last proof is wanted.
 
 ## One decision waiting
 

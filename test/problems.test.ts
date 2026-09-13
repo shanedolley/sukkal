@@ -45,6 +45,38 @@ async function withBadNote(vault: string, text: string): Promise<string[]> {
   return problems(vault);
 }
 
+describe('problems() reads a note as the migration reads it, which is KPA-74', () => {
+  let vault: string;
+  before(async () => {
+    vault = await makeVault();
+  });
+  after(async () => {
+    await rm(vault, { recursive: true, force: true });
+  });
+
+  // check.py keeps the quotes on and reports: type `"reference"` is not one of
+  // [...]. The migration unquotes the value and loads a valid reference. This
+  // report follows the migration, so scripts/verify-migration.sh shows the
+  // disagreement as an UNEXPLAINED line instead of two matching ones.
+  test('a quoted type reads as its value, as the load reads it, so no problem is raised', async () => {
+    assert.deepEqual(await withBadNote(vault, GOOD.replace('type: reference', 'type: "reference"')), []);
+  });
+
+  test('a quoted type the vault does not know still fails, and names the value the load read', async () => {
+    assert.deepEqual(await withBadNote(vault, GOOD.replace('type: reference', 'type: "nonsense"')), [
+      `shared/b.md: type \`nonsense\` is not one of ${TYPES}`,
+    ]);
+  });
+
+  test('a quoted description is measured without its quotes, as it is stored', async () => {
+    const exactly200 = 'x'.repeat(200);
+    assert.deepEqual(
+      await withBadNote(vault, GOOD.replace('description: d', `description: "${exactly200}"`)),
+      [],
+    );
+  });
+});
+
 describe('problems(), against fixtures built like check.py\'s own selftest', () => {
   let vault: string;
 
