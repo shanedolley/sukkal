@@ -6,7 +6,7 @@
 //
 // KPA-103. `Referrer-Policy` landed because an address reached a URL, and a
 // URL reaches the `Referer` header on any cross-origin request the page makes.
-// This is what keeps the header there.
+// This is what keeps the header there. KPA-146 added nosniff and a frame policy.
 
 import assert from "node:assert/strict";
 
@@ -53,6 +53,23 @@ for (const weaker of ["no-referrer", "strict-origin-when-cross-origin"]) {
   );
 }
 
+// 4. KPA-146. `nosniff` is the only value the header has, so anything else is
+//    a typo the browser ignores, and a stored file can run as script again.
+assert.equal(
+  carried.get("X-Content-Type-Options"),
+  "nosniff",
+  "X-Content-Type-Options is missing or has been changed",
+);
+
+// 5. KPA-146. `DENY` rather than `SAMEORIGIN`, because no screen frames
+//    another. `frame-ancestors` in the Content-Security-Policy replaces this,
+//    and KPA-148 removes the assertion when it does.
+assert.equal(
+  carried.get("X-Frame-Options"),
+  "DENY",
+  "X-Frame-Options is missing or has been changed, so another site can frame the sign-in page",
+);
+
 console.log(
-  "headers OK: every path carries Referrer-Policy: same-origin, so no address leaves in a Referer",
+  "headers OK: every path carries Referrer-Policy: same-origin, X-Content-Type-Options: nosniff and X-Frame-Options: DENY",
 );

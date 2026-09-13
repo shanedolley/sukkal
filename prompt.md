@@ -65,10 +65,23 @@ came from `grep` rather than from the `curl` that had already failed.
 When a criterion cannot be proved locally, say which one and why, rather than
 reporting the story done.
 
+## Moving a story
+
+Every KPA story takes the same transition ids, read from
+`/rest/api/3/issue/KPA-146/transitions` on 13 September 2026.
+
+| Id | Moves it to |
+|---|---|
+| 2 | Decision required |
+| 11 | To Do |
+| 21 | In Progress |
+| 31 | In Review |
+| 41 | Done |
+
 ## When a decision needs a person
 
-Stop the story, move it to the `Decision required` status with transition id 2,
-and post a Jira comment carrying:
+Stop the story, move it to the `Decision required` status, and post a Jira
+comment carrying:
 
 - The question, in a warning panel whose first line is exactly
   `DECISION NEEDED`.
@@ -110,39 +123,37 @@ repeating it as fact.
 
 ## Start here
 
-**[KPA-149](https://koinon.atlassian.net/browse/KPA-149) and
-[KPA-153](https://koinon.atlassian.net/browse/KPA-153) are done.** The product
-is Sukkal, Isimud is its face, and every machine name this Mac owns followed on
-13 September 2026.
+**[KPA-146](https://koinon.atlassian.net/browse/KPA-146) is done.** Every path
+carries `nosniff` and `X-Frame-Options: DENY`, beside the referrer policy.
 
 1. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points,
    and the only thing blocking it is a reachable amaterasu. Rename the two
    databases and the role on the box, then drop `kpa` from `PRODUCTION` in
-   `src/db/connect.ts`. Try the box first: it answers some days and not others.
-2. **[KPA-146](https://koinon.atlassian.net/browse/KPA-146)**, one point.
-   `X-Content-Type-Options` and a frame policy. The `headers()` function and
-   `apps/web/scripts/check-headers.ts` already exist, so each is a line and an
-   assertion.
-3. **[KPA-148](https://koinon.atlassian.net/browse/KPA-148)**, the
-   Content-Security-Policy. It carries an architecture decision first: a nonce
-   makes eleven prerendered routes dynamic, and a hash of the one inline script
-   does not. `handover.md` names where Next's own guide says so.
-4. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
+   `src/db/connect.ts`. Try the box first: it did not answer on
+   13 September 2026.
+2. **[KPA-148](https://koinon.atlassian.net/browse/KPA-148)**, the
+   Content-Security-Policy, and KPA-146 unblocked it. It carries an
+   architecture decision first: a nonce makes eleven prerendered routes
+   dynamic, and a hash of the one inline script does not. `handover.md` names
+   where Next's own guide says so. When `frame-ancestors` lands, remove
+   `X-Frame-Options` and its assertion in `apps/web/scripts/check-headers.ts`.
+3. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
    criteria remain, and `handover.md` says which.
-5. **Raise the deployment story.** Nothing serves the web tier, no tunnel
+4. **Raise the deployment story.** Nothing serves the web tier, no tunnel
    exists, and `SUKKAL_URL` names localhost because there is no other address.
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
    ticket anywhere on the board creates it.
 
-**One thing Shane may want a ruling on**, and it blocks nothing. Eleven browser
-storage keys still read `kpa.`, from `kpa.appearance` to `kpa.issues.tree`.
-KPA-153 left them because a rename abandons a viewer's saved choice rather than
-moving it, and nothing fails when it does. Moving them needs a story that reads
-the old key once and writes the new one.
+**Two things Shane may want a ruling on**, and neither blocks anything. Eleven
+browser storage keys still read `kpa.`, from `kpa.appearance` to
+`kpa.issues.tree`. KPA-153 left them because a rename abandons a viewer's saved
+choice rather than moving it, and nothing fails when it does. Moving them needs
+a story that reads the old key once and writes the new one. The session cookie
+still reads `kpa_session` too, and renaming it signs every browser out once.
 
-Most of what is left needs something only Shane can supply. Thirty-nine stories
-are open: 38 To Do and one Decision required. Counted from Jira on
-13 September 2026, paged, against 120 stories and 22 In Review. They wait on one
+Most of what is left needs something only Shane can supply. Thirty-eight stories
+are open: 37 To Do and one Decision required. Counted from Jira on
+13 September 2026, paged, against 120 stories and 23 In Review. They wait on one
 OAuth grant, a metered key, a live Jira site, a deployment, a reachable
 amaterasu, or Shane at both ends of nabium. Read the blockers before picking,
 and prefer what unblocks the most.

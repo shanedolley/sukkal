@@ -24,13 +24,28 @@ import type { NextConfig } from "next";
  * in the same story, because a URL reaches browser history and every access
  * log on the way whatever a header says. This closes the fourth path rather
  * than the first three.
+ *
+ * KPA-146 added the cheap half of the rest.
+ *
+ * `X-Content-Type-Options: nosniff` stops a browser guessing a content type.
+ * Sukkal stores files it did not write, a nabium delivery, a Gmail draft, a
+ * tracker's issue description, and a guessed type is how one runs as script.
+ *
+ * `X-Frame-Options: DENY` stops another site loading Sukkal in a frame and
+ * collecting a click meant for the sign-in button. No screen here frames
+ * another. It is the interim: `frame-ancestors` replaces it in the
+ * Content-Security-Policy, which is KPA-148.
  */
 const nextConfig: NextConfig = {
   headers() {
     return Promise.resolve([
       {
         source: "/:path*",
-        headers: [{ key: "Referrer-Policy", value: "same-origin" }],
+        headers: [
+          { key: "Referrer-Policy", value: "same-origin" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+        ],
       },
     ]);
   },

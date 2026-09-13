@@ -1,6 +1,6 @@
 # Handover
 
-State as at 12 September 2026. `prompt.md` holds the instructions for a new
+State as at 13 September 2026. `prompt.md` holds the instructions for a new
 session. This file holds the facts.
 
 ## Where the work is
@@ -18,15 +18,15 @@ a loopback database needs none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **120 stories, 81 shipped, which is 68%
-by count.** Counted from Jira on 13 September 2026, paged, after KPA-153
+Project KPA on `koinon.atlassian.net`. **120 stories, 82 shipped, which is 68%
+by count.** Counted from Jira on 13 September 2026, paged, after KPA-146
 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 22 |
-| To Do | 38 |
+| In Review | 23 |
+| To Do | 37 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -35,7 +35,7 @@ blocked.
 
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
-    KPA-138 KPA-139 KPA-144 KPA-150 KPA-151 KPA-153
+    KPA-138 KPA-139 KPA-144 KPA-146 KPA-150 KPA-151 KPA-153
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -49,7 +49,7 @@ blocked.
 | KPA-56 | 6/7 | The agent and the policy engine |
 | KPA-57 | 0/7 | Retrieval and chat |
 | KPA-75 | 5/6 | Let the installation authenticate its owner |
-| KPA-145 | 0/3 | Harden what the installation exposes |
+| KPA-145 | 1/3 | Harden what the installation exposes |
 | KPA-149 | 2/2 | Become Sukkal. In Review itself |
 | KPA-152 | 1/2 | Move the machine identifiers off KPA |
 
@@ -131,12 +131,17 @@ the epic and KPA-154 carries what is left.
 project's own label `KPA · Personal Assistant`, which is keyed to it and seeded
 by `migrations/018`.
 
-**Four more things keep the letters, and each is deliberate.** Eleven browser
-storage keys, `kpa.appearance` through `kpa.issues.tree`, because a rename
-abandons a viewer's saved choice rather than moving it and nothing fails when
-it does. Twelve SVG names inside the avatar, which never leave the component.
+**Five more things keep the letters.** The first four are deliberate. Eleven
+browser storage keys, `kpa.appearance` through `kpa.issues.tree`, because a
+rename abandons a viewer's saved choice rather than moving it and nothing fails
+when it does. Twelve SVG names inside the avatar, which never leave the component.
 `kpa-worker`, the `application_name` the worker reports to PostgreSQL. And
 `docs/decisions.md`, which `npm run decisions` rewrites from Jira on every run.
+
+The fifth is the session cookie, `COOKIE = 'kpa_session'` in
+`src/auth/session.ts`, which `test/session.test.ts` asserts. Nobody ruled on
+it: KPA-153 did not list it. A rename signs every browser out once and loses
+nothing else. Found on 13 September 2026.
 
 ## One decision waiting
 
@@ -322,6 +327,13 @@ says a nonce requires dynamic rendering. Thirty-three routes build today and
 eleven are static. KPA-148 carries the choice between a nonce and a hash of the
 one inline script this app runs, in
 `apps/web/components/appearance-bootstrap.tsx`.
+
+**A signed-in screen needs no password.** Insert a `sessions` row into
+`sukkal_local` whose `id` is the SHA-256 hex of a random token, with a one-hour
+`expires_at` and a `user_agent` naming the story. Send the token as the
+`kpa_session` cookie, and delete the row by its `user_agent` afterwards.
+KPA-146 saw the briefing, the connections dialog and the OAuth callback this
+way on 13 September 2026, and it left the owner's password alone.
 
 **`node_modules` was found empty once**, on 9 September, with no explanation.
 `npm install` restored 474 packages and the lockfile did not change. A
