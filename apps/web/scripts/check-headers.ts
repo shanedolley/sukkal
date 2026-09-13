@@ -62,8 +62,12 @@ assert.equal(
 );
 
 // 5. KPA-146. `DENY` rather than `SAMEORIGIN`, because no screen frames
-//    another. `frame-ancestors` in the Content-Security-Policy replaces this,
-//    and KPA-148 removes the assertion when it does.
+//    another.
+//
+//    IT STAYS BESIDE `frame-ancestors`, which KPA-148 added. The two say the
+//    same thing to different browsers: one too old to read a
+//    Content-Security-Policy directive still reads this header, and the pair
+//    costs one line. `scripts/check-csp.ts` asserts the directive.
 assert.equal(
   carried.get("X-Frame-Options"),
   "DENY",

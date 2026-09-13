@@ -25,30 +25,72 @@
  * So `requireOwner` in `lib/session.ts` is what a route calls, and this is the
  * outer gate. Two checks, and neither assumes the other held, which is the
  * shape ADR-0023 chose for Access and for the same reason.
+ *
+ * IT ALSO MINTS THE CONTENT-SECURITY-POLICY NONCE, because a nonce has to be
+ * new on every request and this is the only code that runs on every one.
+ * `lib/csp.ts` writes the policy and ADR-0025 says why it is a nonce rather
+ * than a hash. The nonce goes on the request as well as the response: Next
+ * reads it back out of `x-nonce` during rendering and puts it on every script
+ * it emits, and the root layout reads the same header to hand it to the two
+ * scripts Next did not write.
+ *
+ * EVERY RESPONSE HERE CARRIES IT, including the redirect and the 401. A policy
+ * on the page somebody is sent to and not on the page that sent them is a gap
+ * shaped exactly like the one a redirect is used to slip through.
  */
+import { randomBytes } from 'node:crypto';
+
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { COOKIE } from '../../src/auth/session.ts';
+import { NONCE_BYTES, NONCE_HEADER, policy } from './lib/csp.ts';
 import { isPublic } from './lib/public-paths.ts';
 import { sessionFor } from './lib/session.ts';
 
+/**
+ * The response, with the policy on it and the nonce reaching the renderer.
+ *
+ * `NextResponse.next` is given the request headers rather than only the
+ * response, which is how the nonce arrives at a Server Component. A nonce set
+ * on the response alone never reaches the render that has to use it.
+ */
+function guarded(request: NextRequest): NextResponse {
+  const nonce = randomBytes(NONCE_BYTES).toString('base64');
+  const csp = policy(nonce, process.env.NODE_ENV === 'development');
+
+  const headers = new Headers(request.headers);
+  headers.set(NONCE_HEADER, nonce);
+  headers.set('Content-Security-Policy', csp);
+
+  const response = NextResponse.next({ request: { headers } });
+  response.headers.set('Content-Security-Policy', csp);
+  return response;
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const path = request.nextUrl.pathname;
-  if (isPublic(path)) return NextResponse.next();
+  if (isPublic(path)) return guarded(request);
 
   const session = await sessionFor(request.cookies.get(COOKIE)?.value);
-  if (session) return NextResponse.next();
+  if (session) return guarded(request);
 
   // An API caller gets a status it can read. A browser gets the page that
   // lets it fix the problem, and `next` carries where it was going, so
   // signing in lands somebody back where they meant to be.
+  const nonce = randomBytes(NONCE_BYTES).toString('base64');
+  const csp = policy(nonce, process.env.NODE_ENV === 'development');
+
   if (path.startsWith('/api/')) {
-    return NextResponse.json({ error: 'Sign in first.' }, { status: 401 });
+    const refused = NextResponse.json({ error: 'Sign in first.' }, { status: 401 });
+    refused.headers.set('Content-Security-Policy', csp);
+    return refused;
   }
 
   const signIn = new URL('/sign-in', request.url);
   signIn.searchParams.set('next', path);
-  return NextResponse.redirect(signIn);
+  const redirect = NextResponse.redirect(signIn);
+  redirect.headers.set('Content-Security-Policy', csp);
+  return redirect;
 }
 
 export const config = {

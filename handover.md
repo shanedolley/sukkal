@@ -18,15 +18,15 @@ a loopback database needs none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **122 stories, 84 shipped, which is 69%
-by count.** Counted from Jira on 13 September 2026, paged, after KPA-155
+Project KPA on `koinon.atlassian.net`. **122 stories, 85 shipped, which is 70%
+by count.** Counted from Jira on 13 September 2026, paged, after KPA-148
 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 25 |
-| To Do | 37 |
+| In Review | 26 |
+| To Do | 36 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -35,8 +35,8 @@ blocked.
 
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
-    KPA-138 KPA-139 KPA-144 KPA-146 KPA-150 KPA-151 KPA-153 KPA-155
-    KPA-156
+    KPA-138 KPA-139 KPA-144 KPA-146 KPA-148 KPA-150 KPA-151 KPA-153
+    KPA-155 KPA-156
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -50,7 +50,7 @@ blocked.
 | KPA-56 | 6/7 | The agent and the policy engine |
 | KPA-57 | 0/7 | Retrieval and chat |
 | KPA-75 | 5/6 | Let the installation authenticate its owner |
-| KPA-145 | 1/3 | Harden what the installation exposes |
+| KPA-145 | 2/3 | Harden what the installation exposes |
 | KPA-149 | 2/2 | Become Sukkal. In Review itself |
 | KPA-152 | 3/4 | Move the machine identifiers off KPA |
 
@@ -238,7 +238,7 @@ npm run decisions             # rebuilds docs/decisions.md from Jira
 ```
 
 In `apps/web`: `npm run lint`, `npm run build`, and `npm run check`, which runs
-twenty-two scripts under plain node.
+twenty-three scripts under plain node.
 
 Run the suite the way CI runs it, which is without the vault:
 
@@ -356,12 +356,41 @@ the connection revoke opened the sealed token inside the route handler and that
 test refused it. The plaintext lives behind `revokeConnection` in
 `src/connections/oauth.ts`, which hands a route a verdict.
 
-**A CSP nonce would make eleven prerendered routes dynamic.** Next's own guide
-in `node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`
-says a nonce requires dynamic rendering. Thirty-three routes build today and
-eleven are static. KPA-148 carries the choice between a nonce and a hash of the
-one inline script this app runs, in
-`apps/web/components/appearance-bootstrap.tsx`.
+**The Content-Security-Policy is a nonce, and nothing is prerendered.** KPA-148
+shipped on 13 September 2026 and ADR-0025 records why. `apps/web/lib/csp.ts`
+writes the policy and `proxy.ts` mints 128 bits per request.
+
+**A hash was never available, and measuring is what showed it.** Every page
+carries four to six inline scripts. Three are constant: the appearance
+bootstrap, `next-themes`, and a 43-byte line creating `self.__next_f`. The rest
+is the flight payload, which carries the rendered page. Eleven pages gave
+sixteen distinct hashes, and `/sprints/[scope]` gave eight across three of its
+own URLs. A hash of something rendered from the database at request time cannot
+be written at build time.
+
+**`export const dynamic = "force-dynamic"` in `apps/web/app/layout.tsx` is the
+whole cost, and it is one line rather than twelve.** All 34 routes are dynamic;
+12 were prerendered before. Measured at 3 to 6ms prerendered against 10 to 15ms
+dynamic, ten requests a page against `next start`.
+
+**The two scripts Next did not write need the nonce handed to them.** Next
+nonces its own, including all fifteen `<script src>` bundles, which is what
+makes `'strict-dynamic'` safe. `AppearanceBootstrap` and `ThemeProvider` each
+take a `nonce` prop from the root layout, which reads `x-nonce`.
+
+**`style-src` keeps `'unsafe-inline'` and a nonce is not an upgrade.** A nonce
+applies to a `<style>` element and never to a `style` attribute. Serving
+`style-src 'self' 'nonce-...'` raised nineteen violations on the settings screen,
+one per attribute: the sidebar's width, an `aspect-ratio`, and the colour
+swatches.
+
+**`upgrade-insecure-requests` is absent on purpose.** It would govern an address
+that does not exist. KPA-147 owns it.
+
+`apps/web/scripts/check-csp.ts` is the twenty-third web check, and sixteen
+mutations each failed it once. One of those mutations caught the check itself
+being too weak: asserting that `randomBytes` appeared anywhere passed a proxy
+whose first of two nonces had been replaced by a constant. It counts them now.
 
 **A signed-in screen needs no password.** Insert a `sessions` row into
 `sukkal_local` whose `id` is the SHA-256 hex of a random token, with a one-hour
@@ -372,6 +401,23 @@ not what a request may carry, so `curl -H 'Cookie: __Host-sukkal_session=...'`
 works unchanged.
 KPA-146 saw the briefing, the connections dialog and the OAuth callback this
 way on 13 September 2026, and it left the owner's password alone.
+
+**`next start` holds its build in memory, so a plain `kill` and an immediate
+restart serves the old one.** On 13 September 2026 a rebuilt enforcing policy
+came back as the previous report-only one, and reading it looked like the edit
+had not taken. `kill -9`, then wait for the port to actually free, then start:
+
+```
+PID=$(lsof -ti:3000); kill -9 "$PID"
+until ! lsof -ti:3000 >/dev/null 2>&1; do sleep 1; done
+```
+
+**A mutation that lands in a comment proves nothing.** Two of KPA-148's
+mutations replaced the first occurrence of a string, and in `lib/csp.ts` the
+first occurrence of `'strict-dynamic'` and of `frame-ancestors 'none'` is in the
+doc comment that explains them. Both checks passed and both passes were empty.
+Target the line a browser sees, and read the failure message rather than the
+exit status.
 
 **A dev server started before KPA-153 still names the old database and answers
 500 on every route.** One was found on port 3000 on 13 September 2026, holding
@@ -409,14 +455,22 @@ rather than a broken import.
 
 ## Two facts worth not rediscovering
 
-**`apps/web/AGENTS.md` is right, and it has been right three times.** KPA-77
+**`apps/web/AGENTS.md` is right, and it has now been right four times.** KPA-77
 found that `middleware.ts` is deprecated and renamed to `proxy.ts`, and that
 Proxy defaults to the Node.js runtime, which is what lets a guard reach the
 database. KPA-128 found that a static page calling `useSearchParams` fails the
 production build without a Suspense boundary, so `/sign-in`, `/reset` and
 `/connections` read their parameters on the server and hand them down. KPA-148
-will find the third. Read `node_modules/next/dist/docs/` before writing web
-code.
+found the third and the fourth: a nonce forces dynamic rendering, and Next
+nonces only the scripts it wrote, so `next/script` and `next-themes` each need
+the prop handed to them.
+
+**The guide lives in the root `node_modules`, not under `apps/web`.** AGENTS.md
+says to resolve it from its own directory and warns that a monorepo may hide it
+from the root, and this repository is the other way round: `apps/web` is a
+workspace, so npm hoists `next` and the path is
+`node_modules/next/dist/docs/01-app/...` from the repository root. Looking for
+it under `apps/web/node_modules` answers `No such file or directory`.
 
 **Transcripts come from nabium, not from Zoom.** `migrations/007_meetings.sql`
 says a meeting may point at the source its transcript became, and that source

@@ -123,28 +123,27 @@ repeating it as fact.
 
 ## Start here
 
-**[KPA-155](https://koinon.atlassian.net/browse/KPA-155) is done.** Every
-browser storage key reads `sukkal.` and nine of the ten carry their saved value.
-`apps/web/scripts/check-local-store.ts` proves it.
+**[KPA-148](https://koinon.atlassian.net/browse/KPA-148) and
+[KPA-155](https://koinon.atlassian.net/browse/KPA-155) are done.** Every browser
+storage key reads `sukkal.`, and every response carries a Content-Security-Policy
+with a per-request nonce. ADR-0025 records why the nonce beat a hash, and why
+nothing is prerendered any more.
 
 1. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points,
    and the only thing blocking it is a reachable amaterasu. Rename the two
    databases and the role on the box, then drop `kpa` from `PRODUCTION` in
    `src/db/connect.ts`. Try the box first: it answered neither ping nor port
-   5432 on 13 September 2026, and it is now the last thing holding the epic
+   5432 on 13 September 2026, and it is now the last thing holding epic KPA-152
    open.
-2. **[KPA-148](https://koinon.atlassian.net/browse/KPA-148)**, the
-   Content-Security-Policy, and KPA-146 unblocked it. It carries an
-   architecture decision first: a nonce makes eleven prerendered routes
-   dynamic, and a hash of the one inline script does not. `handover.md` names
-   where Next's own guide says so. When `frame-ancestors` lands, remove
-   `X-Frame-Options` and its assertion in `apps/web/scripts/check-headers.ts`.
-3. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
-   criteria remain, and `handover.md` says which.
-4. **Raise the deployment story.** Nothing serves the web tier, no tunnel
+2. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
+   criteria remain, and `handover.md` says which. One needs a consent screen,
+   which is Shane's to press; the other is a refresh before expiry, which
+   nothing calls.
+3. **Raise the deployment story.** Nothing serves the web tier, no tunnel
    exists, and `SUKKAL_URL` names localhost because there is no other address.
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
-   ticket anywhere on the board creates it.
+   ticket anywhere on the board creates it. It also owns
+   `upgrade-insecure-requests`, which KPA-148 deliberately left out.
 
 **Nothing waits on a ruling from Shane**, beyond
 [KPA-143](https://koinon.atlassian.net/browse/KPA-143) in the decision queue. He
@@ -154,9 +153,9 @@ browser storage keys and
 [KPA-156](https://koinon.atlassian.net/browse/KPA-156) renamed the session
 cookie to `__Host-sukkal_session`.
 
-Most of what is left needs something only Shane can supply. Thirty-eight stories
-are open: 37 To Do and one Decision required. Counted from Jira on
-13 September 2026, paged, against 122 stories and 25 In Review. They wait on one
+Most of what is left needs something only Shane can supply. Thirty-seven stories
+are open: 36 To Do and one Decision required. Counted from Jira on
+13 September 2026, paged, against 122 stories and 26 In Review. They wait on one
 OAuth grant, a metered key, a live Jira site, a deployment, a reachable
 amaterasu, or Shane at both ends of nabium. Read the blockers before picking,
 and prefer what unblocks the most.

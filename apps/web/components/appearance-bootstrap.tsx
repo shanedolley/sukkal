@@ -49,13 +49,19 @@ var root=document.documentElement;
 Object.keys(tokens).forEach(function(key){root.style.setProperty(key,tokens[key])});
 }catch(e){}})();`;
 
-export function AppearanceBootstrap() {
+export function AppearanceBootstrap({ nonce }: { nonce?: string }) {
   return (
     // beforeInteractive belonged in _document under the Pages Router. Under
     // the App Router the root layout is the documented place for a script the
     // whole site needs. .oxlintrc.json turns the rule off for this file.
+    //
+    // THE NONCE IS WHAT LETS THIS RUN AT ALL under the policy KPA-148 added.
+    // `script-src` names `'strict-dynamic'`, so an inline script with no nonce
+    // is refused, and a refused script here means every load flashes the
+    // stylesheet's green. `scripts/check-csp.ts` asserts the prop is passed.
     <Script
       id="sukkal-appearance"
+      nonce={nonce}
       strategy="beforeInteractive"
       dangerouslySetInnerHTML={{ __html: SCRIPT }}
     />
