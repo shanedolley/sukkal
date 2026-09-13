@@ -548,6 +548,14 @@ recorded commit does not exist.** Its `git log want..have` fails first under
 `set -e`. A real drift names a commit that exists, so this bites only when
 `docs/vault-freeze.txt` is corrupted, which is how a KPA-13 mutation found it.
 
+**zsh does not split an unquoted variable into words.** `for k in $keys` over
+a newline-separated list runs once, with every key in one string, so a loop of
+Jira calls on 13 September 2026 read nothing and reported an empty result as if
+it were the answer. Pipe the list into `while read -r k`. A separate loop over
+`/search/jql` with `-G` and a page token ran past two minutes and was stopped;
+the To Do stories fit on one page, so read each story from `/issue/<key>`
+instead.
+
 **`node_modules` was found empty once**, on 9 September, with no explanation.
 `npm install` restored 474 packages and the lockfile did not change. A
 `Cannot find package 'pg'` from a file that has always imported it means this

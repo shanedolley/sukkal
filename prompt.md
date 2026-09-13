@@ -127,41 +127,55 @@ repeating it as fact.
 
 ## Start here
 
-Measured on 13 September 2026: the board paged in full, amaterasu tested with
-`nc -z -w 3 192.168.20.110 5432`, and CI read with `gh run list --limit 1`.
+Measured on 13 September 2026, when a session stopped because nothing left could
+be both built and proved without Shane: the board paged in full, every To Do
+story's `Blocks` links read one by one from `/rest/api/3/issue/<key>`, amaterasu
+tested with `nc -z -w 3 192.168.20.110 5432`, and CI read with
+`gh run list --limit 1`.
 
 **[KPA-13](https://koinon.atlassian.net/browse/KPA-13),
 [KPA-131](https://koinon.atlassian.net/browse/KPA-131) and
-[KPA-74](https://koinon.atlassian.net/browse/KPA-74) shipped.** Slice one has one
-story left, [KPA-12](https://koinon.atlassian.net/browse/KPA-12), and it spends
-metered money, so it is not a session's to take alone.
+[KPA-74](https://koinon.atlassian.net/browse/KPA-74) shipped** that day. Slice one
+has one story left, [KPA-12](https://koinon.atlassian.net/browse/KPA-12), and it
+spends metered money.
 
-1. **Read the blockers on [KPA-89](https://koinon.atlassian.net/browse/KPA-89),
-   [KPA-107](https://koinon.atlassian.net/browse/KPA-107) and
-   [KPA-108](https://koinon.atlassian.net/browse/KPA-108) first.** Nobody has
-   measured them against *What not to touch alone* above. Keeping a
-   conversation, re-verifying a credential on a schedule and raising an expired
-   one may each need no vendor, no model and no grant.
-2. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points, and
-   the only thing blocking it is a reachable amaterasu. It refused port 5432 all
-   four times it was tried on 13 September 2026. Rename the two databases and
-   the role on the box, then drop `kpa` from `PRODUCTION` in
-   `src/db/connect.ts`. It is the last story holding epic KPA-152 open.
-3. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
-   criteria remain, and `handover.md` says which. One needs a consent screen,
-   which is Shane's to press. The other is a refresh before expiry, which
-   nothing calls.
-4. **Raise the deployment story.** Nothing serves the web tier, no tunnel
-   exists, and `SUKKAL_URL` names localhost because there is no other address.
-   [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
-   ticket on the board creates it. It also owns `upgrade-insecure-requests`,
-   which KPA-148 left out on purpose.
+**Ten To Do stories have no open blocker, and each waits on something only Shane
+supplies.** Read this before claiming, and re-measure it: a ruling or a grant can
+free any of them.
 
-**Two stories look unblocked and are not.**
-[KPA-92](https://koinon.atlassian.net/browse/KPA-92) reuses retrieval from epic
-KPA-57, which has shipped none of its seven stories.
-[KPA-129](https://koinon.atlassian.net/browse/KPA-129) names "all twelve checks"
-and the web tier runs twenty-three, so rewrite its criteria before building it.
+| Story | What it waits on |
+|---|---|
+| [KPA-50](https://koinon.atlassian.net/browse/KPA-50) | A live Jira round trip, which its fifth criterion and its done-when both name, and an estimate. It carries no estimate label and adds TipTap. Nothing in the app reads or writes Jira descriptions yet |
+| [KPA-12](https://koinon.atlassian.net/browse/KPA-12) | Metered Voyage spend |
+| [KPA-86](https://koinon.atlassian.net/browse/KPA-86) | Metered model spend |
+| [KPA-71](https://koinon.atlassian.net/browse/KPA-71) | Somebody at both ends of the nabium push |
+| [KPA-84](https://koinon.atlassian.net/browse/KPA-84) | Acting on Shane's real mailboxes |
+| [KPA-49](https://koinon.atlassian.net/browse/KPA-49) | Live trackers to poll |
+| [KPA-105](https://koinon.atlassian.net/browse/KPA-105) | A Jira site connected by token or by a grant |
+| [KPA-103](https://koinon.atlassian.net/browse/KPA-103) | A consent screen for one of its two remaining criteria. The other, a refresh before expiry, is buildable and would leave the story open |
+| [KPA-147](https://koinon.atlassian.net/browse/KPA-147) | An HTTPS address, which needs the deployment story nobody has raised |
+| [KPA-154](https://koinon.atlassian.net/browse/KPA-154) | A reachable amaterasu. It refused port 5432 five times on 13 September 2026 |
+
+Every other To Do story has an open blocker in Jira. KPA-89 waits on KPA-88 and
+retrieval; KPA-107 waits on KPA-103, KPA-105 and KPA-106; KPA-108 waits on
+KPA-107.
+
+**What would free the most, in order:**
+
+1. **A ruling on KPA-50.** Build the editor, the slash menu and the ADF adapter
+   against fixtures now, with the live Jira proof left to Shane, or wait for the
+   issue sync. It is the one story a session could mostly build.
+2. **A reachable amaterasu**, which frees KPA-154 and closes epic KPA-152.
+3. **Raising the deployment story.** It frees KPA-147 and owns
+   `upgrade-insecure-requests`, which KPA-148 left out on purpose.
+4. **One Google consent screen**, which lets KPA-103 close and starts the chain
+   through KPA-107 and KPA-108.
+
+**Two stories read as unblocked before, and Jira blocks both.**
+[KPA-92](https://koinon.atlassian.net/browse/KPA-92) waits on KPA-87, which is
+retrieval. [KPA-129](https://koinon.atlassian.net/browse/KPA-129) waits on
+KPA-123, KPA-124 and KPA-125, and it names "all twelve checks" where the web tier
+runs twenty-three, so rewrite its criteria once those land.
 
 **Two steps wait on Shane, and neither is a ticket.** Unfreezing the vault
 restarts three launchd jobs, and nothing in the repository needs the freeze any
@@ -172,6 +186,4 @@ longer. Loading the vault into production needs amaterasu and a person.
 queue.
 
 Thirty-four stories are open: 33 To Do and one Decision required, against 122
-stories and 29 In Review. Most wait on one OAuth grant, a metered key, a live
-Jira site, a deployment, a reachable amaterasu, or Shane at both ends of nabium.
-Read the blockers before picking, and prefer what unblocks the most.
+stories and 29 In Review.
