@@ -131,12 +131,19 @@ the epic and KPA-154 carries what is left.
 project's own label `KPA · Personal Assistant`, which is keyed to it and seeded
 by `migrations/018`.
 
-**Five more things keep the letters.** The first four are deliberate. Eleven
-browser storage keys, `kpa.appearance` through `kpa.issues.tree`, because a
-rename abandons a viewer's saved choice rather than moving it and nothing fails
-when it does. Twelve SVG names inside the avatar, which never leave the component.
-`kpa-worker`, the `application_name` the worker reports to PostgreSQL. And
-`docs/decisions.md`, which `npm run decisions` rewrites from Jira on every run.
+**Three more things keep the letters, and each is deliberate.** Twelve SVG
+names inside the avatar, which never leave the component. `kpa-worker`, the
+`application_name` the worker reports to PostgreSQL. And `docs/decisions.md`,
+which `npm run decisions` rewrites from Jira on every run.
+
+**Ten browser storage keys move in KPA-155**, which Shane asked for on
+13 September 2026: eight `kpa.issues` keys, `kpa.space` and `kpa.appearance`.
+Counted from the code rather than from ADR-0022, which lists every key that
+ever existed and four of which have since moved to the server. A first count
+said eleven for exactly that reason. Nine carry their value forward through one
+rule in `apps/web/lib/local-store.ts`, and `kpa.appearance` needs none: KPA-126
+made it a cache of a server value, so losing it costs one green paint on one
+load.
 
 The fifth is the session cookie, `COOKIE = 'kpa_session'` in
 `src/auth/session.ts`, which `test/session.test.ts` asserts. Nobody ruled on

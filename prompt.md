@@ -144,12 +144,15 @@ carries `nosniff` and `X-Frame-Options: DENY`, beside the referrer policy.
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
    ticket anywhere on the board creates it.
 
-**Two things Shane may want a ruling on**, and neither blocks anything. Eleven
-browser storage keys still read `kpa.`, from `kpa.appearance` to
-`kpa.issues.tree`. KPA-153 left them because a rename abandons a viewer's saved
-choice rather than moving it, and nothing fails when it does. Moving them needs
-a story that reads the old key once and writes the new one. The session cookie
-still reads `kpa_session` too, and renaming it signs every browser out once.
+**One thing Shane may want a ruling on**, and it blocks nothing. The session
+cookie still reads `kpa_session`, in `src/auth/session.ts:47`, and
+`test/session.test.ts` asserts the name. Renaming it signs every browser out
+once and loses nothing else. KPA-153 did not list it and nobody has ruled on
+it.
+
+The browser storage keys are answered.
+[KPA-155](https://koinon.atlassian.net/browse/KPA-155) carries them, raised on
+13 September 2026.
 
 Most of what is left needs something only Shane can supply. Thirty-eight stories
 are open: 37 To Do and one Decision required. Counted from Jira on
