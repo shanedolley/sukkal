@@ -36,6 +36,11 @@ then watch the run with `gh run list --limit 1`.
 **Ask the source rather than a summary.** Open the file, run the statement,
 call the API. A subagent that contradicts you has been right before.
 
+**Write long text through a file, not a heredoc.** The delete guard refuses a
+whole Bash call it cannot parse, and a heredoc holding code or a commit message
+has tripped it three times, once with no `rm` anywhere in it. Use the Write tool,
+then pass the path: `git commit -F <file>`.
+
 ## The loop, per story
 
 1. Read the story in Jira, in full. It carries its own acceptance criteria, the
@@ -123,39 +128,50 @@ repeating it as fact.
 
 ## Start here
 
-**[KPA-148](https://koinon.atlassian.net/browse/KPA-148) and
-[KPA-155](https://koinon.atlassian.net/browse/KPA-155) are done.** Every browser
-storage key reads `sukkal.`, and every response carries a Content-Security-Policy
-with a per-request nonce. ADR-0025 records why the nonce beat a hash, and why
-nothing is prerendered any more.
+Measured on 13 September 2026: the board paged in full, amaterasu tested with
+`nc -z -w 3 192.168.20.110 5432`, and CI read with `gh run list --limit 1`.
 
-1. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points,
-   and the only thing blocking it is a reachable amaterasu. Rename the two
-   databases and the role on the box, then drop `kpa` from `PRODUCTION` in
-   `src/db/connect.ts`. Try the box first: it answered neither ping nor port
-   5432 on 13 September 2026, and it is now the last thing holding epic KPA-152
-   open.
-2. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
+**[KPA-148](https://koinon.atlassian.net/browse/KPA-148) and
+[KPA-155](https://koinon.atlassian.net/browse/KPA-155) shipped** and are In
+Review. Every response carries a Content-Security-Policy with a per-request
+nonce, and ADR-0025 says why nothing is prerendered any more.
+
+1. **[KPA-13](https://koinon.atlassian.net/browse/KPA-13)**, five points, In
+   Progress with nothing built. Its claim names the main tree on `main`, so
+   finish it there before claiming anything else. Lift the vault load out of
+   `test/advisories.test.ts` into something repeatable, run `check.py` and
+   `src/checks` side by side, and explain every line of the diff. `handover.md`
+   says what is already in place under *KPA-13*.
+2. **[KPA-131](https://koinon.atlassian.net/browse/KPA-131)**, three points, and
+   KPA-13 blocks it. A citation carrying a wikilink loses its author and date in
+   `targetOf` in `src/migrate/edges.ts`. Take it straight after KPA-13.
+3. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points, and
+   the only thing blocking it is a reachable amaterasu. It refused port 5432
+   all four times it was tried on 13 September 2026. Rename the two databases and the role on
+   the box, then drop `kpa` from `PRODUCTION` in `src/db/connect.ts`. It is the
+   last story holding epic KPA-152 open.
+4. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
    criteria remain, and `handover.md` says which. One needs a consent screen,
-   which is Shane's to press; the other is a refresh before expiry, which
+   which is Shane's to press. The other is a refresh before expiry, which
    nothing calls.
-3. **Raise the deployment story.** Nothing serves the web tier, no tunnel
+5. **Raise the deployment story.** Nothing serves the web tier, no tunnel
    exists, and `SUKKAL_URL` names localhost because there is no other address.
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
-   ticket anywhere on the board creates it. It also owns
-   `upgrade-insecure-requests`, which KPA-148 deliberately left out.
+   ticket on the board creates it. It also owns `upgrade-insecure-requests`,
+   which KPA-148 left out on purpose.
 
-**Nothing waits on a ruling from Shane**, beyond
-[KPA-143](https://koinon.atlassian.net/browse/KPA-143) in the decision queue. He
-answered both questions raised on 13 September 2026, and both stories shipped
-the same day: [KPA-155](https://koinon.atlassian.net/browse/KPA-155) renamed the
-browser storage keys and
-[KPA-156](https://koinon.atlassian.net/browse/KPA-156) renamed the session
-cookie to `__Host-sukkal_session`.
+**Two stories look unblocked and are not.**
+[KPA-92](https://koinon.atlassian.net/browse/KPA-92) reuses retrieval from epic
+KPA-57, which has shipped none of its seven stories.
+[KPA-129](https://koinon.atlassian.net/browse/KPA-129) names "all twelve checks"
+and the web tier runs twenty-three, so rewrite its criteria before building it.
 
-Most of what is left needs something only Shane can supply. Thirty-seven stories
-are open: 36 To Do and one Decision required. Counted from Jira on
-13 September 2026, paged, against 122 stories and 26 In Review. They wait on one
-OAuth grant, a metered key, a live Jira site, a deployment, a reachable
-amaterasu, or Shane at both ends of nabium. Read the blockers before picking,
-and prefer what unblocks the most.
+**Nothing waits on a ruling from Shane** beyond
+[KPA-143](https://koinon.atlassian.net/browse/KPA-143), still in the decision
+queue.
+
+Thirty-seven stories are open: 35 To Do, one In Progress and one Decision
+required, against 122 stories and 26 In Review. Most wait on one OAuth grant, a
+metered key, a live Jira site, a deployment, a reachable amaterasu, or Shane at
+both ends of nabium. Read the blockers before picking, and prefer what unblocks
+the most.

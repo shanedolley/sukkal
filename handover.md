@@ -9,24 +9,35 @@ session. This file holds the facts.
 commits straight to `main`; `CLAUDE.md` says why and names the override the
 hook wants. Read the head with `git log --oneline -1` rather than from here: a
 commit hash written into a file is stale the moment the file is committed.
+Read CI with `gh run list --limit 1`.
 
-Twenty-eight migrations, twenty-six ADRs.
+**[KPA-13](https://koinon.atlassian.net/browse/KPA-13) is In Progress and
+nothing of it is built.** It was claimed in the main tree on `main` on
+13 September 2026, and the session stopped before writing any code. Its claim
+comment names the main tree, so a session working there finishes it rather than
+passing over it. What that session found is under *KPA-13* below.
 
-The suite runs **593 tests with the vault and 575 without it**. One test skips
-in both, and it is meant to: `test/connect.test.ts` skips its TLS case because
-a loopback database needs none.
+Twenty-eight migration files, numbered to `029`. Twenty-seven ADR files,
+numbered to `0025`, because `0007` and `0008` each hold two. Counted with `ls`
+on 13 September 2026.
+
+The suite runs **593 tests with the vault and 575 without it**, measured again
+on 13 September 2026 after KPA-148. One test skips in both, and it is meant to:
+`test/connect.test.ts` skips its TLS case because a loopback database needs
+none.
 
 ## The board
 
 Project KPA on `koinon.atlassian.net`. **122 stories, 85 shipped, which is 70%
-by count.** Counted from Jira on 13 September 2026, paged, after KPA-148
-shipped.
+by count.** Counted from Jira on 13 September 2026, two pages, after KPA-13 was
+claimed.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
 | In Review | 26 |
-| To Do | 36 |
+| In Progress | 1 |
+| To Do | 35 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -178,6 +189,35 @@ the browser discards the cookie: the response still says `{"ok":true}`, the
 status is still 200, and nobody is signed in.
 `apps/web/scripts/check-session-cookie.ts` is what says so.
 
+## KPA-13
+
+**The story that proves slice one, and KPA-131 waits on it.** A `Blocks` link
+says so, proved with
+`issue in linkedIssues("KPA-131", "is blocked by")`, which answers KPA-13.
+KPA-131's own description gives the reason: seven of the nine unresolved
+wikilinks stop being candidates once it lands, so the diff has to come first.
+
+What is in place, measured on 13 September 2026:
+
+- **The frozen vault** is at `~/Development/obsidian_vaults/Memory`, the
+  default `vaultPath()` in `src/vault-mapping.ts` falls back to when
+  `VAULT_PATH` is unset. `VAULT_PATH` is not in `~/.config/sukkal/env`.
+- **`check.py`** is at `scripts/check.py` inside it. It reports 19 notes, 0
+  problems, 1 note past its review date, and 5 worth a look: four cross-space
+  links and 31 of 32 sources cited by no fact.
+- **Both sides of the diff exist.** `src/checks/problems.ts` reads the vault.
+  `src/checks/advisories.ts` queries Postgres.
+- **Nothing under `src/` writes the vault into Postgres.** `src/migrate/` reads
+  and resolves, and holds no `INSERT`. The only load is inline in
+  `test/advisories.test.ts`, from line 231: `readVault()`, then rows into
+  `nodes`, `sources`, `facts` and `edges`. Lifting that into something
+  repeatable is most of the story.
+
+**The diff is two lines, not zero.** ADR-0019 permits exactly two, both orphan
+advisories, for `collibra/bhp-unstructured-declined.md` and
+`collibra/collibra-meeting-defaults.md`. The script must name both, and ADR-0019
+calls any third difference a defect.
+
 ## One decision waiting
 
 **[KPA-143] is the open question**, and it sits in filter 10047, the queue Shane
@@ -210,9 +250,10 @@ KPA-103 is nearly done and is not closed. Five commits built it:
 - Removing a connection tells the provider first and keeps the row when the
   provider refuses.
 
-**Three Google accounts are connected in `sukkal_local` and all three tokens
-work.** Proved by opening each sealed credential and refreshing it against
-Google, not by reading the rows.
+**Three Google accounts are connected in `sukkal_local`.** Three `google` rows
+in `connections`, counted on 13 September 2026. The session that built KPA-103
+proved all three tokens by opening each sealed credential and refreshing it
+against Google, and nobody has refreshed them since.
 
 **Two criteria are still open.**
 
@@ -312,7 +353,7 @@ http://localhost:3000/oauth2/callback    Sukkal. With the slash
 `noclobber` on `>`, a test run piped into `tail` reporting the wrong exit code,
 `--test-concurrency=1` on a bare `node --test`, and the stale
 `apps/web/.next/dev/types` that fails a build after a page is removed. What
-follows is new, and each cost time on 9 to 12 September 2026.
+follows is new, and each cost time on 9 to 13 September 2026.
 
 **Revoking Sukkal at Google's permissions page revokes workspace-mcp too.** The
 two share one OAuth client, so removing the application's access at
@@ -332,6 +373,12 @@ what came before the delete.** A `python3` heredoc followed by `&& rm -rf ...`
 in one Bash call was rejected whole, so an edit that reported success had never
 run. The tool result says `Could not parse this command to verify delete
 safety`; read it as "nothing happened", not as "the delete was skipped".
+
+**It bit twice more on 13 September 2026, with no `rm` in either command.** One
+heredoc wrote a TypeScript check holding the JavaScript `delete` operator, and
+one passed a commit message to `git commit -F -`. Both were refused whole. Write
+the text to a file with the Write tool and pass the path, which worked both
+times. It has now bitten three times, so `CLAUDE.md` is where it belongs next.
 
 **A grep check can pass for the wrong reason.** Checking that a banner read
 "That account is connected" passed against the old code, because the old
