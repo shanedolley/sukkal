@@ -18,14 +18,15 @@ a loopback database needs none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **118 stories, 80 shipped, which is 68%
-by count.** Measured on 12 September 2026, after KPA-150 and KPA-151 shipped.
+Project KPA on `koinon.atlassian.net`. **120 stories, 81 shipped, which is 68%
+by count.** Counted from Jira on 13 September 2026, paged, after KPA-153
+shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 21 |
-| To Do | 37 |
+| In Review | 22 |
+| To Do | 38 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -34,7 +35,7 @@ blocked.
 
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
-    KPA-138 KPA-139 KPA-144 KPA-150 KPA-151
+    KPA-138 KPA-139 KPA-144 KPA-150 KPA-151 KPA-153
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -50,6 +51,7 @@ blocked.
 | KPA-75 | 5/6 | Let the installation authenticate its owner |
 | KPA-145 | 0/3 | Harden what the installation exposes |
 | KPA-149 | 2/2 | Become Sukkal. In Review itself |
+| KPA-152 | 1/2 | Move the machine identifiers off KPA |
 
 **Paging matters.** `/rest/api/3/search/jql` caps a page at 100 issues whatever
 `maxResults` says, and answers with a `nextPageToken` rather than an error. An

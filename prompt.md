@@ -110,39 +110,39 @@ repeating it as fact.
 
 ## Start here
 
-**[KPA-149](https://koinon.atlassian.net/browse/KPA-149) is done.** The
-assistant is Sukkal, and Isimud is its face. Both stories shipped on
-12 September 2026 and sit In Review.
+**[KPA-149](https://koinon.atlassian.net/browse/KPA-149) and
+[KPA-153](https://koinon.atlassian.net/browse/KPA-153) are done.** The product
+is Sukkal, Isimud is its face, and every machine name this Mac owns followed on
+13 September 2026.
 
-1. **[KPA-146](https://koinon.atlassian.net/browse/KPA-146)**, one point.
+1. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154)**, three points,
+   and the only thing blocking it is a reachable amaterasu. Rename the two
+   databases and the role on the box, then drop `kpa` from `PRODUCTION` in
+   `src/db/connect.ts`. Try the box first: it answers some days and not others.
+2. **[KPA-146](https://koinon.atlassian.net/browse/KPA-146)**, one point.
    `X-Content-Type-Options` and a frame policy. The `headers()` function and
    `apps/web/scripts/check-headers.ts` already exist, so each is a line and an
    assertion.
-2. **[KPA-148](https://koinon.atlassian.net/browse/KPA-148)**, the
+3. **[KPA-148](https://koinon.atlassian.net/browse/KPA-148)**, the
    Content-Security-Policy. It carries an architecture decision first: a nonce
    makes eleven prerendered routes dynamic, and a hash of the one inline script
    does not. `handover.md` names where Next's own guide says so.
-3. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
+4. **Close out [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** Two
    criteria remain, and `handover.md` says which.
-4. **Raise the deployment story.** Nothing serves the web tier, no tunnel
+5. **Raise the deployment story.** Nothing serves the web tier, no tunnel
    exists, and `SUKKAL_URL` names localhost because there is no other address.
    [KPA-147](https://koinon.atlassian.net/browse/KPA-147) waits on it and no
    ticket anywhere on the board creates it.
 
-**Two things Shane may want a ruling on**, and neither blocks the work:
+**One thing Shane may want a ruling on**, and it blocks nothing. Eleven browser
+storage keys still read `kpa.`, from `kpa.appearance` to `kpa.issues.tree`.
+KPA-153 left them because a rename abandons a viewer's saved choice rather than
+moving it, and nothing fails when it does. Moving them needs a story that reads
+the old key once and writes the new one.
 
-- Whether any of the six machine identifiers should move too. KPA-150 asks,
-  and nobody has answered.
-- The avatar's colour. It takes the accent colour, so Preferences changes it,
-  and no colour is fixed for Isimud's sake. Fixing one is a decision worth
-  naming rather than an accident.
-
-Most of what is left needs something only Shane can supply. Thirty-eight
-stories are open: 37 To Do and one Decision required. Counted from Jira on
-12 September 2026, paged, against 118 stories and 21 In Review.
-
-Three of the open ones are unblocked: KPA-50, KPA-146 and KPA-148. That is the
-same list a session measured on 12 September, less KPA-150 and KPA-151, which
-have since shipped. It has not been measured again. The rest wait on one OAuth
-grant, a metered key, a live Jira site, a deployment, or Shane at both ends of
-nabium. Read the blockers before picking, and prefer what unblocks the most.
+Most of what is left needs something only Shane can supply. Thirty-nine stories
+are open: 38 To Do and one Decision required. Counted from Jira on
+13 September 2026, paged, against 120 stories and 22 In Review. They wait on one
+OAuth grant, a metered key, a live Jira site, a deployment, a reachable
+amaterasu, or Shane at both ends of nabium. Read the blockers before picking,
+and prefer what unblocks the most.
