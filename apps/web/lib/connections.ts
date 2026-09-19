@@ -41,6 +41,8 @@ export interface Connection {
   expiresOn: string | null;
   verifiedOn: string | null;
   verdict: string | null;
+  /** Whether the hourly recheck last found it working. Null until it has run. */
+  verifiedOk: boolean | null;
 }
 
 /** What the dialog collected. The secret is passed on and never kept. */
@@ -60,6 +62,12 @@ const store = createRemoteStore<Connection[]>(URL, []);
 /** Every connection, in the order the server returns them. */
 export function useConnections(): Connection[] {
   return store.useValue();
+}
+
+/** Reads the connections again, so a screen left open learns what the hourly
+ *  recheck found without a reload. */
+export function reloadConnections(): Promise<void> {
+  return store.reload();
 }
 
 /** Adds one account, with its key when the method took one. */

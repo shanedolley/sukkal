@@ -16,7 +16,7 @@ this process. They meet at the database and nowhere else.
 | Command | `npm run worker` |
 | Reads | `DATABASE_URL`, from `~/.config/sukkal/env` |
 | Queue | pg-boss, in the `pgboss` schema of the same database |
-| Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, and `nightly.review` at 03:30 Sydney |
+| Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, `nightly.review` at 03:30 Sydney, and `connections.recheck` at five past every hour |
 
 ## Before you start it
 
@@ -165,6 +165,33 @@ output.
 
 The audit table is the better home for this record. KPA-82 builds the audit
 write; route the failure through it once that lands.
+
+## The connection recheck
+
+`connections.recheck` runs at five past every hour and once when the worker
+starts, in `src/worker/recheck.ts`. It asks each provider whether each stored
+credential still works and writes the answer to `connection_credentials`:
+`verified_ok`, `verified_at`, `verified_on` and `verdict`. The Connections screen
+outlines a failing card in red, and the navigation marks the set. KPA-107.
+
+```
+connections.recheck: checked 3, 2 failing
+connections.recheck: shanevdolley@gmail.com: https://oauth2.googleapis.com/token refused the request. invalid_grant: Token has been expired or revoked.
+```
+
+**It records and nothing more.** A failure never removes or disables a
+connection. Reconnecting is a person's job, through the Connections screen.
+
+**It never spends money.** A probe `src/connections/verify.ts` marks
+`metered`, Voyage today, is skipped, and that connection stays unchecked.
+
+**A credential checked in the last 50 minutes is skipped**, so a restart right
+after the hourly run costs no second call.
+
+**`invalid_grant` on a Google connection seven days after it was made** is most
+likely Google's limit for an OAuth client whose consent screen is in Testing.
+Reconnecting fixes it for another seven days. Moving the consent screen to In
+production ends the limit.
 
 ## Under systemd
 

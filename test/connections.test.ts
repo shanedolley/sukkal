@@ -226,7 +226,7 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     // fails here rather than reaching a screen.
     assert.deepEqual(Object.keys(row).sort(), [
       'expiresOn', 'hasSecret', 'id', 'issuedOn', 'method',
-      'name', 'provider', 'services', 'verdict', 'verifiedOn',
+      'name', 'provider', 'services', 'verdict', 'verifiedOk', 'verifiedOn',
     ]);
     assert.equal(row.hasSecret, true);
     assert.equal(JSON.stringify(listed).includes(SECRET), false);
@@ -344,11 +344,12 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     await clear();
     const id = await addConnection(client, { provider: 'linear', name: 'Koinon Linear', method: 'key' });
     await setCredential(client, id, 'first-secret');
-    await recordVerification(client, id, 'Reached the workspace.');
+    await recordVerification(client, id, 'Reached the workspace.', true);
 
     const verified = (await listConnections(client))[0];
     assert.ok(verified);
     assert.equal(verified.verdict, 'Reached the workspace.');
+    assert.equal(verified.verifiedOk, true);
     const today = await client.query<{ d: string }>('SELECT CURRENT_DATE::text AS d');
     assert.equal(verified.verifiedOn, today.rows[0]?.d);
 
@@ -360,12 +361,13 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     assert.ok(replaced);
     assert.equal(replaced.verdict, null);
     assert.equal(replaced.verifiedOn, null);
+    assert.equal(replaced.verifiedOk, null, 'a new secret is unchecked, not still working');
   });
 
   test('a verification of a connection holding no credential throws', async () => {
     await clear();
     const id = await addConnection(client, { provider: 'zoom', name: 'Koinon Zoom', method: 'oauth' });
-    await assert.rejects(recordVerification(client, id, 'Reached it.'), /holds no credential/);
+    await assert.rejects(recordVerification(client, id, 'Reached it.', true), /holds no credential/);
   });
 
   test('refuses a blank secret and a blank verdict', async () => {
@@ -373,7 +375,7 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     const id = await addConnection(client, { provider: 'zoom', name: 'Koinon Zoom', method: 'oauth' });
     await assert.rejects(setCredential(client, id, '   '), /cannot be blank/);
     await setCredential(client, id, SECRET);
-    await assert.rejects(recordVerification(client, id, '  '), /has to say something/);
+    await assert.rejects(recordVerification(client, id, '  ', true), /has to say something/);
   });
 
   test('the table refuses a credential no connection owns', async () => {

@@ -1,6 +1,6 @@
 # Handover
 
-State as at 13 September 2026. `prompt.md` holds the instructions for a new
+State as at 19 September 2026. `prompt.md` holds the instructions for a new
 session. This file holds the facts.
 
 ## Where the work is
@@ -18,26 +18,32 @@ Read CI with `gh run list --limit 1`.
 words, and one TypeScript reader reads a note's frontmatter. *The migration is
 proved* below says what all three mean.
 
-Twenty-nine migration files, numbered to `030`. Twenty-seven ADR files,
-numbered to `0025`, because `0007` and `0008` each hold two. Counted with `ls`
-on 13 September 2026.
+**[KPA-107](https://koinon.atlassian.net/browse/KPA-107) shipped on
+19 September 2026.** The worker rechecks every connection hourly, a failing card
+is outlined in red, and the Connections item marks the set. *Where the OAuth work
+stands* below says what it found.
 
-The suite runs **632 tests with the vault and 612 without it**, measured on
-13 September 2026 after KPA-74. One test skips in both, and it is meant to:
+Thirty migration files, numbered to `031`. Twenty-seven ADR files, numbered to
+`0025`, because `0007` and `0008` each hold two. Counted with `ls` on
+19 September 2026.
+
+The suite runs **640 tests with the vault and 620 without it**, measured on
+19 September 2026 after KPA-107. One test skips in both, and it is meant to:
 `test/connect.test.ts` skips its TLS case because a loopback database needs
 none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **122 stories, 88 shipped, which is 72%
-by count.** Counted from Jira on 13 September 2026, two pages, after KPA-74
+Project KPA on `koinon.atlassian.net`. **122 stories, 89 shipped, which is 73%
+by count.** Counted from Jira on 19 September 2026, two pages, after KPA-107
 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 59 |
-| In Review | 29 |
-| To Do | 33 |
+| In Review | 30 |
+| In Progress | 1, KPA-103 |
+| To Do | 31 |
 | Decision required | 1 |
 
 **In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
@@ -47,7 +53,7 @@ blocked.
     KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
     KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
     KPA-138 KPA-139 KPA-144 KPA-146 KPA-148 KPA-150 KPA-151 KPA-153
-    KPA-155 KPA-156 KPA-13  KPA-131 KPA-74
+    KPA-155 KPA-156 KPA-13  KPA-131 KPA-74  KPA-107
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -56,7 +62,7 @@ blocked.
 | KPA-51 | 7/7 | Finish the memory schema |
 | KPA-52 | 16/22 | Join the halves: replace every fixture |
 | KPA-53 | 12/12 | Build the application data schema |
-| KPA-54 | 5/10 | Connect the accounts |
+| KPA-54 | 6/10 | Connect the accounts |
 | KPA-55 | 3/14 | Fill the stores |
 | KPA-56 | 6/7 | The agent and the policy engine |
 | KPA-57 | 0/7 | Retrieval and chat |
@@ -234,8 +240,11 @@ for. It is still Python and still reads the files directly, which is the
 independence REQ-033 wants.
 
 **Production has not been loaded.** The script refuses `kpa` and `sukkal`, and
-the vault has never been written to amaterasu. That run is a person's, on a day
-amaterasu answers.
+the vault has never been written to amaterasu. amaterasu answers only on the
+internal network in Australia, and Shane is abroad, measured on
+19 September 2026. When it answers: freeze the vault again at its new commit,
+run `scripts/verify-migration.sh`, which may now show lines the vault gained
+since `da7afce`, then load `kpa` with the production guard lifted on purpose.
 
 **A citation keeps its words, since KPA-131.** Every `derived_from` edge holds
 its `sources:` entry verbatim in `edges.citation`, added by
@@ -264,12 +273,11 @@ Nothing moved for the frozen vault. Sukkal's report from
 all fifteen ported `check.py` fixtures pass under either reader.
 `scripts/count-vault.py` stays a separate Python reader, on purpose.
 
-**The vault is still frozen, and nothing in the repository needs it frozen any
-longer.** KPA-13, KPA-131 and KPA-74 were the stories comparing against the
-frozen vault, and all three have shipped. `docs/runbooks/vault-freeze.md` says to
-restore after KPA-13, and restoring starts three launchd jobs, so it is Shane's
-step. `scripts/verify-migration.sh` fails on any vault that has moved, so run it
-once more before restoring if a last proof is wanted.
+**The vault is unfrozen, since 13 September 2026.** A last
+`scripts/verify-migration.sh` passed against `da7afce` first, then
+`scripts/vault-freeze.sh restore` enabled and loaded all three launchd jobs.
+They survived a reboot on 19 September. The script now fails at its first step
+until the vault is frozen again, which is by design.
 
 ## One decision waiting
 
@@ -303,21 +311,42 @@ KPA-103 is nearly done and is not closed. Five commits built it:
 - Removing a connection tells the provider first and keeps the row when the
   provider refuses.
 
-**Three Google accounts are connected in `sukkal_local`.** Three `google` rows
-in `connections`, counted on 13 September 2026. The session that built KPA-103
-proved all three tokens by opening each sealed credential and refreshing it
-against Google, and nobody has refreshed them since.
+**Three Google connections in `sukkal_local`, and one works.** Measured by the
+hourly recheck on 19 September 2026:
 
-**Two criteria are still open.**
+| Account | Last check |
+|---|---|
+| `shane@koinon.com.au` | Working. Re-granted by Shane on 19 September |
+| `shanevdolley@gmail.com` | `invalid_grant: Token has been expired or revoked` |
+| `shane.dolley@collibra.com` | `invalid_grant: Token has been expired or revoked` |
 
-1. "Three accounts produce three distinct connections" is built and half
-   proved. The address the provider reports names the connection, and
-   `connectionNamed` makes a second grant of the same account refresh the row.
-   Granting one account twice would prove the rest in a minute.
-2. "A refresh runs before expiry and rewrites the date" is not built. `renew`
-   exists in the module and nothing calls it. The worker runs only the drain
-   and the nightly review. KPA-107 is the re-verification schedule and this
-   criterion sits on KPA-103.
+**The likely cause is Google's seven-day limit, and it is unconfirmed.** Both
+dead tokens were issued on 12 September, seven days before they failed. Google
+expires refresh tokens after seven days for a client whose consent screen is in
+Testing. If so, the Koinon token dies on 26 September too, and workspace-mcp,
+which shares the client, runs on the same clock. Shane reads the publishing
+status in Google Cloud project `personal-assistant-506014`, under APIs &
+Services, OAuth consent screen.
+
+**KPA-103 has one criterion left.** "Three accounts produce three distinct
+connections" was proved on 19 September: a second grant of the Koinon account
+kept row 2, its id and its `created_at`, and replaced its credential. "A refresh
+runs before expiry and rewrites the date" waits on the publishing status,
+because under Testing no refresh outlives seven days.
+
+**KPA-107 rechecks every connection hourly.** `src/connections/recheck.ts` renews
+a Google grant and asks `whoami` whose token came back. It runs a free key probe
+for a key connection, and skips a metered one. It writes `verified_ok`,
+`verified_at`, `verified_on` and `verdict`, and never removes a connection.
+`docs/runbooks/worker.md` says how to read it.
+
+**The screen shows it.** A failing card, meaning a dead check or no credential,
+has a 2px red ring, an error icon and the verdict. The Connections item shows a
+green dot when every connection works, a yellow warning when some fail, and a
+red error when all fail. An unchecked connection is unknown, not failing. Seen in
+Chrome in all three states and on the collapsed rail, with the rows set by hand
+and then restored. `apps/web/lib/connection-health.ts` holds the one rule both
+read.
 
 ## What runs
 
@@ -332,7 +361,7 @@ npm run decisions             # rebuilds docs/decisions.md from Jira
 ```
 
 In `apps/web`: `npm run lint`, `npm run build`, and `npm run check`, which runs
-twenty-three scripts under plain node.
+twenty-four scripts under plain node.
 
 `./scripts/verify-migration.sh` verifies the migration against the frozen vault.
 It needs the vault and local PostgreSQL, and it recreates `sukkal_verify`.
@@ -555,6 +584,37 @@ it were the answer. Pipe the list into `while read -r k`. A separate loop over
 `/search/jql` with `-G` and a page token ran past two minutes and was stopped;
 the To Do stories fit on one page, so read each story from `/issue/<key>`
 instead.
+
+**The worker is what makes the recheck run, and nothing starts it on this Mac.**
+Start it against the app's database, because `npm run worker` reads
+`DATABASE_URL` and the env file names production there:
+
+```
+DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local" npm run worker
+```
+
+The env file does not override a variable already set, which is what keeps
+production out of reach. A reboot stops it.
+
+**A reboot empties the scratchpad under `/private/tmp`.** A start script kept
+there was gone after Shane rebooted on 19 September 2026. The dev server needs
+the Google client from `~/.config/sukkal/env` as well as `sukkal_local`:
+
+```
+set -a; . ~/.config/sukkal/env; set +a
+export DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local"
+cd apps/web && npm run dev
+```
+
+**The dev server logs Google's one-time code.** `next dev` prints the whole
+callback URL, code included, to its log. The code is spent the moment the
+callback exchanges it, so the risk is small, and the log lives only as long as
+the process writes it. Found on 19 September 2026.
+
+**A sign-in from before 13 September no longer works.** KPA-156 renamed the
+cookie to `__Host-sukkal_session`, and the browser still holds the old one, so
+Shane had to sign in again on 19 September. The session rows were still valid;
+nothing reads their old cookie name.
 
 **`node_modules` was found empty once**, on 9 September, with no explanation.
 `npm install` restored 474 packages and the lockfile did not change. A

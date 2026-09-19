@@ -54,6 +54,9 @@ export interface Connection {
   expiresOn: string | null;
   verifiedOn: string | null;
   verdict: string | null;
+  /** Whether the last check found it working. Null until a check has run,
+   *  which reads as unknown rather than broken. KPA-107. */
+  verifiedOk: boolean | null;
 }
 
 interface Row {
@@ -67,6 +70,7 @@ interface Row {
   expires_on: string | null;
   verified_on: string | null;
   verdict: string | null;
+  verified_ok: boolean | null;
 }
 
 /** Adds one account and returns its id. The table refuses a second account of
@@ -162,13 +166,16 @@ export async function setCredential(
             issued_on = EXCLUDED.issued_on,
             expires_on = EXCLUDED.expires_on,
             verified_on = NULL,
-            verdict = NULL`,
+            verdict = NULL,
+            verified_ok = NULL,
+            verified_at = NULL`,
     [id, encrypt(secret, id), dates.issuedOn ?? null, dates.expiresOn ?? null],
   );
 }
 
 /**
- * Records what the provider said when somebody last asked, dated today.
+ * Records what the provider said when somebody last asked, dated today, and
+ * whether that answer means the credential works.
  *
  * It throws when no credential is stored. A verification of nothing is a
  * verdict about a secret that does not exist, and losing it silently is how a
@@ -178,6 +185,7 @@ export async function recordVerification(
   client: ClientBase,
   id: string,
   verdict: string,
+  ok: boolean,
 ): Promise<void> {
   if (verdict.trim() === '') {
     throw new Error('a verification has to say something.');
@@ -185,9 +193,9 @@ export async function recordVerification(
 
   const updated = await client.query(
     `UPDATE connection_credentials
-        SET verified_on = CURRENT_DATE, verdict = $2
+        SET verified_on = CURRENT_DATE, verdict = $2, verified_ok = $3, verified_at = now()
       WHERE connection = $1`,
-    [id, verdict],
+    [id, verdict, ok],
   );
 
   if (updated.rowCount === 0) {
@@ -205,7 +213,7 @@ export async function listConnections(client: ClientBase): Promise<Connection[]>
   const rows = await client.query<Row>(
     `SELECT c.id, c.provider, c.name, c.method, c.services,
             (k.connection IS NOT NULL) AS has_secret,
-            k.issued_on, k.expires_on, k.verified_on, k.verdict
+            k.issued_on, k.expires_on, k.verified_on, k.verdict, k.verified_ok
        FROM connections c
        LEFT JOIN connection_credentials k ON k.connection = c.id
       ORDER BY c.provider, c.name`,
@@ -222,6 +230,7 @@ export async function listConnections(client: ClientBase): Promise<Connection[]>
     expiresOn: row.expires_on,
     verifiedOn: row.verified_on,
     verdict: row.verdict,
+    verifiedOk: row.verified_ok,
   }));
 }
 

@@ -44,7 +44,7 @@ check constraint here rather than an instruction in a prompt.
 | `issue_blocks` | One blocking link, stored once from the blocker |
 | `issue_writes` | A write the tracker has not accepted, with the stamp it expected and, on a conflict, the one it found |
 | `connections` | One account on one provider. Provider, name, method, and the services it may be reached for |
-| `connection_credentials` | The sealed secret for one connection, with the dates the provider named and the last verdict |
+| `connection_credentials` | The sealed secret for one connection, with the dates the provider named, the last verdict, and whether it worked |
 | `workspaces` | One Jira tracker and the space it belongs to. The id is stable, the name is not, and nothing files anything under the name |
 | `projects` | One piece of work inside a workspace, and the one rule that matches its issues: a Jira label, or a Jira key prefix |
 | `workspace_fields` | The custom fields a workspace carries, and the Jira field each one writes |
@@ -340,6 +340,14 @@ whoever writes the query. `src/connections/store.ts` keeps the same split in
 code: `listConnections` names its columns and reports `hasSecret`, and
 `secretFor` is the only function in this repository that returns a plaintext
 secret.
+
+**Whether a credential works is `verified_ok`**, added by
+`migrations/031_verified_ok.sql` for KPA-107. It is null until the hourly
+recheck has run, and null reads as unknown, not broken. `verified_at` holds the
+moment of that check, because the recheck skips a credential checked in the
+last 50 minutes and a date cannot measure that. A constraint sets the two
+together or leaves both null. `setCredential` clears both with the verdict,
+because a new secret has not been checked.
 
 `apps/web/app/(app)/api/connections/route.ts` is the only route over these two
 tables, and it imports `addConnection`, `listConnections`, `removeConnection`

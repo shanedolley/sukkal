@@ -127,63 +127,36 @@ repeating it as fact.
 
 ## Start here
 
-Measured on 13 September 2026, when a session stopped because nothing left could
-be both built and proved without Shane: the board paged in full, every To Do
-story's `Blocks` links read one by one from `/rest/api/3/issue/<key>`, amaterasu
-tested with `nc -z -w 3 192.168.20.110 5432`, and CI read with
-`gh run list --limit 1`.
+Measured on 19 September 2026: the board paged in full, and CI read with
+`gh run list --limit 1`. Shane is abroad, and amaterasu answers only on the
+internal network in Australia.
 
-**[KPA-13](https://koinon.atlassian.net/browse/KPA-13),
-[KPA-131](https://koinon.atlassian.net/browse/KPA-131) and
-[KPA-74](https://koinon.atlassian.net/browse/KPA-74) shipped** that day. Slice one
-has one story left, [KPA-12](https://koinon.atlassian.net/browse/KPA-12), and it
-spends metered money.
+**[KPA-107](https://koinon.atlassian.net/browse/KPA-107) shipped.** Every
+connection is rechecked hourly by the worker, a failing card is outlined in red,
+and the Connections item marks the set. Two of the three Google connections are
+dead, and `handover.md` says why that is probably Google's seven-day limit.
 
-**Ten To Do stories have no open blocker, and each waits on something only Shane
-supplies.** Read this before claiming, and re-measure it: a ruling or a grant can
-free any of them.
+1. **Finish [KPA-103](https://koinon.atlassian.net/browse/KPA-103).** It is In
+   Progress with one criterion left, a refresh before expiry. That waits on
+   Shane reading the consent screen's publishing status. Under Testing no
+   refresh outlives seven days, so build nothing until he answers.
+2. **Reconnect Gmail and Collibra** once the publishing status is settled.
+   That is two consent screens, and they are Shane's to press.
+3. **[KPA-108](https://koinon.atlassian.net/browse/KPA-108)** is now unblocked
+   in substance: KPA-107 writes the result it would raise a Needs you item from.
+   It carries two decisions, a fifth `needs_you` kind or a deadline, and the
+   expiry window, so post them before building.
+4. **[KPA-154](https://koinon.atlassian.net/browse/KPA-154) and the production
+   load** wait on amaterasu, which means Shane back on the internal network.
 
-| Story | What it waits on |
-|---|---|
-| [KPA-50](https://koinon.atlassian.net/browse/KPA-50) | A live Jira round trip, which its fifth criterion and its done-when both name, and an estimate. It carries no estimate label and adds TipTap. Nothing in the app reads or writes Jira descriptions yet |
-| [KPA-12](https://koinon.atlassian.net/browse/KPA-12) | Metered Voyage spend |
-| [KPA-86](https://koinon.atlassian.net/browse/KPA-86) | Metered model spend |
-| [KPA-71](https://koinon.atlassian.net/browse/KPA-71) | Somebody at both ends of the nabium push |
-| [KPA-84](https://koinon.atlassian.net/browse/KPA-84) | Acting on Shane's real mailboxes |
-| [KPA-49](https://koinon.atlassian.net/browse/KPA-49) | Live trackers to poll |
-| [KPA-105](https://koinon.atlassian.net/browse/KPA-105) | A Jira site connected by token or by a grant |
-| [KPA-103](https://koinon.atlassian.net/browse/KPA-103) | A consent screen for one of its two remaining criteria. The other, a refresh before expiry, is buildable and would leave the story open |
-| [KPA-147](https://koinon.atlassian.net/browse/KPA-147) | An HTTPS address, which needs the deployment story nobody has raised |
-| [KPA-154](https://koinon.atlassian.net/browse/KPA-154) | A reachable amaterasu. It refused port 5432 five times on 13 September 2026 |
-
-Every other To Do story has an open blocker in Jira. KPA-89 waits on KPA-88 and
-retrieval; KPA-107 waits on KPA-103, KPA-105 and KPA-106; KPA-108 waits on
-KPA-107.
-
-**What would free the most, in order:**
-
-1. **A ruling on KPA-50.** Build the editor, the slash menu and the ADF adapter
-   against fixtures now, with the live Jira proof left to Shane, or wait for the
-   issue sync. It is the one story a session could mostly build.
-2. **A reachable amaterasu**, which frees KPA-154 and closes epic KPA-152.
-3. **Raising the deployment story.** It frees KPA-147 and owns
-   `upgrade-insecure-requests`, which KPA-148 left out on purpose.
-4. **One Google consent screen**, which lets KPA-103 close and starts the chain
-   through KPA-107 and KPA-108.
-
-**Two stories read as unblocked before, and Jira blocks both.**
-[KPA-92](https://koinon.atlassian.net/browse/KPA-92) waits on KPA-87, which is
-retrieval. [KPA-129](https://koinon.atlassian.net/browse/KPA-129) waits on
-KPA-123, KPA-124 and KPA-125, and it names "all twelve checks" where the web tier
-runs twenty-three, so rewrite its criteria once those land.
-
-**Two steps wait on Shane, and neither is a ticket.** Unfreezing the vault
-restarts three launchd jobs, and nothing in the repository needs the freeze any
-longer. Loading the vault into production needs amaterasu and a person.
+**The rest still waits on Shane**, as the table in the last version of this
+section said: KPA-50 on a ruling and a live Jira ticket, KPA-12 and KPA-86 on
+metered spend, KPA-71 on nabium, KPA-84 on real mailboxes, KPA-49 and KPA-105 on
+live trackers, and KPA-147 on an HTTPS address.
 
 **Nothing waits on a ruling from Shane** beyond
 [KPA-143](https://koinon.atlassian.net/browse/KPA-143), still in the decision
-queue.
+queue, and the publishing status above.
 
-Thirty-four stories are open: 33 To Do and one Decision required, against 122
-stories and 29 In Review.
+Thirty-three stories are open: 31 To Do, one In Progress and one Decision
+required, against 122 stories and 30 In Review.

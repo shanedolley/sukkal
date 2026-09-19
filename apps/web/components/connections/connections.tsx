@@ -30,7 +30,9 @@
 // stored" rather than "Connected".
 
 import { useId, useState } from "react";
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import { CircleXIcon, PlusIcon, Trash2Icon } from "lucide-react";
+
+import { isFailing } from "@/lib/connection-health";
 
 import { Badge } from "@/components/reui/badge";
 import { BrandMark } from "@/components/ui/svgs/brands";
@@ -454,13 +456,34 @@ function ConnectionCard({ connection }: { connection: Connection }) {
   if (!entry) return null;
 
   const method = entry.methods.find((item) => item.id === connection.method);
+  // KPA-107. A connection the hourly recheck found dead, or one holding no
+  // credential, is outlined in red and says why. One never checked is left
+  // alone, because unknown is not the same as broken.
+  const failing = isFailing(connection);
 
   return (
-    <Card size="sm" className="justify-between">
+    <Card
+      size="sm"
+      data-failing={failing || undefined}
+      className={
+        failing
+          ? "ring-destructive justify-between ring-2"
+          : "justify-between"
+      }
+    >
       <CardHeader className="grid-cols-[auto_1fr_auto] items-center gap-3">
         <ProviderTile id={entry.id} />
         <div className="flex min-w-0 flex-col">
-          <CardTitle className="truncate">{connection.name}</CardTitle>
+          <CardTitle className="flex min-w-0 items-center gap-1.5">
+            {failing && (
+              <CircleXIcon
+                className="text-destructive size-4 shrink-0"
+                role="img"
+                aria-label="Not working"
+              />
+            )}
+            <span className="truncate">{connection.name}</span>
+          </CardTitle>
           <span className="text-muted-foreground text-xs">
             {entry.name}
             {method ? ` · ${method.label}` : ""}
@@ -497,6 +520,15 @@ function ConnectionCard({ connection }: { connection: Connection }) {
         </CardContent>
       )}
 
+      {failing && connection.hasSecret && connection.verdict && (
+        <CardContent className="pt-0">
+          <p className="text-destructive text-xs">
+            Last check{connection.verifiedOn ? ` on ${connection.verifiedOn}` : ""}:{" "}
+            {connection.verdict}
+          </p>
+        </CardContent>
+      )}
+
       <CardContent className="flex flex-wrap items-center gap-1.5">
         {connection.services.map((id) => (
           <Badge key={id} size="sm" variant="outline">
@@ -505,10 +537,16 @@ function ConnectionCard({ connection }: { connection: Connection }) {
         ))}
         <Badge
           size="sm"
-          variant={connection.hasSecret ? "outline" : "warning-light"}
+          variant={failing ? "destructive-light" : "outline"}
           className="ml-auto"
         >
-          {connection.hasSecret ? "Key stored" : "Not connected"}
+          {!connection.hasSecret
+            ? "Not connected"
+            : connection.verifiedOk === false
+              ? "Not working"
+              : connection.verifiedOk === true
+                ? "Working"
+                : "Key stored"}
         </Badge>
       </CardContent>
     </Card>

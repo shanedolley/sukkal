@@ -246,6 +246,7 @@ const SEEN = [
   "provider",
   "services",
   "verdict",
+  "verifiedOk",
   "verifiedOn",
 ];
 

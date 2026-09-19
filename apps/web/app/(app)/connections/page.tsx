@@ -59,9 +59,9 @@ export default async function ConnectionsPage(props: PageProps<"/connections">) 
 
       <p className="text-muted-foreground text-xs leading-relaxed">
         A key typed here is sent to the server and sealed there. No screen
-        reads one back, and this browser keeps no copy. The worker is what
-        reaches the provider with it, and it does not run yet, so a card says
-        whether a key is stored rather than whether the account works.
+        reads one back, and this browser keeps no copy. The worker checks each
+        connection with its provider every hour, and a card outlined in red is
+        one the last check found not working.
       </p>
     </div>
   );
