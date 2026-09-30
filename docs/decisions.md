@@ -12,7 +12,7 @@ prose, so nothing here reads an answer out of a sentence.
 the lighter rulings. A decision that meets the three tests in `CLAUDE.md`
 graduates to an ADR, and this register then cites it.
 
-Generated 2026-09-03. 9 decided, 1 waiting.
+Generated 2026-09-30. 10 decided, 0 waiting.
 
 ## Decided
 
@@ -27,9 +27,8 @@ Generated 2026-09-03. 9 decided, 1 waiting.
 | 2026-09-03 | [KPA-140](https://koinon.atlassian.net/browse/KPA-140) | Does the project settings screen edit the workspace's custom fields, or does a project carry fields of its own? | Option A. The project settings screen edits the workspace's custom fields. It resolves a project route to its workspace and names that workspace on screen, so nobody edits a shared list from a page named after one project. A project carries no field list of its own, so no schema changes and no merge rule is needed. A custom field belongs to a Jira project's field configuration, and Collibra runs every engagement through one Jira project. |
 | 2026-09-03 | [KPA-141](https://koinon.atlassian.net/browse/KPA-141) | Should apps/web run noUncheckedIndexedAccess, matching the root? | Option A. apps/web turns on noUncheckedIndexedAccess, matching the root, and the 24 errors it reports get fixed. Measured on 3 September 2026: 24 across nine files, five in lib/fixtures.ts, five in the connections screen, three in lib/parse-date.ts, and the rest in ones and twos. The last workaround in test/workspace-fields.test.ts then becomes a plain static import. Two of the errors sit in vendored ReUI, so a re-install returns them and a tsconfig override for that directory is the answer if it does. |
 | 2026-09-03 | [KPA-142](https://koinon.atlassian.net/browse/KPA-142) | Where does a custom field's tracker id come from: a scan, or one reading by hand? | Option A. A scan fills the custom field catalogue, per connection, in the worker, and it becomes work inside KPA-105. Nobody types tracker ids into apps/web/lib/fixtures.ts, which KPA-129 deletes anyway, and one site's ids would serve a catalogue two sites read. The custom fields screen cannot add a field until KPA-105 lands, and it should say plainly that a field needs a connected site. Inventing an id is refused outright: a wrong id writes to a field nobody reads, and the write succeeds. |
+| 2026-09-30 | [KPA-143](https://koinon.atlassian.net/browse/KPA-143) | How does a self-hosted box send the reset link? | Option D. Send the reset link through Resend over HTTPS, and hold the API key as a sealed connection rather than an environment variable. |
 
 ## Waiting on a ruling
 
-| Ticket | The question | Recommended |
-|---|---|---|
-| [KPA-143](https://koinon.atlassian.net/browse/KPA-143) | How does a self-hosted box send the reset link? | option A. It is the only one that works on the box ADR-0009 describes, and the measurement is what decides it: one dependency with no dependencies of its own, against an OAuth setup the installer has to complete before they are locked out rather than after. SMTP is also the shape a self-hoster already has, because every relay speaks it and no relay speaks Graph. It forecloses nothing: mailSender already prefers a Google or Microsoft connection, so an OAuth grant arriving later is a second sender rather than a replacement |
+Nothing waiting.
