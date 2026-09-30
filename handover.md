@@ -3,10 +3,15 @@
 State as at 30 September 2026. `prompt.md` holds the instructions for a new
 session. This file holds the facts.
 
-**The review queue is empty.** On 30 September 2026 Shane walked all 30 stories
-that sat In Review, and every one is Done. Each carries a comment saying what
-was verified against the repository and what read wrong. *What the review found*
-below carries the four things worth keeping.
+**The review queue was emptied and then refilled by two shipped stories.** On
+30 September 2026 Shane walked all 30 stories that sat In Review and accepted
+every one. Each carries a comment saying what was verified and what read wrong.
+*What the review found* below keeps the four things worth keeping.
+
+**Then KPA-154 and KPA-143 shipped the same day**, built in parallel by two
+agents with the integration pass run here. amaterasu is no longer called KPA, and
+the reset link sends through Resend. Both are In Review, which in this project
+means shipped and waiting only on a read.
 
 ## Where the work is
 
@@ -28,14 +33,30 @@ proved* below says what all three mean.
 is outlined in red, and the Connections item marks the set. *Where the OAuth work
 stands* below says what it found.
 
-Thirty migration files, numbered to `031`. Twenty-seven ADR files, numbered to
-`0025`, because `0007` and `0008` each hold two. Counted with `ls` on
-19 September 2026.
+Thirty migration files, numbered to `031`. Neither story on 30 September added
+one: KPA-143 needed no column, because the Resend key is a credential like every
+other. Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each
+hold two. Counted with `ls` on 30 September 2026.
 
-The suite runs **640 tests with the vault and 620 without it**, measured on
-19 September 2026 after KPA-107. One test skips in both, and it is meant to:
-`test/connect.test.ts` skips its TLS case because a loopback database needs
-none.
+The suite runs **650 tests with the vault and 630 without it**, measured on
+30 September 2026 after KPA-143 added ten. One skip is reported in both, and it
+is meant to.
+
+**The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
+this file named until 30 September and which holds no `skip` at all. The test is
+`a connection to a remote host is encrypted`, and it skips on the hostname rather
+than on a flag: `LOOPBACK` decides, so it skips against a local database and runs
+against a remote one.
+
+**Since KPA-154 it can run, and it does.** `DATABASE_URL_TEST` now names
+amaterasu's `sukkal_dev`, so the suite pointed at the env file reaches a remote
+host. `test/migrate.test.ts` ran 9 tests against it on 30 September 2026, all
+passing and none skipped, which is the first time that assertion has been
+exercised. Point the suite at a local database and it skips again, which is what
+CI does and why CI reports one skip.
+
+Read `# skipped N` as a summary and not as a count of skipped tests. Without the
+vault, several suites skip and the summary still reports 1.
 
 ## The board
 
@@ -46,9 +67,9 @@ review closed the queue and raised KPA-157.
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 0 |
+| In Review | 2, KPA-143 and KPA-154, both shipped on 30 September |
 | In Progress | 1, KPA-103 |
-| To Do | 33 |
+| To Do | 31 |
 | Decision required | 0 |
 
 **Read these counts by issue type.** The project holds 157 issues: 123 stories,
@@ -290,14 +311,14 @@ beside it, and writing a file into the frozen vault is the drift REQ-032 checks
 for. It is still Python and still reads the files directly, which is the
 independence REQ-033 wants.
 
-**Production has not been loaded.** The script refuses `kpa` and `sukkal`, and
-the vault has never been written to amaterasu.
+**Production has not been loaded.** The script refuses `sukkal`, and the vault has
+never been written to amaterasu.
 
 **amaterasu answers again, measured on 30 September 2026.** It accepted a
-connection on port 5432 and served a query. The 19 September note that it
-answers only on the internal network no longer holds. So the load is unblocked,
-and so is KPA-154. To load it: freeze the vault, run
-`scripts/verify-migration.sh`, then load `kpa` with the production guard lifted
+connection on port 5432 and served a query. The 19 September note that it answers
+only on the internal network no longer holds. That unblocked KPA-154, which has
+since run, and it unblocks the load. To load it: freeze the vault, run
+`scripts/verify-migration.sh`, then load `sukkal` with the production guard lifted
 on purpose.
 
 The vault has not moved since the freeze, so that run costs nothing in
@@ -339,10 +360,10 @@ until the vault is frozen again, which is by design.
 
 ## No decision waiting
 
-**[KPA-143] was decided on 30 September 2026 and is now To Do.** How does a
-self-hosted box send the reset link? The answer is Resend over HTTPS, with the
-API key held as a sealed connection. `npm run decisions` reports 10 decided and
-nothing waiting, and filter 10047 is empty.
+**[KPA-143] was decided and built on 30 September 2026.** How does a self-hosted
+box send the reset link? The answer is Resend over HTTPS, with the API key held
+as a sealed connection. `npm run decisions` reports 10 decided and nothing
+waiting, and filter 10047 is empty.
 
 **Resend was not among the three options the question offered.** It won on the
 same measurement that had chosen SMTP, because it needs no package at all: the
@@ -363,11 +384,46 @@ DKIM on it before it delivers. The `.app` TLD is HSTS preloaded, confirmed
 against `hstspreload.org`, so a browser refuses plain HTTP on it and KPA-147 now
 has the HTTPS address it was waiting for.
 
-**What builds it:** a tenth provider in `apps/web/lib/providers.ts`, the send
-behind `mailSender` in `src/auth/reset.ts`, and a probe in
-`src/connections/verify.ts` so the hourly recheck covers the key. Shane types the
-key into the Connections screen, so it never reaches a file, a variable or a
-transcript.
+**What was built.** A tenth provider in `apps/web/lib/providers.ts` reusing the
+`apiKey` method, `deliver()` behind `mailSender` in `src/auth/reset.ts`, and a
+probe in `src/connections/verify.ts` so the hourly recheck covers the key.
+Fourteen mutations, each on a line that runs, each caught.
+
+**`deliver` never throws, and that is the fourth criterion rather than a style
+choice.** A refused key, a vendor that is down, sealed bytes that will not open,
+and a credential removed between the two reads are each a log line. The route
+logs it and answers `ASKED` on every path, exactly as before.
+
+**A box with no Resend connection behaves as it always did.** `deliver` returns
+`ok` on that path and logs the command line, so `ok` reads true rather than
+false there. That is the second criterion, and reading it as a failure would
+break it.
+
+**Resend outranks Gmail and Outlook**, through
+`ORDER BY (c.provider <> 'resend'), c.created_at, c.id`. Ranking by `created_at`
+alone lets a box holding both pick the Gmail card, which cannot send: a Gmail or
+Graph send needs the OAuth mail scopes KPA-103 and KPA-105 carry, and neither has
+landed. Revisit when a second sender can actually send.
+
+**The connection's `name` is the from address.** The dialog posts no extra field,
+so rather than add a field, a route parameter and a column, the name carries it.
+`recheck.ts` already compares `whoami` against `connection.name`, so a card is
+already named after the account it acts as. The hint says to name it
+`no-reply@sukkal.app` and `check-connections.ts` asserts the hint still says so.
+
+**What is left before a reset mail actually arrives.** Three things, none of them
+code. SPF and DKIM on `sukkal.app` in Cloudflare. A Resend API key typed into the
+Connections screen, which never reaches a file or a transcript. And a card named
+after the sending address.
+
+**One open question for Shane, and the code says where to change it.** The probe
+is `GET /api-keys`, which is free, so the hourly recheck covers the key rather
+than skipping it as metered. Resend's other permission is `sending_access`, which
+can only send, so a send-only key sends the reset link and this probe refuses it.
+The card's hint therefore asks for a full-access key. That trades least privilege
+for a working health check, and the comment at the `resend` case in
+`src/connections/verify.ts` records the choice and the alternative: treat a 401
+there as unchecked rather than as failing.
 
 **The register reads two exact strings and nothing else.**
 `scripts/decision-register.ts` finds a question only in a warning panel whose
@@ -470,20 +526,32 @@ how the trunk went red on 2 September 2026 and stayed red across two pushes.
 
 | Database | Who writes it |
 |---|---|
-| `kpa` on amaterasu | The migration. Production. Five migrations behind |
-| `sukkal_dev` | Every test. The suite drops every table in it |
+| `sukkal` on amaterasu | The migration. Production. Nine migrations behind |
+| `sukkal_dev` on amaterasu | Every test that points at the env file |
+| `sukkal_dev` on this Mac | Every test that points at loopback, which is what CI does |
 | `sukkal_local` | The running application. No test names it |
 | `sukkal_verify` | `scripts/verify-migration.sh`, which drops and recreates it on every run |
 
-**amaterasu still calls its two `kpa` and `kpa_dev`**, because KPA-153 could
-not reach the box. Only this Mac's databases moved. `DATABASE_URL` and
-`DATABASE_URL_TEST` in the env file therefore still name the old ones, and
-KPA-154 changes all four together.
+**Two different databases are called `sukkal_dev`, one per host.** KPA-154 renamed
+amaterasu's `kpa_dev` on 30 September 2026, and the Mac's was already called that.
+Nothing breaks, because a connection names a host as well as a database, and
+`refuseProduction` asks the server which database it reached rather than reading
+the string. Know which one a command reaches before you read its result: the env
+file means amaterasu, and an explicit `DATABASE_URL_TEST` naming `localhost` means
+the Mac.
 
-**Both names mean production.** `PRODUCTION` in `src/db/connect.ts` holds
-`kpa` and `sukkal`, the migration runner refuses either, and every test calls
-`refuseProduction` after it connects. KPA-154 drops `kpa` from that array, and
-that is the whole of its change in this repository.
+**One name means production now.** `PRODUCTION` in `src/db/connect.ts` holds
+`sukkal` alone since KPA-154. The migration runner refuses it, and every test calls
+`refuseProduction` after it connects.
+
+Watched rather than assumed, on 30 September 2026:
+
+```
+npm run migrate      -> up: sukkal, read from DATABASE_URL
+                        refusing to migrate "sukkal": it holds the facts.
+DATABASE_URL_TEST    -> sukkal_dev as sukkal, ssl=true -> allowed
+DATABASE_URL         -> sukkal     as sukkal, ssl=true -> REFUSED
+```
 
 `sukkal_local` exists because the suite ends on `down()`. On 10 September 2026 a
 test run destroyed three Google OAuth connections that had taken three consent
@@ -494,17 +562,18 @@ them to revoke. Start the dev server like this:
 cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local" npm run dev
 ```
 
-**Production `kpa` holds 21 migrations and stops at `022_issue_cache.sql`.**
+**Production `sukkal` holds 21 migrations and stops at `022_issue_cache.sql`.**
 023 through 031 are pending, so production is nine behind. Read from
-`schema_migrations` on amaterasu on 30 September 2026, once the box answered
-again. There is no `002` in either place, which is why 21 rows reach 022.
+`schema_migrations` on amaterasu on 30 September 2026, before the rename and again
+after it. There is no `002` in either place, which is why 21 rows reach 022.
 
 This corrects the earlier note, which said 001 to 024 and five behind. Both
 numbers were wrong: production never held 023 or 024, and the repository has
-gained 030 and 031 since.
+gained 030 and 031 since. KPA-154's own acceptance criteria repeat the wrong
+figure, and the ticket carries a comment saying so.
 
 It was migrated by accident on 3 September 2026 and Shane chose to leave it. The
-command now names the database before it acts and refuses `kpa` outright;
+command names the database before it acts and refuses `sukkal` outright;
 `SUKKAL_ALLOW_PRODUCTION=1 npm run migrate` migrates it deliberately.
 
 ## Environment
@@ -514,13 +583,25 @@ command now names the database before it acts and refuses `kpa` outright;
 
 | Variable | For |
 |---|---|
-| `DATABASE_URL` | Production `kpa` on amaterasu. The migration reads this and nothing else |
-| `DATABASE_URL_TEST` | `kpa_dev` on amaterasu, which KPA-154 renames. Override it with a local URL |
+| `DATABASE_URL` | Production `sukkal` on amaterasu. The migration reads this and nothing else |
+| `DATABASE_URL_TEST` | `sukkal_dev` on amaterasu. Override it with a local URL for a fast run |
 | `SUKKAL_SECRET_KEY` | Seals every connection credential |
 | `GOOGLE_OAUTH_CLIENT_ID` | Identifies Sukkal to Google |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | The callback exchanges a code with it |
 | `SUKKAL_URL` | Where this installation answers. `http://localhost:3000` today |
-| `VOYAGE_API_KEY`, `VOYAGE_PROJECT_ID` | Read by no code. KPA-104 moved a vendor key into a connection |
+
+Six variables, not eight. `VOYAGE_API_KEY` and `VOYAGE_PROJECT_ID` were removed on
+30 September 2026: no code had read either since KPA-104 moved the vendor key into
+a connection. A backup of the file before that sits at
+`~/.config/sukkal/env.bak-20260930`. A second backup, taken before KPA-154
+rewrote the two database URLs, sits at `~/.config/sukkal/env.bak-kpa-154`. Both
+are mode 0600.
+
+Three more secrets exist and this file holds none of them.
+`KOINON_JIRA_SITE`, `KOINON_JIRA_EMAIL` and `KOINON_JIRA_TOKEN` live in
+`~/.config/secrets.env`, which `~/.zshenv` sources, and
+`scripts/decision-register.ts` reads all three. `docs/runbooks/secrets.md` says
+why they sit in a different file.
 
 **One OAuth client serves Sukkal and workspace-mcp**, in Google Cloud project
 `personal-assistant-506014`. Google holds exactly two redirect URIs, and both
