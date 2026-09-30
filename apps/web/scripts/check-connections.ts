@@ -194,8 +194,14 @@ assert.ok(
 
 // 9. Resend is the sender, so the card takes a key and the probe behind it
 //    costs nothing. A metered probe would be skipped by the hourly recheck,
-//    which is the whole reason the key is verifiable at all, and the hint
-//    tells the reader to make a full-access key because the probe lists them.
+//    which is the whole reason the key is verifiable at all.
+//
+//    THE HINT ASKS FOR A SEND-ONLY KEY, and it must keep asking. Sukkal calls
+//    one Resend endpoint ever, `POST /emails`, which `sending_access` permits.
+//    An earlier hint asked for full access so the probe could list the keys,
+//    and Shane ruled on 30 September 2026 that a health indicator is not worth
+//    the blast radius of the whole account. `src/connections/verify.ts` reads
+//    the refusal as proof of life instead.
 const resend = PROVIDERS.find((entry) => entry.id === "resend")!;
 assert.ok(resend, "Resend is missing");
 assert.equal(resend.methods.length, 1, "Resend offers one way in");
@@ -203,8 +209,13 @@ const resendKey = resend.methods[0];
 assert.equal(resendKey.id, "key", "Resend takes an API key");
 assert.match(
   resendKey.hint,
+  /sending access only/i,
+  "the Resend hint does not ask for a send-only key, which is the least privilege that sends"
+);
+assert.doesNotMatch(
+  resendKey.hint,
   /full access/i,
-  "the Resend hint does not say the key needs full access, which the probe requires"
+  "the Resend hint asks for full access again, which trades the account for a health check"
 );
 // The name box holds the address `deliver` puts in the message's `from`, so a
 // card named "Resend" sends from a mailbox that does not exist.

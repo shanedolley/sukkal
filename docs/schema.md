@@ -937,6 +937,19 @@ Connections screen, nobody dates, and `src/connections/verify.ts` cannot check.
 The Resend key is a sealed credential like every other, so the screen shows it,
 the row dates it, and the hourly recheck verifies it.
 
+**The key is scoped to sending only, and its refusal is what verifies it.** Sukkal
+calls one Resend endpoint ever, `POST /emails`, so nothing needs a key that can
+list, create or delete a Resend resource. Such a key cannot answer the probe's
+`GET /api-keys`, and Resend refuses it with 401 `restricted_api_key`, "This API
+key is restricted to only send emails". A key has to authenticate to earn that
+sentence, so `verified_ok` reads true on it.
+
+`Probe.alive` in `src/connections/verify.ts` is what carries that rule, and it
+matches on the status as well as the name. Resend documents
+`restricted_api_key` twice, at 401 for a send-only key and at 403 for "API key is
+not active", so the name alone would write `verified_ok = true` for a deactivated
+key. Only Resend sets `alive`, so the other four probes never read a body.
+
 **A box with no Resend connection behaves exactly as it did.** `deliver` returns
 `ok` when no sender is configured and logs the command line instead, so the
 screen answers what it always answered. That is the second criterion on KPA-143

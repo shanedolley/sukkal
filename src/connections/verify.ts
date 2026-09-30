@@ -37,6 +37,30 @@ export interface Probe {
   cost: 'free' | 'metered';
   /** What the call asks, for the verdict and for a reader of this file. */
   asks: string;
+  /**
+   * A refusal that proves the key is live rather than dead.
+   *
+   * A vendor that scopes its keys refuses a call the key is not scoped for, and
+   * that refusal is not a failure: the key authenticated to be refused. Set
+   * this and `verify` reads the answer's `name` before believing the status.
+   *
+   * BOTH FIELDS HAVE TO MATCH, and Resend is why. It documents
+   * `restricted_api_key` twice, at 401 for "This API key is restricted to only
+   * send emails" and at 403 for "API key is not active". The identifier alone
+   * would call a deactivated key live. Read
+   * `https://resend.com/docs/api-reference/errors`.
+   *
+   * Leave it unset and nothing reads the body, which is what the other four
+   * probes want: a body is one more thing to fail on.
+   */
+  alive?: {
+    /** The status that carries the proof, and only that status. */
+    status: number;
+    /** The `name` the answer must carry, exactly. */
+    name: string;
+    /** What the verdict says, after the host. */
+    says: string;
+  };
 }
 
 /** What a verification found. `verdict` is what the row stores. */
@@ -96,17 +120,27 @@ export function probeFor(provider: string, secret: string): Probe | null {
       // Everything else it offers either sends a message, which bills and
       // mails a real person, or needs an id from a message already sent.
       //
-      // IT NEEDS A FULL-ACCESS KEY. Resend's other permission is
-      // `sending_access`, which "can only send emails", so such a key sends
-      // the reset link and is refused here. The card's hint says to make a
-      // full-access key for that reason, and a sending-only one reads as
-      // refused rather than as unchecked.
+      // A SEND-ONLY KEY IS WHAT SUKKAL ASKS FOR, and it cannot list the keys.
+      // Sukkal calls one Resend endpoint ever, `POST /emails`, which
+      // `sending_access` permits, so a key scoped to sending does everything
+      // the product needs and nothing it does not. Asking for `full_access` to
+      // make this probe answer would buy a health indicator with the blast
+      // radius of the account, which Shane ruled against on 30 September 2026.
+      //
+      // So the refusal is the proof. Resend answers 401 `restricted_api_key`,
+      // "This API key is restricted to only send emails", and a key has to
+      // authenticate to earn that sentence. `alive` below reads it as working.
       return {
         url: 'https://api.resend.com/api-keys',
         method: 'GET',
         headers: { authorization: `Bearer ${secret}` },
         cost: 'free',
-        asks: 'whether the key may list the keys on its account',
+        asks: 'whether the key is live, which a send-only key proves by being refused',
+        alive: {
+          status: 401,
+          name: 'restricted_api_key',
+          says: 'holds a live send-only key, which is all Sukkal needs',
+        },
       };
 
     case 'voyage':
@@ -132,6 +166,31 @@ export function probeFor(provider: string, secret: string): Probe | null {
 }
 
 /** How a vendor's status reads to somebody deciding what to do about it. */
+/**
+ * The `name` a vendor's error carries, or null.
+ *
+ * Resend answers `{ "name": ..., "statusCode": ..., "message": ... }`, and the
+ * name is the only field this reads. The message is prose a vendor may reword
+ * and the status is already in hand.
+ *
+ * NULL FOR EVERY FAILURE, because the caller treats null as "not the refusal I
+ * named" and falls back to the status. A body that is empty, is not JSON, holds
+ * no `name`, or cannot be read at all therefore leaves the refusal a refusal,
+ * which is the safe direction: this function can only ever turn a dead
+ * credential into a live-looking one by returning a name, so it returns one
+ * only when it read one.
+ */
+async function named(answer: Response): Promise<string | null> {
+  try {
+    const body: unknown = await answer.json();
+    if (typeof body !== 'object' || body === null) return null;
+    const name = (body as { name?: unknown }).name;
+    return typeof name === 'string' ? name : null;
+  } catch {
+    return null;
+  }
+}
+
 function readStatus(status: number): { ok: boolean; says: string } {
   if (status >= 200 && status < 300) return { ok: true, says: 'accepted' };
   if (status === 401 || status === 403) {
@@ -163,7 +222,18 @@ export async function verify(
       ...(probe.body === undefined ? {} : { body: probe.body }),
     });
     const read = readStatus(answer.status);
-    return { ok: read.ok, verdict: `${new URL(probe.url).host} ${read.says}` };
+    const host = new URL(probe.url).host;
+
+    // A refusal the probe named as proof of a live key. The status is checked
+    // first, because Resend reuses one identifier across two statuses and only
+    // one of them means the key authenticated.
+    if (!read.ok && probe.alive !== undefined && answer.status === probe.alive.status) {
+      if ((await named(answer)) === probe.alive.name) {
+        return { ok: true, verdict: `${host} ${probe.alive.says}` };
+      }
+    }
+
+    return { ok: read.ok, verdict: `${host} ${read.says}` };
   } catch (cause) {
     // The message names the host and not the request, because the request
     // carries the key in a header.

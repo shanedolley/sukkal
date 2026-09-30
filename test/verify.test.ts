@@ -13,16 +13,21 @@ import { probeFor, verify } from '../src/connections/verify.ts';
 const KEY = 'sk-secret-value-nobody-should-see';
 
 /** A fetcher answering one status, and recording what it was handed. */
-function answering(status: number): {
+function answering(status: number, body = ''): {
   fetcher: typeof fetch;
   seen: { url: string; init: RequestInit | undefined }[];
 } {
   const seen: { url: string; init: RequestInit | undefined }[] = [];
   const fetcher = ((url: string, init?: RequestInit) => {
     seen.push({ url, init });
-    return Promise.resolve(new Response('', { status }));
+    return Promise.resolve(new Response(body, { status }));
   }) as unknown as typeof fetch;
   return { fetcher, seen };
+}
+
+/** What Resend answers, in the shape its own docs give. */
+function resendError(name: string, message: string): string {
+  return JSON.stringify({ name, statusCode: 401, message });
 }
 
 describe('the probe a provider is verified by', () => {
@@ -98,6 +103,71 @@ describe('what a vendor answer becomes on the row', () => {
     const said = await verify(probe, fetcher);
     assert.equal(said.ok, true);
     assert.match(said.verdict, /api\.linear\.app accepted/);
+  });
+
+  // The five below are the send-only Resend key. Sukkal asks for a key scoped
+  // to sending, which cannot list the keys the probe reads, so the refusal is
+  // what proves the key is live. Resend documents `restricted_api_key` at two
+  // statuses with two meanings, and only the 401 means the key authenticated.
+  test('a send-only Resend key reads as working, because it was refused', async () => {
+    const { fetcher } = answering(
+      401,
+      resendError('restricted_api_key', 'This API key is restricted to only send emails.'),
+    );
+    const probe = probeFor('resend', KEY);
+    assert.ok(probe);
+    const said = await verify(probe, fetcher);
+    assert.equal(said.ok, true, 'a live send-only key reads as failing');
+    assert.match(said.verdict, /live send-only key/);
+  });
+
+  test('a 403 restricted_api_key stays dead, though it shares the identifier', async () => {
+    // Resend's 403 of the same name means "API key is not active". Matching on
+    // the name alone would call a deactivated key live.
+    const { fetcher } = answering(403, resendError('restricted_api_key', 'API key is not active'));
+    const probe = probeFor('resend', KEY);
+    assert.ok(probe);
+    const said = await verify(probe, fetcher);
+    assert.equal(said.ok, false, 'a deactivated key reads as working');
+    assert.match(said.verdict, /refused the key/);
+  });
+
+  test('a 401 carrying another name stays dead', async () => {
+    const { fetcher } = answering(
+      401,
+      resendError('missing_api_key', 'Missing API key in the authorization header.'),
+    );
+    const probe = probeFor('resend', KEY);
+    assert.ok(probe);
+    const said = await verify(probe, fetcher);
+    assert.equal(said.ok, false);
+    assert.match(said.verdict, /refused the key/);
+  });
+
+  test('a 401 whose body will not parse stays dead', async () => {
+    // The safe direction: an unreadable body leaves a refusal a refusal.
+    for (const body of ['', 'not json', '[]', '{"name":7}', 'null']) {
+      const { fetcher } = answering(401, body);
+      const probe = probeFor('resend', KEY);
+      assert.ok(probe);
+      const said = await verify(probe, fetcher);
+      assert.equal(said.ok, false, `a body of ${JSON.stringify(body)} read as working`);
+    }
+  });
+
+  test('no other probe reads a body, so no other probe can be fooled by one', async () => {
+    // Only Resend sets `alive`, so the other four never leave the status path.
+    for (const provider of ['openrouter', 'claude', 'linear', 'voyage']) {
+      const probe = probeFor(provider, KEY);
+      assert.ok(probe);
+      assert.equal(probe.alive, undefined, `${provider} reads a body it does not need`);
+      const { fetcher } = answering(
+        401,
+        resendError('restricted_api_key', 'This API key is restricted to only send emails.'),
+      );
+      const said = await verify(probe, fetcher);
+      assert.equal(said.ok, false, `${provider} believed another vendor's refusal`);
+    }
   });
 
   test('a 401 says the key was refused, and does not throw', async () => {

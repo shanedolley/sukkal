@@ -38,9 +38,9 @@ one: KPA-143 needed no column, because the Resend key is a credential like every
 other. Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each
 hold two. Counted with `ls` on 30 September 2026.
 
-The suite runs **650 tests with the vault and 630 without it**, measured on
-30 September 2026 after KPA-143 added ten. One skip is reported in both, and it
-is meant to.
+The suite runs **655 tests with the vault and 635 without it**, measured on
+30 September 2026 after KPA-143 added ten and the send-only ruling added five.
+One skip is reported in both, and it is meant to.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -416,14 +416,38 @@ code. SPF and DKIM on `sukkal.app` in Cloudflare. A Resend API key typed into th
 Connections screen, which never reaches a file or a transcript. And a card named
 after the sending address.
 
-**One open question for Shane, and the code says where to change it.** The probe
-is `GET /api-keys`, which is free, so the hourly recheck covers the key rather
-than skipping it as metered. Resend's other permission is `sending_access`, which
-can only send, so a send-only key sends the reset link and this probe refuses it.
-The card's hint therefore asks for a full-access key. That trades least privilege
-for a working health check, and the comment at the `resend` case in
-`src/connections/verify.ts` records the choice and the alternative: treat a 401
-there as unchecked rather than as failing.
+**The card asks for a send-only key, and the refusal is what proves it works.**
+Shane ruled on 30 September 2026: Sukkal calls one Resend endpoint ever,
+`POST /emails`, which `sending_access` permits, so a key scoped to sending does
+everything the product needs. The first version asked for `full_access` so the
+probe could list the keys, which bought a health indicator with the blast radius
+of the whole account.
+
+A send-only key cannot list the keys, so `GET /api-keys` refuses it, and that
+refusal is the proof: Resend answers 401 `restricted_api_key`, "This API key is
+restricted to only send emails", and a key has to authenticate to earn that
+sentence. `Probe.alive` in `src/connections/verify.ts` carries the status, the
+name and what the verdict says, and `verify` reads the answer's `name` only for a
+probe that sets it. The other four never read a body, because a body is one more
+thing to fail on.
+
+**The status has to match as well as the name, and this is the trap.** Resend
+documents `restricted_api_key` twice: at 401 for a send-only key, and at 403 for
+"API key is not active". Matching on the identifier alone would read a
+deactivated key as live. Read
+`https://resend.com/docs/api-reference/errors`, which was checked directly rather
+than taken from the research that found it.
+
+**A body that cannot be read leaves a refusal a refusal.** `named` returns null
+for an empty body, a body that is not JSON, one holding no `name`, and one whose
+`name` is not a string. That is the safe direction: the function can only ever
+turn a dead credential into a live-looking one by returning a name, so it returns
+one only when it read one. Four mutations prove each half, and the one that
+ignores the status is caught by the 403 test.
+
+**What Resend answers for a key that was deleted is undocumented**, so it is
+treated as dead. The errors page carries no entry for an invalid, deleted or
+never-issued key.
 
 **The register reads two exact strings and nothing else.**
 `scripts/decision-register.ts` finds a question only in a warning panel whose

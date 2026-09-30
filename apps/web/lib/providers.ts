@@ -309,7 +309,7 @@ export const PROVIDERS: Provider[] = [
         // The name box above holds the sending address: `deliver` in
         // src/auth/reset.ts puts it in the message's `from`, the way a Google
         // card is named after the account that consented.
-        "Resend makes the key at resend.com/api-keys. Give it full access, because the hourly recheck lists the keys and a send-only key cannot. Name this card with the address the mail comes from, such as no-reply@sukkal.app, because that is what Sukkal sends as."
+        "Resend makes the key at resend.com/api-keys. Give it sending access only, because sending is the one thing Sukkal asks Resend to do. Name this card with the address the mail comes from, such as no-reply@sukkal.app, because that is what Sukkal sends as."
       ),
     ],
   },
