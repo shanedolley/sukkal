@@ -18,9 +18,14 @@
 // would vanish at this size.
 //
 // Drawn rather than fetched. A picture file would be one more thing to host,
-// to theme and to keep at the right size, and this is four gradients: a lit
+// to theme and to keep at the right size, and this is four effects: a lit
 // side, a shaded side, a rim where the light wraps, and a soft shadow under
 // it. Those four are what make a flat shape read as a solid one.
+//
+// Three of the four are gradients, `shell`, `deep` and `gloss`. The shadow is
+// a `filter` running `feGaussianBlur`, because a blur is what a soft edge
+// needs and no gradient gives one. KPA-151 called all four gradients, and this
+// sentence corrects it rather than the drawing, which was always right.
 //
 // It takes the accent colour, so a person who sets their own menu colour in
 // Preferences gets an assistant to match rather than a mascot in somebody

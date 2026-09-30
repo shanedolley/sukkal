@@ -9,6 +9,9 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
+// The three sprints the fixture holds, and the one it calls active, imported
+// rather than retyped so the query is run against the real values.
+import { CURRENT_SPRINT, SPRINTS } from '../apps/web/lib/fixtures.ts';
 import type { Sprint } from '../apps/web/lib/types.ts';
 // The tree migration 018 seeds, imported rather than retyped.
 import { WORKSPACES } from '../apps/web/lib/workspaces.ts';
@@ -17,16 +20,6 @@ import { down, up } from '../src/db/migrate.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
-
-// `fixtures.ts` stays behind a variable specifier, for the reason
-// `test/issues.test.ts` gives: the root type check sets
-// `noUncheckedIndexedAccess` and `apps/web/tsconfig.json` does not, so six
-// indexed reads in that file type differently under the two.
-const FIXTURES = '../apps/web/lib/fixtures.ts';
-const { SPRINTS, CURRENT_SPRINT } = (await import(FIXTURES)) as {
-  SPRINTS: Sprint[];
-  CURRENT_SPRINT: Sprint;
-};
 
 /**
  * The sprint in flight, read rather than found.

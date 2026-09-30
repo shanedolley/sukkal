@@ -29,6 +29,10 @@ is for, where it comes from, and what breaks without it.
 `REUI_LICENSE_KEY` belongs to the web tier and sits in `apps/web/.env.example`.
 The last part of this section covers it.
 
+Three more secrets reach a repository command from a different file, and the
+section after next covers them: `KOINON_JIRA_SITE`, `KOINON_JIRA_EMAIL` and
+`KOINON_JIRA_TOKEN`.
+
 ### The two database URLs
 
 Both need `sslmode=require`. amaterasu refuses a client offering no TLS, and
@@ -168,6 +172,51 @@ checked on 3 September 2026:
 $ git check-ignore -v apps/web/.env.local
 apps/web/.gitignore:34:.env*	apps/web/.env.local
 ```
+
+### The three Jira secrets come from the shell, not from this file
+
+`scripts/decision-register.ts` reads them at lines 25 to 27, so
+`npm run decisions` throws before it calls Jira when any one is missing.
+
+| Variable | For |
+|---|---|
+| `KOINON_JIRA_SITE` | The Koinon site, `https://koinon.atlassian.net` |
+| `KOINON_JIRA_EMAIL` | The account the token belongs to |
+| `KOINON_JIRA_TOKEN` | A live Jira API token |
+
+**They live in `~/.config/secrets.env`, mode 0600, not in
+`~/.config/sukkal/env`**, because they belong to the person running the
+repository rather than to the installation. `~/.zshenv` sources that file at
+line 13, and zsh reads `~/.zshenv` for every shell, interactive or not, so no
+command sources anything first. Nothing the running application reads names any
+of the three.
+
+This reports which file holds them, and never a value. Checked on
+30 September 2026:
+
+```
+$ grep -c '^export KOINON_JIRA_TOKEN=' ~/.config/secrets.env
+1
+$ grep -c 'KOINON_JIRA_TOKEN' ~/.config/sukkal/env
+0
+$ stat -f '%Sp' ~/.config/secrets.env
+-rw-------
+```
+
+Two files hold secrets for two different owners, and the distinction is worth
+keeping. `~/.config/sukkal/env` holds what this installation reads.
+`~/.config/secrets.env` holds what Shane's shell reaches, across every
+repository.
+
+**The token is a real credential and `scripts/scan-history.sh` cannot see it.**
+Check 2 reads the variables that `~/.config/sukkal/env` holds, and this one is
+not there, which is the same gap the check records for
+`NABIUM_WEBHOOK_SECRET`. Revoke and reissue it at
+`id.atlassian.com/manage-profile/security/api-tokens`.
+
+Added on 30 September 2026. KPA-70 set out to document every secret the
+application reads and missed these three, because they reach a script rather
+than the application and arrive from a different file.
 
 ### The web tier reads its own environment
 

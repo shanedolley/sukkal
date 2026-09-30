@@ -1,7 +1,12 @@
 # Handover
 
-State as at 19 September 2026. `prompt.md` holds the instructions for a new
+State as at 30 September 2026. `prompt.md` holds the instructions for a new
 session. This file holds the facts.
+
+**The review queue is empty.** On 30 September 2026 Shane walked all 30 stories
+that sat In Review, and every one is Done. Each carries a comment saying what
+was verified against the repository and what read wrong. *What the review found*
+below carries the four things worth keeping.
 
 ## Where the work is
 
@@ -34,26 +39,28 @@ none.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **122 stories, 89 shipped, which is 73%
-by count.** Counted from Jira on 19 September 2026, two pages, after KPA-107
-shipped.
+Project KPA on `koinon.atlassian.net`. **123 stories, 89 accepted, which is 72%
+by count.** Counted from Jira on 30 September 2026, paged to the end, after the
+review closed the queue and raised KPA-157.
 
 | Status | Stories |
 |---|---|
-| Done | 59 |
-| In Review | 30 |
+| Done | 89 |
+| In Review | 0 |
 | In Progress | 1, KPA-103 |
-| To Do | 31 |
-| Decision required | 1 |
+| To Do | 33 |
+| Decision required | 0 |
 
-**In Review means shipped.** Each is on `main`, pushed, and CI green. They wait
-on Shane reading them and nothing else, so a story blocked by one is not really
-blocked.
+**Read these counts by issue type.** The project holds 157 issues: 123 stories,
+13 epics and 21 subtasks. A count of everything reports 111 Done and 44 To Do,
+which reads like disagreement and is not. Only `issuetype = Story` gives the
+table above, so a query that omits the type answers a different question.
 
-    KPA-68  KPA-70  KPA-77  KPA-78  KPA-79  KPA-83  KPA-94  KPA-95
-    KPA-97  KPA-98  KPA-99  KPA-100 KPA-104 KPA-127 KPA-128 KPA-137
-    KPA-138 KPA-139 KPA-144 KPA-146 KPA-148 KPA-150 KPA-151 KPA-153
-    KPA-155 KPA-156 KPA-13  KPA-131 KPA-74  KPA-107
+**No story sits In Review.** Every story that reached `main` has been read and
+accepted. One epic, KPA-149, is still In Review, which is why a count of
+everything shows one. A story that ships from here goes to In Review and waits
+for the same treatment, so the status keeps its meaning and its queue is simply
+empty.
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -76,6 +83,50 @@ blocked.
 unpaged query reads one page and reports it as the whole project. A handover on
 3 September said "62 of 100 stories" for exactly that reason, and both numbers
 were wrong.
+
+## What the review found
+
+All 30 stories that sat In Review were verified against the repository on
+30 September 2026, then accepted. **No story was found broken and no shipped work
+needed rework.** Four things came out of it that are worth keeping.
+
+**1. Two sweeps are written and nothing runs them. [KPA-157] fixes it.**
+
+    src/auth/session.ts:216       sweepExpired   expired session rows
+    src/connections/oauth.ts:580  sweepExpired   abandoned OAuth grants
+
+Both are tested, and only their tests call them. `src/worker/index.ts` registers
+deliveries, nightly and recheck, and `nightly.ts` imports `sweep` from
+`src/memory/sweep.ts`, which reviews facts and is a different function.
+`sukkal_local` held two expired sessions and two stale grants when this was
+found. An expired session is inert, because a read refuses it. An abandoned grant
+holds a PKCE verifier, which is why this is worth doing rather than noting.
+
+**2. The issue cache has no caller.** KPA-98, KPA-99 and KPA-100 built `issues`,
+`issue_blocks`, `sprints` and `issue_writes` across migrations 022, 027 and 028.
+No file under `src/` or `apps/web/` names any of the four in a query, and all
+four are empty. Only tests exercise them. Each story said so honestly, and
+together they show the shape of the work left: three shipped stories of schema
+waiting on KPA-124, which has not started.
+
+**3. A comment defending a workaround outlived its reason, and that cost more
+than the workaround.** `test/issues.test.ts` and `test/sprints.test.ts` each
+reached `apps/web/lib/fixtures.ts` behind a variable specifier, and each
+explained it by saying `apps/web/tsconfig.json` omits
+`noUncheckedIndexedAccess`. It had not since 3 September, when KPA-141 turned it
+on. KPA-141 converted one file of three. Both are plain static imports now.
+
+**4. Only two claims in 30 stories were wrong when written.** KPA-77 said the
+public-path allowlist holds seven paths; it holds eight and always did. KPA-151
+said 250 lines and four gradients; the file is 284 lines and holds three
+gradients plus a blur filter, and the shadow is the filter. Everything else that
+read wrong read wrong because later work changed what it described, which is the
+ordinary cost of a comment naming a number.
+
+**What that suggests about comments.** The claims that aged badly were counts and
+line numbers. The claims that held were names, constraints, formulas and the
+reasons behind a decision. A comment that says why has outlived every comment
+here that said how many.
 
 ## The assistant is Sukkal
 
@@ -240,11 +291,18 @@ for. It is still Python and still reads the files directly, which is the
 independence REQ-033 wants.
 
 **Production has not been loaded.** The script refuses `kpa` and `sukkal`, and
-the vault has never been written to amaterasu. amaterasu answers only on the
-internal network in Australia, and Shane is abroad, measured on
-19 September 2026. When it answers: freeze the vault again at its new commit,
-run `scripts/verify-migration.sh`, which may now show lines the vault gained
-since `da7afce`, then load `kpa` with the production guard lifted on purpose.
+the vault has never been written to amaterasu.
+
+**amaterasu answers again, measured on 30 September 2026.** It accepted a
+connection on port 5432 and served a query. The 19 September note that it
+answers only on the internal network no longer holds. So the load is unblocked,
+and so is KPA-154. To load it: freeze the vault, run
+`scripts/verify-migration.sh`, then load `kpa` with the production guard lifted
+on purpose.
+
+The vault has not moved since the freeze, so that run costs nothing in
+surprises. It is still at `da7afce`, with a clean working tree and no commits
+since, checked on 30 September 2026.
 
 **A citation keeps its words, since KPA-131.** Every `derived_from` edge holds
 its `sources:` entry verbatim in `edges.citation`, added by
@@ -279,16 +337,37 @@ all fifteen ported `check.py` fixtures pass under either reader.
 They survived a reboot on 19 September. The script now fails at its first step
 until the vault is frozen again, which is by design.
 
-## One decision waiting
+## No decision waiting
 
-**[KPA-143] is the open question**, and it sits in filter 10047, the queue Shane
-works from. How does a self-hosted box send the reset link? KPA-79 mints the
-token and names which connection would carry it, and nothing carries it, so a
-shell on the server is the only way to a link.
+**[KPA-143] was decided on 30 September 2026 and is now To Do.** How does a
+self-hosted box send the reset link? The answer is Resend over HTTPS, with the
+API key held as a sealed connection. `npm run decisions` reports 10 decided and
+nothing waiting, and filter 10047 is empty.
 
-The comment weighs an SMTP provider card, the OAuth mail connection, and no
-mail at all, and recommends SMTP: nodemailer 9.1.1 declares no dependencies and
-unpacks to 617 KB, against a root that runs two.
+**Resend was not among the three options the question offered.** It won on the
+same measurement that had chosen SMTP, because it needs no package at all: the
+send is one `fetch` POST to `api.resend.com/emails`, so runtime dependencies stay
+at two. The provider card also reuses the key method that OpenRouter, Voyage,
+Claude and Linear already use, where an SMTP card needs a four-field shape for
+host, port, username and password that no provider here has. Resend speaks SMTP
+too, at `smtp.resend.com`, so nothing is foreclosed.
+
+**The measurement that had chosen SMTP moved under it.** The original comment
+measured nodemailer 9.1.1 at 617 KB. Version 10.0.12 unpacks to 1506 KB,
+measured against the npm registry on 30 September. The `resend` package is
+281 KB with two dependencies, and this ruling takes neither.
+
+**The sender domain is `sukkal.app`**, registered on 30 September 2026 and
+already on Cloudflare nameservers with no A record yet. Resend needs SPF and
+DKIM on it before it delivers. The `.app` TLD is HSTS preloaded, confirmed
+against `hstspreload.org`, so a browser refuses plain HTTP on it and KPA-147 now
+has the HTTPS address it was waiting for.
+
+**What builds it:** a tenth provider in `apps/web/lib/providers.ts`, the send
+behind `mailSender` in `src/auth/reset.ts`, and a probe in
+`src/connections/verify.ts` so the hourly recheck covers the key. Shane types the
+key into the Connections screen, so it never reaches a file, a variable or a
+transcript.
 
 **The register reads two exact strings and nothing else.**
 `scripts/decision-register.ts` finds a question only in a warning panel whose
@@ -320,19 +399,31 @@ hourly recheck on 19 September 2026:
 | `shanevdolley@gmail.com` | `invalid_grant: Token has been expired or revoked` |
 | `shane.dolley@collibra.com` | `invalid_grant: Token has been expired or revoked` |
 
-**The likely cause is Google's seven-day limit, and it is unconfirmed.** Both
-dead tokens were issued on 12 September, seven days before they failed. Google
-expires refresh tokens after seven days for a client whose consent screen is in
-Testing. If so, the Koinon token dies on 26 September too, and workspace-mcp,
-which shares the client, runs on the same clock. Shane reads the publishing
-status in Google Cloud project `personal-assistant-506014`, under APIs &
-Services, OAuth consent screen.
+**The seven-day limit was the suspected cause, and it does not explain this.**
+Both dead tokens were issued on 12 September and failed seven days later, which
+fitted Google's rule that a refresh token expires after seven days for a client
+whose consent screen is in Testing. The prediction was that the Koinon token
+would die on 26 September.
 
-**KPA-103 has one criterion left.** "Three accounts produce three distinct
-connections" was proved on 19 September: a second grant of the Koinon account
-kept row 2, its id and its `created_at`, and replaced its credential. "A refresh
-runs before expiry and rewrites the date" waits on the publishing status,
-because under Testing no refresh outlives seven days.
+**It did not. It still worked on 30 September, eleven days after its grant.**
+Measured by running the worker once against `sukkal_local`: it rechecked all
+three connections at 11:09 and wrote three rows. `shane@koinon.com.au` verified
+OK. The other two still answer `invalid_grant`. The worker had last run on
+25 September, so the token also survived five days with nobody using it.
+
+So something else killed the two from 12 September, and the seven-day rule is not
+it. Reading the publishing status in Google Cloud project
+`personal-assistant-506014`, under APIs & Services, OAuth consent screen, is
+still the cheapest next step, and it is now a question about the two dead tokens
+rather than a countdown on the live one.
+
+**KPA-103 has one criterion left, and it is closer than it looks.** "Three
+accounts produce three distinct connections" was proved on 19 September: a second
+grant of the Koinon account kept row 2, its id and its `created_at`, and replaced
+its credential. "A refresh runs before expiry and rewrites the date" now has its
+evidence: the 30 September recheck renewed the Koinon grant and wrote
+`verified_at`. What is missing is a run that spans an expiry deliberately rather
+than by accident.
 
 **KPA-107 rechecks every connection hourly.** `src/connections/recheck.ts` renews
 a Google grant and asks `whoami` whose token came back. It runs a free key probe
@@ -403,10 +494,17 @@ them to revoke. Start the dev server like this:
 cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local" npm run dev
 ```
 
-**Production `kpa` holds migrations 001 to 024 and nothing since.** 025 through
-029 are not there, so production is five behind. It was migrated by accident on
-3 September 2026 and Shane chose to leave it. The command now names the
-database before it acts and refuses `kpa` outright;
+**Production `kpa` holds 21 migrations and stops at `022_issue_cache.sql`.**
+023 through 031 are pending, so production is nine behind. Read from
+`schema_migrations` on amaterasu on 30 September 2026, once the box answered
+again. There is no `002` in either place, which is why 21 rows reach 022.
+
+This corrects the earlier note, which said 001 to 024 and five behind. Both
+numbers were wrong: production never held 023 or 024, and the repository has
+gained 030 and 031 since.
+
+It was migrated by accident on 3 September 2026 and Shane chose to leave it. The
+command now names the database before it acts and refuses `kpa` outright;
 `SUKKAL_ALLOW_PRODUCTION=1 npm run migrate` migrates it deliberately.
 
 ## Environment
@@ -659,3 +757,4 @@ record: an unpublished Zoom app installs only on the developer's own account,
 and a free account holds no cloud recording to read.
 
 [KPA-143]: https://koinon.atlassian.net/browse/KPA-143
+[KPA-157]: https://koinon.atlassian.net/browse/KPA-157

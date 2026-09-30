@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
-import { type Issue, PARENT_KIND, type Sprint } from '../apps/web/lib/types.ts';
+// The fixtures the interface reads, imported rather than retyped: a
+// transcription here would agree with itself and prove nothing about the seed.
+import { ISSUES, SPRINTS } from '../apps/web/lib/fixtures.ts';
+import { type Issue, PARENT_KIND } from '../apps/web/lib/types.ts';
 // The tree the seed holds, imported rather than retyped. An issue names its
 // workspace by name and the cache files it under `workspaces.id`, so this is
 // what turns one into the other.
@@ -12,17 +15,6 @@ import { down, up } from '../src/db/migrate.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
-
-// `fixtures.ts` alone stays behind a variable specifier. The root type check
-// sets `noUncheckedIndexedAccess` and `apps/web/tsconfig.json` does not, so six
-// indexed reads in that file type as `T | undefined` here and as `T` there, and
-// a static import fails the root type check on all six.
-// `test/workspace-fields.test.ts` records the same thing.
-const FIXTURES = '../apps/web/lib/fixtures.ts';
-const { ISSUES, SPRINTS } = (await import(FIXTURES)) as {
-  ISSUES: Issue[];
-  SPRINTS: Sprint[];
-};
 
 /** Every column, constraint and comment on the two tables, plus the values of
  *  the three enums. A rename of anything shows up here, which is what the down

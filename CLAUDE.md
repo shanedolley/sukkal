@@ -218,16 +218,25 @@ The plugin lists differ on purpose: `src/` and `test/` hold no JSX, so the
 root runs three plugins and the web tier runs seven.
 
 **A shared package holding `src/db` was weighed and rejected.** The web tier
-imports five modules under `src/`, not one: `db/connect.ts`,
-`memory/state.ts`, `memory/source.ts`, `embedding.ts` and
-`webhooks/receive.ts`. A package holding `src/db` alone closes one import of
-seven, and it needs the workspace to link it anyway. Reach for it when a
-second repository consumes `src/`.
+imports twelve modules under `src/`, not one: `auth/password.ts`,
+`auth/session.ts`, `auth/reset.ts`, `auth/attempts.ts`,
+`connections/oauth.ts`, `connections/store.ts`, `connections/crypto.ts`,
+`webhooks/receive.ts`, `db/connect.ts`, `memory/state.ts`, `memory/source.ts`
+and `embedding.ts`. A package holding `src/db` alone closes one import of 24,
+and it needs the workspace to link it anyway. Reach for it when a second
+repository consumes `src/`.
+
+The counts grow, and each recount has strengthened the case for rejecting the
+package rather than weakened it. KPA-68 measured five modules and seven
+imports. Both were counted again on 30 September 2026 while accepting that
+story.
 
 **Both packages run TypeScript 7.0.2, the native compiler.** `apps/web` ran
 5.9.3 until KPA-135. A cross-package import still names the `.ts` extension,
 and `allowImportingTsExtensions` is what lets 7.0.2 accept it: turn that
-option off and the native compiler reports `TS5097` on all ten imports.
+option off and the native compiler reports `TS5097` on every one of the 88
+imports under `apps/web` that names the extension. 24 of the 88 reach across
+into `src/`. Counted on 30 September 2026.
 
 **`npm test` leaves the database with no tables, so an `apps/web` check run
 after it fails.** `npm run check` reads real rows when `DATABASE_URL_TEST` is
@@ -340,6 +349,15 @@ plainly. `list[0]` is `T | undefined`: guard it, or state the invariant in the
 type. `Provider.methods`, `SPACE_OPTIONS`, `LABEL_DOTS` and `CHAT_ANSWERS` are
 non-empty tuples for that reason, which is what makes index 0 a value rather
 than a maybe.
+
+**That cleanup finished on 30 September 2026, three weeks late.** KPA-141
+converted `test/workspace-fields.test.ts` to a plain static import and left
+`test/issues.test.ts` and `test/sprints.test.ts` behind. Both still reached
+`apps/web/lib/fixtures.ts` through a variable specifier, and both explained it
+by saying `apps/web/tsconfig.json` omits `noUncheckedIndexedAccess`, which it
+had not since 3 September. A comment defending a workaround with a reason the
+reader can check and find false costs more than the workaround does. All three
+files import the fixtures plainly now.
 
 **A gate's prompt is a file, never a string in code.** `src/memory/prompts/`
 holds them, and the gate reads its file on every call, so a renamed prompt
