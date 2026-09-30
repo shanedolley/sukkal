@@ -187,7 +187,7 @@ TOTAL_STAGES=6
 
 HOST="${SUKKAL_HOST:-amaterasu}"
 PGVER=18
-REMOTE_SCRIPT=/tmp/kpa-provision-root.sh
+REMOTE_SCRIPT=/tmp/sukkal-provision-root.sh
 
 banner "Provision PostgreSQL $PGVER for Sukkal on $HOST"
 
@@ -237,7 +237,7 @@ echo
 
 say "This wizard will, in one sudo prompt on $HOST:"
 step "install postgresql-$PGVER and postgresql-$PGVER-pgvector from PGDG"
-step "create the kpa role, the kpa database and the kpa_dev database"
+step "create the sukkal role, the sukkal database and the sukkal_dev database"
 step "generate a TLS certificate and require encrypted connections"
 step "bind to the LAN address only, never 0.0.0.0"
 step "apply the tuning above"
@@ -248,7 +248,7 @@ confirm "Provision $HOST now?" || { say "Nothing changed."; exit 0; }
 
 # ── 2 ─────────────────────────────────────────────────────────────────────
 stage "Provision the server"
-say "Generating a password for the kpa role on this Mac."
+say "Generating a password for the sukkal role on this Mac."
 say "It is written to .env here and set on the server. It is never printed."
 # head closes the pipe once it has 32 bytes, so tr takes SIGPIPE and exits 141.
 # With pipefail that kills the wizard here on every single run. Guard it, then
@@ -282,7 +282,7 @@ if [[ ! "$HOST_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 export PGPASSWORD="$SUKKAL_PASSWORD"
-PSQL_BASE="psql -h $HOST_IP -U kpa -d kpa -tAX"
+PSQL_BASE="psql -h $HOST_IP -U sukkal -d sukkal -tAX"
 
 run_check() {  # run_check "label" "sql" "expected"
   local got; got=$($PSQL_BASE -c "$2" 2>&1 | tr -d '[:space:]')
@@ -295,13 +295,13 @@ say "  ${DIM}connecting with sslmode=require${RESET}"
 export PGSSLMODE=require
 run_check "pgvector is installed"      "SELECT count(*) FROM pg_extension WHERE extname='vector'" "1"
 run_check "the connection is encrypted" "SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()" "t"
-run_check "kpa is not a superuser"      "SELECT rolsuper FROM pg_roles WHERE rolname='kpa'" "f"
-run_check "no read-only role exists"    "SELECT count(*) FROM pg_roles WHERE rolname='kpa_ro'" "0"
-run_check "kpa_dev exists"              "SELECT count(*) FROM pg_database WHERE datname='kpa_dev'" "1"
+run_check "sukkal is not a superuser"      "SELECT rolsuper FROM pg_roles WHERE rolname='sukkal'" "f"
+run_check "no read-only role exists"    "SELECT count(*) FROM pg_roles WHERE rolname='sukkal_ro'" "0"
+run_check "sukkal_dev exists"              "SELECT count(*) FROM pg_database WHERE datname='sukkal_dev'" "1"
 run_check "the server is not on 0.0.0.0" "SELECT setting <> '*' FROM pg_settings WHERE name='listen_addresses'" "t"
 
 say "  ${DIM}checking that an unencrypted client is refused${RESET}"
-if PGSSLMODE=disable psql -h "$HOST_IP" -U kpa -d kpa -tAXc 'SELECT 1' >/dev/null 2>&1; then
+if PGSSLMODE=disable psql -h "$HOST_IP" -U sukkal -d sukkal -tAXc 'SELECT 1' >/dev/null 2>&1; then
   say "  ${RED}no${RESET}  an unencrypted connection was accepted"; FAILED=1
 else
   say "  ${GREEN}ok${RESET}  an unencrypted connection is refused"
@@ -314,9 +314,9 @@ pause "Write the connection details?"
 # ── 4 ─────────────────────────────────────────────────────────────────────
 stage "Write the connection details"
 say "These go into .env, which is git-ignored. Nothing is committed."
-write_env DATABASE_URL      "postgresql://kpa:${SUKKAL_PASSWORD}@${HOST_IP}:5432/kpa?sslmode=require"
-write_env DATABASE_URL_TEST "postgresql://kpa:${SUKKAL_PASSWORD}@${HOST_IP}:5432/kpa_dev?sslmode=require"
-say "Tests point at kpa_dev, so a test run never writes into the migration's data."
+write_env DATABASE_URL      "postgresql://sukkal:${SUKKAL_PASSWORD}@${HOST_IP}:5432/sukkal?sslmode=require"
+write_env DATABASE_URL_TEST "postgresql://sukkal:${SUKKAL_PASSWORD}@${HOST_IP}:5432/sukkal_dev?sslmode=require"
+say "Tests point at sukkal_dev, so a test run never writes into the migration's data."
 pause "Continue to the reboot check?"
 
 # ── 5 ─────────────────────────────────────────────────────────────────────
@@ -349,13 +349,13 @@ echo
 if confirm "Run a dump and restore into a scratch database now?"; then
   ssh -t "$HOST" "sudo -u postgres bash -c '
     set -e
-    pg_dump kpa > /tmp/kpa-drill.sql
-    dropdb --if-exists kpa_drill
-    createdb kpa_drill
-    psql -q -d kpa_drill -f /tmp/kpa-drill.sql
-    echo \"restored objects: \$(psql -tAX -d kpa_drill -c \"SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = current_schema()\")\"
-    dropdb kpa_drill
-    rm -f /tmp/kpa-drill.sql'"
+    pg_dump sukkal > /tmp/sukkal-drill.sql
+    dropdb --if-exists sukkal_drill
+    createdb sukkal_drill
+    psql -q -d sukkal_drill -f /tmp/sukkal-drill.sql
+    echo \"restored objects: \$(psql -tAX -d sukkal_drill -c \"SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = current_schema()\")\"
+    dropdb sukkal_drill
+    rm -f /tmp/sukkal-drill.sql'"
   say "  ${GREEN}ok${RESET}  dump and restore completed, scratch database removed"
 else
   SKIPPED+=("the backup drill: KPA-22 stays open until it runs")

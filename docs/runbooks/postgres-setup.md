@@ -18,17 +18,16 @@ fails. Read the scripts when the two disagree.
 | Host | amaterasu, `192.168.20.110`, Ubuntu 24.04.4 LTS (noble), 7.6 GB RAM, 12 threads |
 | Packages | `postgresql-18` 18.6, `postgresql-18-pgvector` 0.8.6, both from PGDG |
 | Service | `postgresql` active and enabled at boot, `postgresql@18-main` active |
-| Configuration | `/etc/postgresql/18/main`, with the tuning in `conf.d/kpa.conf` |
+| Configuration | `/etc/postgresql/18/main`, with the tuning in `conf.d/sukkal.conf` |
 | Data | `/var/lib/postgresql/18/main` |
-| Databases | `kpa` and `kpa_dev`, both owned by `kpa`, both carrying pgvector |
-| Role | `kpa`. `LOGIN`, `NOSUPERUSER`, `NOCREATEROLE` |
+| Databases | `sukkal` and `sukkal_dev`, both owned by `sukkal`, both carrying pgvector |
+| Role | `sukkal`. `LOGIN`, `NOSUPERUSER`, `NOCREATEROLE` |
 | Client credentials | `.env` at the repository root, git-ignored |
 
-**This box is the last thing called KPA.** KPA-153 moved every other machine
+**This box was the last thing called KPA.** KPA-153 moved every other machine
 name to Sukkal on 13 September 2026 and could not reach amaterasu, so the two
 databases, the role, `conf.d/kpa.conf`, the `# KPA` marker in `pg_hba.conf` and
-`/etc/sudoers.d/kpa` all keep the old name. KPA-154 moves them, and everything
-in this runbook with them.
+`/etc/sudoers.d/kpa` kept the old name until KPA-154 renamed them too.
 
 ## Before you run it
 
@@ -54,13 +53,13 @@ Six stages: preflight, provision, verify from the Mac, write `.env`, restart,
 and a backup drill. It is safe to re-run. Every step in the root half checks
 before it acts, and stage 4 offers the existing `.env` values as defaults.
 
-The wizard generates the `kpa` password itself, sets it on the role, and writes
+The wizard generates the `sukkal` password itself, sets it on the role, and writes
 it into `.env`. It never prints it. `.env` is git-ignored, so nothing is
 committed.
 
 ## The settings, and where the numbers came from
 
-`conf.d/kpa.conf` holds all of them. The file names the script that wrote it, so
+`conf.d/sukkal.conf` holds all of them. The file names the script that wrote it, so
 edit the script rather than the server.
 
 | Setting | Value | Reason |
@@ -90,8 +89,8 @@ rather than size-driven checkpoints.
 `pg_hba.conf` gains two lines, and only two:
 
 ```
-hostssl kpa       kpa  192.168.20.0/24  scram-sha-256
-hostssl kpa_dev   kpa  192.168.20.0/24  scram-sha-256
+hostssl sukkal       sukkal  192.168.20.0/24  scram-sha-256
+hostssl sukkal_dev   sukkal  192.168.20.0/24  scram-sha-256
 ```
 
 **The subnet is read at run time, not hard-coded.** The wizard asks amaterasu
@@ -121,9 +120,9 @@ access to Collibra material is attack surface that earns nothing yet.
 
 **`sslmode=require`, not `verify-full`.** The connection is encrypted but the
 certificate is not verified. Verification needs a certificate carrying the host
-address, and `conf.d/kpa.conf` can take that upgrade later with no migration.
+address, and `conf.d/sukkal.conf` can take that upgrade later with no migration.
 
-**Tests point at `kpa_dev`.** `DATABASE_URL_TEST` in `.env` names it, so a test
+**Tests point at `sukkal_dev`.** `DATABASE_URL_TEST` in `.env` names it, so a test
 run never writes into the database that holds the migration's data.
 
 ## When a stage fails

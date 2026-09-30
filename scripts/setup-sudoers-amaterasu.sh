@@ -187,8 +187,8 @@ TOTAL_STAGES=6
 
 HOST="${SUKKAL_HOST:-amaterasu}"
 REMOTE_USER="${SUKKAL_REMOTE_USER:-shanedolley}"
-CANDIDATE=/tmp/kpa-sudoers
-TARGET=/etc/sudoers.d/kpa
+CANDIDATE=/tmp/sukkal-sudoers
+TARGET=/etc/sudoers.d/sukkal
 
 # The file itself. Read it before running anything: it is the whole change.
 read -r -d '' SUDOERS <<'FILEEOF' || true
@@ -204,8 +204,8 @@ read -r -d '' SUDOERS <<'FILEEOF' || true
 # anything that reaches a shell as this user. This box also serves NFS and runs
 # NZBGet, so that reach is not limited to one project.
 #
-# Installed by scripts/setup-sudoers-amaterasu.sh in the kpa repository.
-# Remove with: sudo rm /etc/sudoers.d/kpa
+# Installed by scripts/setup-sudoers-amaterasu.sh in the sukkal repository.
+# Remove with: sudo rm /etc/sudoers.d/sukkal
 
 @@USER@@ ALL=(ALL:ALL) NOPASSWD: ALL
 FILEEOF

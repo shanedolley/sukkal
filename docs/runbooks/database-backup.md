@@ -3,8 +3,8 @@
 Written for KPA-22, and checked against the live server on 26 August 2026.
 
 The database is PostgreSQL 18.6 on amaterasu, at `192.168.20.110`, running under
-systemd as `postgresql@18-main`. It holds two databases, `kpa` and `kpa_dev`,
-both owned by the `kpa` role.
+systemd as `postgresql@18-main`. It holds two databases, `sukkal` and `sukkal_dev`,
+both owned by the `sukkal` role.
 
 ## Nothing is scheduled
 
@@ -38,8 +38,8 @@ needs it yet.
 ## Take two dumps, not one
 
 `pg_dump` writes the database and no roles at all. `pg_dumpall -r` writes the
-roles and nothing else. A rebuilt box needs the `kpa` role to exist before any
-restore of `kpa` works, so the second dump is the one that gets forgotten and
+roles and nothing else. A rebuilt box needs the `sukkal` role to exist before any
+restore of `sukkal` works, so the second dump is the one that gets forgotten and
 then missed.
 
 Run this on amaterasu as the `postgres` user:
@@ -50,7 +50,7 @@ sudo -u postgres bash
 
 mkdir -p ~/backups
 STAMP=$(date +%Y%m%d)
-pg_dump -Fc -d kpa -f ~/backups/kpa-$STAMP.dump
+pg_dump -Fc -d sukkal -f ~/backups/sukkal-$STAMP.dump
 pg_dumpall -r -f ~/backups/roles-$STAMP.sql
 chmod 600 ~/backups/roles-$STAMP.sql
 ```
@@ -87,7 +87,7 @@ dump protects against a bad migration, a mistaken `DROP`, and a mistaken
 Copy a dump to the Mac to close that gap:
 
 ```bash
-scp amaterasu:/var/lib/postgresql/backups/kpa-YYYYMMDD.dump ~/Downloads/
+scp amaterasu:/var/lib/postgresql/backups/sukkal-YYYYMMDD.dump ~/Downloads/
 ```
 
 That command needs the file readable by your own user first, because `~postgres`
@@ -103,28 +103,28 @@ first time then.
 so the target database must already exist before `pg_restore` runs.
 
 **The dump carries no roles.** On a rebuilt box, load
-`roles-YYYYMMDD.sql` first. Without the `kpa` role, every `SET OWNER` in the
+`roles-YYYYMMDD.sql` first. Without the `sukkal` role, every `SET OWNER` in the
 archive fails.
 
-Restore into a scratch database, never over `kpa`:
+Restore into a scratch database, never over `sukkal`:
 
 ```bash
 sudo -u postgres bash
 
-# On a rebuilt box only. Skip it when the kpa role already exists.
+# On a rebuilt box only. Skip it when the sukkal role already exists.
 psql -f ~/backups/roles-YYYYMMDD.sql
 
 # Inspect the archive before trusting it. Read-only, no database touched.
-pg_restore -l ~/backups/kpa-YYYYMMDD.dump | head
+pg_restore -l ~/backups/sukkal-YYYYMMDD.dump | head
 
 # Create the target first. The dump will not create it.
-createdb -O kpa kpa_restore
+createdb -O sukkal sukkal_restore
 
-pg_restore -d kpa_restore --no-owner --exit-on-error ~/backups/kpa-YYYYMMDD.dump
+pg_restore -d sukkal_restore --no-owner --exit-on-error ~/backups/sukkal-YYYYMMDD.dump
 ```
 
 `--no-owner` drops the `SET OWNER` commands, so the restoring role owns
-everything. Use it whenever the restoring role is not `kpa`.
+everything. Use it whenever the restoring role is not `sukkal`.
 
 `--exit-on-error` turns `pg_restore`'s default "log it and carry on" into a hard
 stop. Without it a half-restored database reads as a success.
@@ -137,7 +137,7 @@ before you trust either one:
 ```bash
 sudo -u postgres bash
 
-for db in kpa kpa_restore; do
+for db in sukkal sukkal_restore; do
   echo "== $db"
   psql -tAX -d "$db" -c \
     'SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY relname'
@@ -148,10 +148,10 @@ Every table must appear in both lists with the same count. Then remove the
 scratch database:
 
 ```bash
-dropdb kpa_restore
+dropdb sukkal_restore
 ```
 
-Restoring over the live `kpa` is the same commands with `-d kpa` and `--clean`,
+Restoring over the live `sukkal` is the same commands with `-d sukkal` and `--clean`,
 and it discards whatever is in there now. Do the comparison above first, every
 time.
 

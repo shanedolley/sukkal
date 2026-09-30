@@ -103,7 +103,7 @@ no argument, so a run across midnight compares two different days. Run it again.
 ## What it does not do
 
 **It never touches production.** `scripts/verify-migration.ts` calls
-`refuseProduction`, so neither `kpa` nor `sukkal` can be its target. Loading the
+`refuseProduction`, so `sukkal` cannot be its target. Loading the
 vault into production and verifying it there is a step for a person, on a day
 amaterasu answers.
 

@@ -11,7 +11,7 @@
  *     --check-report <check.py output> --counts <count-vault.py output>
  *
  * It reads `VERIFY_DATABASE_URL`, and it refuses production: verifying the
- * migration into `kpa` is a step for a person, on the day amaterasu is
+ * migration into `sukkal` is a step for a person, on the day amaterasu is
  * reachable, and not one this script takes on its own.
  */
 import { readFile, writeFile } from 'node:fs/promises';

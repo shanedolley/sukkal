@@ -69,7 +69,7 @@ systemctl enable systemd-networkd-wait-online.service >/dev/null 2>&1 || \
 # time-driven rather than size-driven checkpoints.
 log "Tuning, listen address and TLS"
 install -d -o postgres -g postgres "$CONF/conf.d"
-cat > "$CONF/conf.d/kpa.conf" <<CONFEOF
+cat > "$CONF/conf.d/sukkal.conf" <<CONFEOF
 # Written by scripts/provision-amaterasu-root.sh. Edit there, not here.
 
 # Memory. Scaled for 7.6 GB shared with NFS, NZBGet and a transcode monitor.
@@ -102,21 +102,21 @@ ssl = on
 log_line_prefix = '%m [%p] %q%u@%d '
 log_min_duration_statement = 500
 CONFEOF
-chown postgres:postgres "$CONF/conf.d/kpa.conf"
-chmod 0644 "$CONF/conf.d/kpa.conf"
+chown postgres:postgres "$CONF/conf.d/sukkal.conf"
+chmod 0644 "$CONF/conf.d/sukkal.conf"
 
 # ── who may connect ───────────────────────────────────────────────────────
 # Only hostssl lines exist for the LAN, so a client offering no TLS matches no
 # line and is refused. That refusal is the acceptance criterion, not a default.
 log "pg_hba.conf"
-if ! grep -q '^# KPA' "$CONF/pg_hba.conf"; then
+if ! grep -q '^# SUKKAL' "$CONF/pg_hba.conf"; then
   cat >> "$CONF/pg_hba.conf" <<HBAEOF
 
-# KPA. The subnet below is the /24 of whichever interface carried the ssh that
+# SUKKAL. The subnet below is the /24 of whichever interface carried the ssh that
 # ran this script. The Mac's wired and Wi-Fi addresses share that /24, so either
 # one reaches Postgres. Another subnet, a guest SSID or a VLAN needs its own line.
-hostssl kpa       kpa  $SRCNET  scram-sha-256
-hostssl kpa_dev   kpa  $SRCNET  scram-sha-256
+hostssl sukkal       sukkal  $SRCNET  scram-sha-256
+hostssl sukkal_dev   sukkal  $SRCNET  scram-sha-256
 HBAEOF
   echo "added"
 else
@@ -127,19 +127,19 @@ fi
 log "Role and databases"
 su - postgres -c "psql -v ON_ERROR_STOP=1 -q" <<SQLEOF
 DO \$\$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kpa') THEN
-    CREATE ROLE kpa LOGIN;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sukkal') THEN
+    CREATE ROLE sukkal LOGIN;
   END IF;
 END \$\$;
-ALTER ROLE kpa WITH PASSWORD '$SUKKAL_PASSWORD' NOSUPERUSER NOCREATEROLE;
-SELECT 'kpa' AS role, rolsuper FROM pg_roles WHERE rolname = 'kpa';
+ALTER ROLE sukkal WITH PASSWORD '$SUKKAL_PASSWORD' NOSUPERUSER NOCREATEROLE;
+SELECT 'sukkal' AS role, rolsuper FROM pg_roles WHERE rolname = 'sukkal';
 SQLEOF
 
-for db in kpa kpa_dev; do
+for db in sukkal sukkal_dev; do
   if su - postgres -c "psql -tAXc \"SELECT 1 FROM pg_database WHERE datname='$db'\"" | grep -q 1; then
     echo "$db already exists"
   else
-    su - postgres -c "createdb -O kpa $db"
+    su - postgres -c "createdb -O sukkal $db"
     echo "$db created"
   fi
   su - postgres -c "psql -v ON_ERROR_STOP=1 -q -d $db -c 'CREATE EXTENSION IF NOT EXISTS vector'"
@@ -150,7 +150,7 @@ log "Restart"
 systemctl restart postgresql
 sleep 2
 systemctl is-active postgresql
-su - postgres -c "psql -tAXc \"SELECT 'pgvector ' || extversion FROM pg_extension WHERE extname='vector'\" -d kpa"
+su - postgres -c "psql -tAXc \"SELECT 'pgvector ' || extversion FROM pg_extension WHERE extname='vector'\" -d sukkal"
 
 log "Done"
 echo "The wizard verifies the rest from the Mac, over the LAN."

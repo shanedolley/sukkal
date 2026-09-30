@@ -39,8 +39,8 @@ Both need `sslmode=require`. amaterasu refuses a client offering no TLS, and
 `src/db/connect.ts` refuses a mode that does not encrypt. A loopback host
 passes in the clear, because that traffic reaches no network.
 
-The `kpa` role's password was set by `scripts/provision-amaterasu.sh` and is
-recorded in `~/.config/sukkal/env` only. To change it, run `ALTER ROLE kpa
+The `sukkal` role's password was set by `scripts/provision-amaterasu.sh` and is
+recorded in `~/.config/sukkal/env` only. To change it, run `ALTER ROLE sukkal
 PASSWORD ...` on amaterasu and edit that file to match.
 
 Unset, the failure names itself and names this file. Checked on 3 September
@@ -53,8 +53,8 @@ try { connectionString(); } catch (e) { console.log(e.message); }"
 DATABASE_URL is unset. See docs/runbooks/secrets.md: real values live in ~/.config/sukkal/env.
 ```
 
-**Never point a test at `kpa`.** `DATABASE_URL_TEST` exists to keep the two
-apart, and `test/migrate.test.ts` asserts the database it reached is not `kpa`.
+**Never point a test at `sukkal`.** `DATABASE_URL_TEST` exists to keep the two
+apart, and `test/migrate.test.ts` asserts the database it reached is not `sukkal`.
 
 ### `SUKKAL_SECRET_KEY`
 
@@ -402,22 +402,22 @@ any user who asks.
 
 ```ini
 [Service]
-EnvironmentFile=/etc/kpa/env
-ExecStart=/usr/bin/node /opt/kpa/src/worker.ts
-User=kpa
+EnvironmentFile=/etc/sukkal/env
+ExecStart=/usr/bin/node /opt/sukkal/src/worker.ts
+User=sukkal
 ```
 
 The file is root's, and the service user never writes it:
 
 ```
-sudo install -d -m 0755 /etc/kpa
-sudo install -m 0600 -o root -g root /dev/null /etc/kpa/env
-sudo -e /etc/kpa/env
+sudo install -d -m 0755 /etc/sukkal
+sudo install -m 0600 -o root -g root /dev/null /etc/sukkal/env
+sudo -e /etc/sukkal/env
 ```
 
 ```
-$ sudo stat -c '%A %U:%G %n' /etc/kpa/env
--rw------- root:root /etc/kpa/env
+$ sudo stat -c '%A %U:%G %n' /etc/sukkal/env
+-rw------- root:root /etc/sukkal/env
 ```
 
 Systemd reads the file as root before it drops to `User=`, so mode `0600` and
@@ -504,7 +504,7 @@ finding a key and assuming it still works.
 
 | Key | Where to change it | What it costs |
 |---|---|---|
-| A database password | `ALTER ROLE kpa PASSWORD ...` on amaterasu | A restart |
+| A database password | `ALTER ROLE sukkal PASSWORD ...` on amaterasu | A restart |
 | `NABIUM_WEBHOOK_SECRET` | Both sides, by *Rotating one* above | A restart |
 | `SUKKAL_SECRET_KEY` | A new `openssl rand -base64 32` | Every stored credential, retyped |
 | `REUI_LICENSE_KEY` | Reissue at `reui.io` | A premium block install |

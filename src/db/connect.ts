@@ -103,16 +103,11 @@ export function connect(variable = 'DATABASE_URL'): pg.Client {
 /**
  * Every name production has answered to.
  *
- * Two, until KPA-154 renames the database on amaterasu. `sukkal` is the name
- * it takes and `kpa` is the name it still has, so both mean the facts and both
- * are refused. A guard that named only one would protect nothing for exactly
- * as long as nobody noticed.
- *
- * KPA-154 drops `kpa` from this array, and that is the whole of its change
- * here. The alternative was 40 files each holding the name itself, which is
- * what this replaced.
+ * One, since KPA-154 renamed the database on amaterasu. It held `kpa` before,
+ * which is why this is an array rather than a single name: the alternative
+ * was 40 files each holding the name itself, which is what this replaced.
  */
-export const PRODUCTION: readonly string[] = ['kpa', 'sukkal'];
+export const PRODUCTION: readonly string[] = ['sukkal'];
 
 /**
  * Throws when `client` is connected to production.

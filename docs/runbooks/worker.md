@@ -205,9 +205,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=kpa
-WorkingDirectory=/opt/kpa
-EnvironmentFile=/home/kpa/.config/sukkal/env
+User=sukkal
+WorkingDirectory=/opt/sukkal
+EnvironmentFile=/home/sukkal/.config/sukkal/env
 ExecStart=/usr/bin/node src/worker/index.ts
 Restart=on-failure
 RestartSec=5

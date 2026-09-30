@@ -113,8 +113,10 @@ of a real trade-off. Miss one and skip it. Invoke the
 - **KPA-12 and KPA-86** spend metered money.
 - **KPA-71** needs somebody at both ends of the nabium push.
 - **KPA-22** needs amaterasu, which is often unreachable from the Mac.
-- **Production `kpa`.** It holds migrations 001 to 024 deliberately, and the
-  command refuses it without `SUKKAL_ALLOW_PRODUCTION=1`.
+- **Production `sukkal` on amaterasu.** KPA-154 renamed it from `kpa` on
+  30 September 2026. It holds 21 migrations and stops at `022_issue_cache.sql`
+  deliberately, so it is nine behind. The command names the database before it
+  acts and refuses it without `SUKKAL_ALLOW_PRODUCTION=1`.
 - **A live OAuth grant.** The consent screen is Shane's to press. Build the
   whole path, prove every part that needs no vendor, and hand him the button.
 
