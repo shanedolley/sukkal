@@ -14,17 +14,17 @@
  * on the screen since KPA-37, and `src/auth/reset.ts` returns null rather than
  * throwing so this handler cannot accidentally tell them apart.
  *
- * NOTHING SENDS MAIL YET, and the token therefore reaches its owner through
- * `scripts/reset-password.sh --link`. `mailSender` is what decides where it
- * would go: KPA-79 asks that the sender be a connection somebody configured
- * rather than a relay read out of the environment.
+ * SENDING CHANGES NOTHING THIS ROUTE ANSWERS. `deliver` picks the configured
+ * sender, reaches it, and returns one line for the log, and it never throws. A
+ * box with no sender configured logs the command line instead, which is what
+ * ADR-0009's installer has. KPA-143.
  */
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { looksLikeEmail } from "@/lib/email";
 import { passes } from "@/lib/password";
-import { mailSender, request as requestReset, spend } from "../../../../../src/auth/reset.ts";
+import { deliver, request as requestReset, spend } from "../../../../../src/auth/reset.ts";
 
 /** The reason goes to the server's log and never to the browser: a connection
  *  error names the host, the database and the user. */
@@ -58,15 +58,13 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     if (issued) {
-      const sender = await mailSender(client);
-      // The log is the server's own, and the token is not in this line. On a
-      // box with nothing configured this is the whole record that somebody
-      // asked, and the owner reaches the link with the command instead.
-      console.log(
-        sender
-          ? `reset: a token was issued. ${sender.provider} connection "${sender.name}" would carry it, and nothing sends yet.`
-          : "reset: a token was issued. No mail connection is configured, so run scripts/reset-password.sh --link on the server."
-      );
+      // The log is the server's own, and the token is not in this line. A
+      // failure to send is this line at error level and nothing more: the
+      // answer below is the same either way, because a 503 on a known address
+      // and a 200 on an unknown one is the difference this route hides.
+      const sent = await deliver(client, email.trim(), issued.token);
+      if (sent.ok) console.log(sent.log);
+      else console.error(sent.log);
     }
 
     return NextResponse.json(ASKED);

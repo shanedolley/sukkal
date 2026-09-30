@@ -23,7 +23,8 @@ export type ProviderId =
   | "salesforce"
   | "openrouter"
   | "claude"
-  | "voyage";
+  | "voyage"
+  | "resend";
 
 export interface Service {
   id: string;
@@ -291,6 +292,24 @@ export const PROVIDERS: Provider[] = [
       apiKey(
         "pa-...",
         `The Voyage dashboard makes the key. The assistant embeds with ${EMBEDDING.model} at ${EMBEDDING.dimension}, which src/embedding.ts pins.`
+      ),
+    ],
+  },
+  {
+    id: "resend",
+    name: "Resend",
+    // The sender of the password reset link, and nothing else so far. KPA-143
+    // ruled it over SMTP because the send is one HTTPS POST that Node's own
+    // fetch carries, so the package gained nothing.
+    blurb: "Sends the password reset link.",
+    services: [],
+    methods: [
+      apiKey(
+        "re_...",
+        // The name box above holds the sending address: `deliver` in
+        // src/auth/reset.ts puts it in the message's `from`, the way a Google
+        // card is named after the account that consented.
+        "Resend makes the key at resend.com/api-keys. Give it full access, because the hourly recheck lists the keys and a send-only key cannot. Name this card with the address the mail comes from, such as no-reply@sukkal.app, because that is what Sukkal sends as."
       ),
     ],
   },

@@ -6,12 +6,14 @@
  * every call, so an hour passes in one line and no test waits for a clock.
  */
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
 import { hash, verify } from '../src/auth/password.ts';
 import {
   LIFETIME_MINUTES,
+  deliver,
   issueFor,
   mailSender,
   request,
@@ -19,6 +21,8 @@ import {
   spend,
 } from '../src/auth/reset.ts';
 import { fingerprint, issue, read } from '../src/auth/session.ts';
+import { KEY_VARIABLE } from '../src/connections/crypto.ts';
+import { addConnection, setCredential } from '../src/connections/store.ts';
 import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
@@ -37,8 +41,20 @@ function later(minutes: number): Date {
   return new Date(NOW.getTime() + minutes * 60 * 1000);
 }
 
+/** The token the send tests hand `deliver`. Its shape is what `issueFor` mints
+ *  and its value is nobody's: every log line is searched for it. */
+const TOKEN = 'a-token-shaped-string-nobody-holds';
+
+/** The Resend key the send tests seal. Every log line is searched for it too. */
+const RESEND_KEY = 're_a-key-shaped-string';
+
+/** What the card sends as, which is the connection's name. It is not the
+ *  owner's address, so the mail can be searched for that. */
+const FROM = 'no-reply@sukkal.app';
+
 describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () => {
   let client: ClientBase & { end: () => Promise<void> };
+  let heldSealKey: string | undefined;
 
   before(async () => {
     client = connect('DATABASE_URL_TEST');
@@ -46,16 +62,24 @@ describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' 
     await refuseProduction(client);
     await down(client, MIGRATIONS);
     await up(client, MIGRATIONS);
+    // A key made here and thrown away, so the send tests can seal a Resend
+    // key and `deliver` can open it. No key ever enters this repository.
+    heldSealKey = process.env[KEY_VARIABLE];
+    process.env[KEY_VARIABLE] = randomBytes(32).toString('base64');
   });
 
   after(async () => {
     await down(client, MIGRATIONS);
     await client.end();
+    if (heldSealKey === undefined) delete process.env[KEY_VARIABLE];
+    else process.env[KEY_VARIABLE] = heldSealKey;
   });
 
   beforeEach(async () => {
     await client.query('DELETE FROM password_resets');
     await client.query('DELETE FROM sessions');
+    // The credential goes with it, by the cascade migration 020 declares.
+    await client.query('DELETE FROM connections');
     // An account, so `request` has an address to find. The four columns move
     // together, because `users_the_account_is_whole` refuses a subset.
     await client.query(
@@ -272,5 +296,198 @@ describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' 
     assert.equal(await mailSender(client), null, 'a Drive connection was asked to send mail');
 
     await client.query('DELETE FROM connections WHERE id = $1', [id]);
+  });
+
+  // ── Sending it. KPA-143. ───────────────────────────────────────────────────
+  //
+  // Nothing here reaches Resend. `deliver` takes its fetcher as an argument,
+  // the way `src/connections/verify.ts` does, so every answer the vendor can
+  // give is driven from here and a real send needs a real key nobody has.
+
+  /** A fetcher answering one status, and recording what it was handed. */
+  function answering(status: number): {
+    fetcher: typeof fetch;
+    seen: { url: string; init: RequestInit | undefined }[];
+  } {
+    const seen: { url: string; init: RequestInit | undefined }[] = [];
+    const fetcher = ((target: string, init?: RequestInit) => {
+      seen.push({ url: target, init });
+      return Promise.resolve(new Response('{"id":"1"}', { status }));
+    }) as unknown as typeof fetch;
+    return { fetcher, seen };
+  }
+
+  /** A Resend card holding a sealed key, named after the address it sends as. */
+  async function resendCard(): Promise<string> {
+    const id = await addConnection(client, {
+      provider: 'resend',
+      name: FROM,
+      method: 'key',
+    });
+    await setCredential(client, id, RESEND_KEY);
+    return id;
+  }
+
+  /** A Gmail card holding a credential, which is a sender that cannot send. */
+  async function gmailCard(): Promise<string> {
+    const id = await addConnection(client, {
+      provider: 'google',
+      name: 'Koinon Google',
+      method: 'oauth',
+      services: ['gmail'],
+    });
+    await setCredential(client, id, 'a-refresh-token-shaped-string');
+    return id;
+  }
+
+  /** What the message carried, from the one request the fetcher recorded. */
+  function message(init: RequestInit | undefined): {
+    from: string;
+    to: string[];
+    subject: string;
+    html: string;
+  } {
+    return JSON.parse(String(init?.body)) as {
+      from: string;
+      to: string[];
+      subject: string;
+      html: string;
+    };
+  }
+
+  /** Runs `body` with `SUKKAL_URL` set, and puts back whatever was there. */
+  async function at(value: string, body: () => Promise<void>): Promise<void> {
+    const held = process.env['SUKKAL_URL'];
+    process.env['SUKKAL_URL'] = value;
+    try {
+      await body();
+    } finally {
+      if (held === undefined) delete process.env['SUKKAL_URL'];
+      else process.env['SUKKAL_URL'] = held;
+    }
+  }
+
+  test('Resend outranks Gmail, because it is the only one that sends', async () => {
+    // The Gmail card is made first, so `created_at` alone would choose it and
+    // the link would go nowhere. Reaching Gmail needs the OAuth mail scopes
+    // KPA-103 and KPA-105 carry, and neither has landed.
+    await gmailCard();
+    const resend = await resendCard();
+
+    const sender = await mailSender(client);
+    assert.equal(sender?.provider, 'resend', 'a sender that cannot send was chosen');
+    assert.equal(sender?.id, resend);
+  });
+
+  test('a box with no sender answers as it did, and reaches no vendor', async () => {
+    const { fetcher, seen } = answering(200);
+    const sent = await deliver(client, EMAIL, TOKEN, fetcher);
+
+    assert.equal(sent.ok, true, 'a fresh installation read as a failure');
+    assert.equal(seen.length, 0, 'a box with nothing configured reached a vendor');
+    assert.match(sent.log, /reset-password\.sh --link/);
+  });
+
+  test('a Gmail sender is named and nothing is sent', async () => {
+    await gmailCard();
+    const { fetcher, seen } = answering(200);
+    const sent = await deliver(client, EMAIL, TOKEN, fetcher);
+
+    assert.equal(sent.ok, true);
+    assert.equal(seen.length, 0, 'a Google connection was asked to carry the mail');
+    assert.match(sent.log, /nothing sends through google yet/);
+  });
+
+  test('the link goes to Resend, under the key sealed against the card', async () => {
+    await resendCard();
+    const { fetcher, seen } = answering(200);
+
+    await at('https://kpa.example/', async () => {
+      const sent = await deliver(client, EMAIL, TOKEN, fetcher);
+      assert.equal(sent.ok, true, sent.log);
+      assert.equal(seen.length, 1);
+      assert.equal(seen[0]?.url, 'https://api.resend.com/emails');
+      assert.equal(seen[0]?.init?.method, 'POST');
+
+      const headers = seen[0]?.init?.headers as Record<string, string>;
+      assert.equal(headers['authorization'], `Bearer ${RESEND_KEY}`);
+      // The key goes in a header and never in the url, which reaches the
+      // vendor's access log and this project's own.
+      assert.ok(!(seen[0]?.url ?? '').includes(RESEND_KEY));
+
+      const mail = message(seen[0]?.init);
+      // The connection's name is the address it sends as, the way a Google
+      // card is named after the account that consented.
+      assert.equal(mail.from, FROM);
+      assert.deepEqual(mail.to, [EMAIL]);
+      // Configured rather than guessed, and the trailing slash is dropped.
+      assert.ok(
+        mail.html.includes(`https://kpa.example/reset?token=${TOKEN}`),
+        `the mail carried no link this box issued: ${mail.html}`,
+      );
+    });
+  });
+
+  test('the mail carries the link and nothing else about the account', async () => {
+    // A reset mail naming the owner confirms the address to whoever received
+    // it, and whoever received it is not always the owner: the address may
+    // have been typed wrong, or the mailbox shared.
+    await resendCard();
+    const { fetcher, seen } = answering(200);
+    await deliver(client, EMAIL, TOKEN, fetcher);
+
+    const mail = message(seen[0]?.init);
+    const shown = `${mail.subject} ${mail.html}`;
+    assert.ok(!shown.includes(EMAIL), 'the mail named the address');
+    assert.ok(!/shane/i.test(shown), 'the mail named the owner');
+    assert.ok(!/kestrel/i.test(shown), 'the mail named the assistant');
+  });
+
+  test('a refused key is a log line, not a throw and not a different answer', async () => {
+    await resendCard();
+    const { fetcher } = answering(401);
+    const sent = await deliver(client, EMAIL, TOKEN, fetcher);
+
+    assert.equal(sent.ok, false);
+    assert.match(sent.log, /401/);
+    assert.match(sent.log, /reset-password\.sh --link/);
+  });
+
+  test('a vendor that cannot be reached is a log line rather than a throw', async () => {
+    await resendCard();
+    const failing = (() =>
+      Promise.reject(new Error('getaddrinfo ENOTFOUND'))) as unknown as typeof fetch;
+    const sent = await deliver(client, EMAIL, TOKEN, failing);
+
+    assert.equal(sent.ok, false);
+    assert.match(sent.log, /could not be reached/);
+  });
+
+  test('sealed bytes that will not open are a log line rather than a throw', async () => {
+    const id = await resendCard();
+    // One byte changed, which is what a tampered row and a rotated key both
+    // look like from here.
+    await client.query(
+      `UPDATE connection_credentials
+          SET ciphertext = set_byte(ciphertext, 40, get_byte(ciphertext, 40) # 1)
+        WHERE connection = $1`,
+      [id],
+    );
+
+    const { fetcher, seen } = answering(200);
+    const sent = await deliver(client, EMAIL, TOKEN, fetcher);
+
+    assert.equal(sent.ok, false);
+    assert.match(sent.log, /will not open/);
+    assert.equal(seen.length, 0, 'a message was sent with a key that would not open');
+  });
+
+  test('no log line carries the token or the key, on any path', async () => {
+    await resendCard();
+    for (const status of [200, 401, 422, 429, 500]) {
+      const sent = await deliver(client, EMAIL, TOKEN, answering(status).fetcher);
+      assert.ok(!sent.log.includes(TOKEN), `${String(status)} logged the token`);
+      assert.ok(!sent.log.includes(RESEND_KEY), `${String(status)} logged the key`);
+    }
   });
 });

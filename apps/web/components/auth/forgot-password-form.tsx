@@ -12,12 +12,12 @@
 // address holds the account, and answers the same either way, so the promise
 // this screen has always made is now one the server keeps.
 //
-// NOTHING SENDS THE MAIL YET, and `src/auth/reset.ts` says why: reaching Gmail
-// or Graph needs an OAuth grant this installation does not hold. The token is
-// real and the way to it is `scripts/reset-password.sh --link` on the server,
-// which is the escape hatch ADR-0009 named. The wording below says so, because
-// a screen that promised mail nobody sends would be the lie this one avoided
-// everywhere else.
+// KPA-143 GAVE THE LINK A WAY OUT, AND THE WORDING DID NOT CHANGE. `deliver`
+// in `src/auth/reset.ts` sends through a Resend connection somebody
+// configured, and a box with no such connection behaves as it always did. This
+// screen cannot tell the two apart and must not be told, so it names the
+// escape hatch ADR-0009 gave, `scripts/reset-password.sh --link`, which is
+// true on a box that mails and on one that does not.
 
 import { useState, type ComponentProps } from "react";
 import Link from "next/link";

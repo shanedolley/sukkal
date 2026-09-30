@@ -930,11 +930,28 @@ password directly, or `--link` mints a token and prints the address that spends
 it. Being at that shell is the proof: somebody who can run it can already read
 this database and the key that opens every stored credential.
 
-**Nothing sends mail yet.** `mailSender` names which configured connection
-would carry it, which is what KPA-79 asks for: a relay read out of the
-environment is a credential nobody can see on the Connections screen, nobody
-dates, and `src/connections/verify.ts` cannot check. Reaching Gmail or Graph
-needs an OAuth grant no installation holds today.
+**Resend sends the mail, since KPA-143.** `mailSender` names which configured
+connection would carry it and `deliver` carries it, which is what KPA-79 asks
+for: a relay read out of the environment is a credential nobody can see on the
+Connections screen, nobody dates, and `src/connections/verify.ts` cannot check.
+The Resend key is a sealed credential like every other, so the screen shows it,
+the row dates it, and the hourly recheck verifies it.
+
+**A box with no Resend connection behaves exactly as it did.** `deliver` returns
+`ok` when no sender is configured and logs the command line instead, so the
+screen answers what it always answered. That is the second criterion on KPA-143
+and it is why `ok` reads true rather than false on that path.
+
+**Resend outranks Gmail and Outlook in the query**, through
+`ORDER BY (c.provider <> 'resend'), c.created_at, c.id`. Ranking by
+`created_at` alone would let a box holding both pick the Gmail card, which
+cannot send: a Gmail or Graph send needs the OAuth mail scopes KPA-103 and
+KPA-105 carry and neither has landed. Revisit the ranking when a second sender
+can actually send.
+
+**The mail carries the link and nothing else.** No address, no name, no token in
+any log line. A reset mail that named the owner would confirm the address to
+whoever received it.
 
 ## What a guessing attack costs
 

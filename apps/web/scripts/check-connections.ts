@@ -7,9 +7,12 @@
 
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 import { KEY_VARIABLE } from "../../../src/connections/crypto.ts";
 import { GRANTS } from "../../../src/connections/oauth.ts";
+import { probeFor } from "../../../src/connections/verify.ts";
 import {
   addConnection,
   listConnections,
@@ -96,10 +99,11 @@ for (const entry of PROVIDERS) {
   }
 }
 
-// 6. The nine the brief names, and no tenth. Certinia PSA is a managed
-//    package inside Salesforce, so one grant reaches it and it sits in the
-//    service list rather than in the catalogue.
-assert.equal(PROVIDERS.length, 9, "the brief names nine providers");
+// 6. The nine the brief names, and Resend, which KPA-143 added as the sender
+//    of the password reset link. Certinia PSA is a managed package inside
+//    Salesforce, so one grant reaches it and it sits in the service list
+//    rather than in the catalogue.
+assert.equal(PROVIDERS.length, 10, "the brief names nine providers, and KPA-143 added Resend");
 const salesforce = PROVIDERS.find((entry) => entry.id === "salesforce")!;
 assert.ok(salesforce, "Salesforce is missing");
 assert.ok(
@@ -188,9 +192,56 @@ assert.ok(
   "the Jira token form does not ask when the token runs out"
 );
 
+// 9. Resend is the sender, so the card takes a key and the probe behind it
+//    costs nothing. A metered probe would be skipped by the hourly recheck,
+//    which is the whole reason the key is verifiable at all, and the hint
+//    tells the reader to make a full-access key because the probe lists them.
+const resend = PROVIDERS.find((entry) => entry.id === "resend")!;
+assert.ok(resend, "Resend is missing");
+assert.equal(resend.methods.length, 1, "Resend offers one way in");
+const resendKey = resend.methods[0];
+assert.equal(resendKey.id, "key", "Resend takes an API key");
+assert.match(
+  resendKey.hint,
+  /full access/i,
+  "the Resend hint does not say the key needs full access, which the probe requires"
+);
+// The name box holds the address `deliver` puts in the message's `from`, so a
+// card named "Resend" sends from a mailbox that does not exist.
+assert.match(
+  resendKey.hint,
+  /@/,
+  "the Resend hint does not say the card is named after the sending address"
+);
+const resendProbe = probeFor("resend", "re_a-key-shaped-string");
+assert.ok(resendProbe, "Resend names no probe, so the hourly recheck skips its key");
+assert.equal(
+  resendProbe.cost,
+  "free",
+  "the Resend probe is metered, so the hourly recheck would skip it"
+);
+
+// 10. Every card draws a mark. `BrandMark` returns null for an id it holds
+//     none for, so a tenth provider added without one draws an empty tile and
+//     nothing says so. The source is read rather than imported: node strips
+//     types and leaves JSX alone, so importing a .tsx answers
+//     ERR_UNKNOWN_FILE_EXTENSION.
+const brands = await readFile(
+  path.join(import.meta.dirname, "..", "components", "ui", "svgs", "brands.tsx"),
+  "utf8"
+);
+for (const entry of PROVIDERS) {
+  assert.match(
+    brands,
+    new RegExp(`^\\s{2}${entry.id}:`, "m"),
+    `${entry.id} has no mark in components/ui/svgs/brands.tsx`
+  );
+}
+
 console.log(
-  "connections OK: nine providers, only web addresses open, a key opens nothing, " +
-    `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, and the Jira token is dated`
+  "connections OK: ten providers each with a mark, only web addresses open, a key opens nothing, " +
+    `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, the Jira token is dated, ` +
+    "and the Resend probe costs nothing"
 );
 
 // ══ The same claims, against the rows ═══════════════════════════════════════
@@ -252,7 +303,7 @@ const SEEN = [
 
 let added: string | null = null;
 try {
-  // 9. A connection made and a key sealed against it, which is the round trip
+  // 11. A connection made and a key sealed against it, which is the round trip
   //    the dialog now makes.
   added = await addConnection(client, {
     provider: "openrouter",
@@ -273,13 +324,13 @@ try {
   // A calendar date comes back as text, not as a Date at local midnight.
   assert.equal(made.expiresOn, "2027-01-31");
 
-  // 10. The whole answer, searched for the secret itself.
+  // 12. The whole answer, searched for the secret itself.
   assert.ok(
     !JSON.stringify(list).includes(SECRET),
     "the read carried the plaintext",
   );
 
-  // 11. Every stored row draws a card, which needs a provider and a method
+  // 13. Every stored row draws a card, which needs a provider and a method
   //     this build offers.
   for (const one of list) {
     const entry = PROVIDERS.find((provider) => provider.id === one.provider);

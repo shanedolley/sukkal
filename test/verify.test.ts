@@ -26,8 +26,8 @@ function answering(status: number): {
 }
 
 describe('the probe a provider is verified by', () => {
-  test('names one call for each of the four key providers', () => {
-    for (const provider of ['openrouter', 'claude', 'linear', 'voyage']) {
+  test('names one call for each of the five key providers', () => {
+    for (const provider of ['openrouter', 'claude', 'linear', 'voyage', 'resend']) {
       const probe = probeFor(provider, KEY);
       assert.ok(probe, `${provider} names no probe`);
       assert.ok(probe.url.startsWith('https://'), `${provider} is not over TLS`);
@@ -36,7 +36,7 @@ describe('the probe a provider is verified by', () => {
   });
 
   test('never puts the key in the url', () => {
-    for (const provider of ['openrouter', 'claude', 'linear', 'voyage']) {
+    for (const provider of ['openrouter', 'claude', 'linear', 'voyage', 'resend']) {
       const probe = probeFor(provider, KEY);
       assert.ok(probe);
       assert.ok(!probe.url.includes(KEY), `${provider} put the key in the url`);
@@ -48,20 +48,35 @@ describe('the probe a provider is verified by', () => {
     assert.equal(probeFor('claude', KEY)?.headers['x-api-key'], KEY);
     assert.equal(probeFor('linear', KEY)?.headers['authorization'], KEY);
     assert.equal(probeFor('voyage', KEY)?.headers['authorization'], `Bearer ${KEY}`);
+    assert.equal(probeFor('resend', KEY)?.headers['authorization'], `Bearer ${KEY}`);
   });
 
   test('anthropic carries the version header its api requires', () => {
     assert.equal(probeFor('claude', KEY)?.headers['anthropic-version'], '2023-06-01');
   });
 
-  test('three cost nothing and Voyage is metered', () => {
+  test('four cost nothing and Voyage is metered', () => {
     assert.equal(probeFor('openrouter', KEY)?.cost, 'free');
     assert.equal(probeFor('claude', KEY)?.cost, 'free');
     assert.equal(probeFor('linear', KEY)?.cost, 'free');
+    // Resend's key list costs nothing. Its only other authenticated call sends
+    // a message, which bills and mails a real person, so a metered probe here
+    // would mean the hourly recheck never asked at all.
+    assert.equal(probeFor('resend', KEY)?.cost, 'free');
     // Voyage publishes no endpoint naming a key, so the cheapest call it
     // offers is an embedding. A schedule that re-verifies everything nightly
     // reads this before it decides to.
     assert.equal(probeFor('voyage', KEY)?.cost, 'metered');
+  });
+
+  test('the Resend probe lists keys and sends no mail', () => {
+    // A probe that posted to /emails would mail somebody every hour.
+    const probe = probeFor('resend', KEY);
+    assert.ok(probe);
+    assert.equal(probe.url, 'https://api.resend.com/api-keys');
+    assert.equal(probe.method, 'GET');
+    assert.ok(!probe.url.includes('/emails'), 'the Resend probe reaches the send endpoint');
+    assert.equal(probe.body, undefined, 'the Resend probe carries a body, so it is not a read');
   });
 
   test('a method holding no secret names no probe', () => {
@@ -124,7 +139,7 @@ describe('what a vendor answer becomes on the row', () => {
 
   test('no verdict carries the key, on any path', async () => {
     for (const status of [200, 401, 429, 500]) {
-      for (const provider of ['openrouter', 'claude', 'linear', 'voyage']) {
+      for (const provider of ['openrouter', 'claude', 'linear', 'voyage', 'resend']) {
         const probe = probeFor(provider, KEY);
         assert.ok(probe);
         const said = await verify(probe, answering(status).fetcher);

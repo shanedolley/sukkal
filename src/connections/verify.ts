@@ -16,7 +16,7 @@
  * because a URL reaches the vendor's access log and this project's own. The
  * verdict is written for a person to read and names no key.
  *
- * WHAT COUNTS AS CHEAP. Three of the four probes cost nothing: they ask who
+ * WHAT COUNTS AS CHEAP. Four of the five probes cost nothing: they ask who
  * the key belongs to rather than for work. Voyage publishes no such endpoint,
  * so the cheapest authenticated call it offers is an embedding of one short
  * string, and it is metered. `Probe.cost` says which is which, so a scheduled
@@ -89,6 +89,24 @@ export function probeFor(provider: string, secret: string): Probe | null {
         body: JSON.stringify({ query: '{ viewer { id } }' }),
         cost: 'free',
         asks: 'who the key belongs to',
+      };
+
+    case 'resend':
+      // The key list is the only free authenticated call Resend publishes.
+      // Everything else it offers either sends a message, which bills and
+      // mails a real person, or needs an id from a message already sent.
+      //
+      // IT NEEDS A FULL-ACCESS KEY. Resend's other permission is
+      // `sending_access`, which "can only send emails", so such a key sends
+      // the reset link and is refused here. The card's hint says to make a
+      // full-access key for that reason, and a sending-only one reads as
+      // refused rather than as unchecked.
+      return {
+        url: 'https://api.resend.com/api-keys',
+        method: 'GET',
+        headers: { authorization: `Bearer ${secret}` },
+        cost: 'free',
+        asks: 'whether the key may list the keys on its account',
       };
 
     case 'voyage':
