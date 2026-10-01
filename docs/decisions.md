@@ -12,7 +12,7 @@ prose, so nothing here reads an answer out of a sentence.
 the lighter rulings. A decision that meets the three tests in `CLAUDE.md`
 graduates to an ADR, and this register then cites it.
 
-Generated 2026-09-30. 10 decided, 0 waiting.
+Generated 2026-10-01. 10 questions decided, 2 questions waiting.
 
 ## Decided
 
@@ -31,4 +31,7 @@ Generated 2026-09-30. 10 decided, 0 waiting.
 
 ## Waiting on a ruling
 
-Nothing waiting.
+| Ticket | The question | Recommended |
+|---|---|---|
+| [KPA-108](https://koinon.atlassian.net/browse/KPA-108) | Does needs_you gain a fifth kind for a credential, or does a credential file as a deadline? | option A, a fifth kind named credential, because option B cannot meet the story's own first criterion. A lapsed credential and a failed job carry no date, so they cannot deduplicate on raised_for, and a deadline row with no deadline is a contradiction a future reader has to decode. The measured cost of A over B is one enum value |
+| [KPA-108](https://koinon.atlassian.net/browse/KPA-108) | How many days before a credential expires should the briefing start asking about it? | option B, 14 days, because it matches LIFETIME_DAYS already in the codebase and keeps the item meaningful when it appears. Option C is the right answer later and not now: there is one dated credential on this installation, so a per-connection window would be a column with one row in it, and it can be added without changing anything built for B. If you expect to be away for a stretch, take A instead and say so, and I will write 30 |

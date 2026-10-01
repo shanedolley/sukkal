@@ -16,8 +16,8 @@ the reset link sends through Resend.
 real person. All three are In Review, which in this project means shipped and
 waiting only on a read.
 
-**Five stories shipped on 1 October: KPA-157, KPA-159, KPA-160, KPA-161 and
-KPA-162. A connection can now be fixed and renamed in place, and the worker
+**Six stories shipped on 1 October: KPA-157, KPA-159, KPA-160, KPA-161,
+KPA-162 and KPA-163. A connection can now be fixed and renamed in place, and the worker
 sweeps what has expired.** Opening a card shows what the connection is and offers the one fix
 its method allows: Reconnect on a grant, a new key on a key. A card whose method
 takes a key may also be renamed. A grant method's card may not, because its name
@@ -65,11 +65,11 @@ because none of them writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
 two. Counted on 1 October 2026.
 
-The suite runs **680 tests with the vault and 660 without it**, measured on
-1 October 2026 after KPA-157, on a database dropped and recreated before the
-run, and read three times rather than once. One skip is reported in both, and it
-is meant to. KPA-159 added one test, KPA-162 three, KPA-160 one, KPA-161 four and
-KPA-157 three, which is what moved both counts.
+The suite runs **684 tests with the vault and 664 without it**, measured on
+1 October 2026 after KPA-163, on a database dropped and recreated before the
+run, and read more than once. One skip is reported in both, and it is meant to.
+KPA-159 added one test, KPA-162 three, KPA-160 one, KPA-161 four, KPA-157 three
+and KPA-163 four, which is what moved both counts.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -89,17 +89,17 @@ vault, several suites skip and the summary still reports 1.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **128 stories, 89 accepted, which is 70%
-by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160,
-KPA-161 and KPA-162 were raised and five stories shipped.
+Project KPA on `koinon.atlassian.net`. **130 stories, 89 accepted, which is 68%
+by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160
+to KPA-164 were raised and six stories shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 8, KPA-143, KPA-154, KPA-157 and KPA-158 to KPA-162, all shipped |
+| In Review | 9, KPA-143, KPA-154, KPA-157 and KPA-158 to KPA-163, all shipped |
 | In Progress | 1, KPA-103 |
 | To Do | 30 |
-| Decision required | 0 |
+| Decision required | 1, KPA-108, with two questions on it |
 
 **Read these counts by issue type.** The project holds 162 issues: 128 stories,
 13 epics and 21 subtasks. A count of everything answers a different question, so
@@ -806,13 +806,45 @@ http://localhost:3000/oauth2/callback    Sukkal. With the slash
 `apps/web/.next/dev/types` that fails a build after a page is removed. What
 follows is new, and each cost time between 9 September and 1 October 2026.
 
-**An agent's own test file can pass alone and fail in the full suite.** On
-1 October 2026 KPA-157's new worker tests passed three times against their own
-file and the full run then failed `schedules the nightly review at 03:30
-Sydney`, which the story never touched. The cause was the agent mid-move between
-two test files, and three later full runs were clean. Read a full run before you
-trust a file that starts pg-boss: two files starting a queue against one
-database interact, and the agent that wrote one cannot see the other.
+**Two decisions on one ticket register as one.**
+`scripts/decision-register.ts` writes `question = questionIn(body) ?? question`
+while walking a ticket's comments, so a later `DECISION NEEDED` panel overwrites
+an earlier one, and the same line does the same to the recommendation.
+`docs/decisions.md` then shows the last question only. Measured on
+1 October 2026 on KPA-108, which carries two: `npm run decisions` reported
+"10 decided, 1 waiting" and the file held only the expiry window, not the fifth
+kind. Both questions are on the ticket itself.
+[KPA-163](https://koinon.atlassian.net/browse/KPA-163) fixed it the same day.
+The register now writes one row per question, and
+`npm run decisions` counts questions rather than issues: it reads
+"10 questions decided, 2 questions waiting".
+
+**A ruling still cannot always name the question it answers, and the register no
+longer guesses.** A `decisionItem` carries no fixed reference. KPA-80's ruling
+comment has a `parentId` naming its question comment and KPA-96's has none, on
+the same one-question shape, and `/rest/api/3/search/jql` with
+`fields: ['comment']`, which the script calls, drops `parentId` altogether while
+`/rest/api/3/issue/<key>/comment` returns it. All three checked on
+1 October 2026. So a ticket with one open question pairs, and a ticket with two
+records the ruling on its own row saying which question it answers is not
+recorded. **KPA-108 is the first ticket this affects:** rule on it by replying
+to the question you mean, and expect the register to say it cannot tell.
+
+**`schedules the nightly review at 03:30 Sydney` in `test/worker.test.ts` is
+flaky, and it has been for longer than any story here touched it.** It polls
+`pgboss.job` for 30 seconds waiting for the job it sent to be recorded, and the
+poll sometimes times out: the assertion then reads `'0' !== '1'`.
+
+Measured on 1 October 2026 by checking `test/worker.test.ts` and
+`src/worker/index.ts` out at commit `8d55f8a`, the commit before KPA-157, and
+running the file five times: **two of the five failed.** So it predates KPA-157,
+and the first guess here, that an agent moving files between two test files
+caused it, was wrong. Running the same file at HEAD gave 22 of 22 on four runs
+of five.
+
+[KPA-164](https://koinon.atlassian.net/browse/KPA-164) covers it. Until it
+ships, a single red run of this one test is not a reason to stop: run it again,
+and only treat a repeat as real. Every other failure still is.
 
 **Port 3000 is often already held, and `next dev` refuses rather than sharing
 it.** On 1 October 2026 a dev server was already running there, started outside

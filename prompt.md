@@ -135,28 +135,37 @@ repeating it as fact.
 
 ## Start here
 
-Measured on 1 October 2026 at source: the board paged to the end, 128 stories,
+Measured on 1 October 2026 at source: the board paged to the end, 130 stories,
 and CI read with `gh run list --limit 1`. amaterasu answers.
 
-**The last session shipped five stories.**
+**The last session shipped six stories.**
 [KPA-159](https://koinon.atlassian.net/browse/KPA-159) opened the connection
 card, [KPA-162](https://koinon.atlassian.net/browse/KPA-162) made the name
 editable where the provider does not own it,
 [KPA-160](https://koinon.atlassian.net/browse/KPA-160) read the sending address
 back, [KPA-161](https://koinon.atlassian.net/browse/KPA-161) held a connection
-name to one log line, and [KPA-157](https://koinon.atlassian.net/browse/KPA-157)
-gave both expiry sweeps a schedule. `handover.md` carries what each proved.
+name to one log line, [KPA-157](https://koinon.atlassian.net/browse/KPA-157)
+gave both expiry sweeps a schedule, and
+[KPA-163](https://koinon.atlassian.net/browse/KPA-163) made the decision
+register carry every question rather than the last one. `handover.md` carries
+what each proved.
 
-**Thirty stories sit in To Do. Nine are unblocked, and every one of them needs
-Shane**, for metered spend, a live tracker, a real mailbox, or a consent screen.
-That is the honest state: the work this session could do alone is done.
+**Two questions wait on Shane**, both on
+[KPA-108](https://koinon.atlassian.net/browse/KPA-108), which sits in
+`Decision required`. Whether `needs_you` gains a fifth kind for a credential,
+and how many days before expiry the briefing starts asking. Each carries its
+options, what each costs and buys, and a recommendation. **Build KPA-108 the
+moment he rules**: KPA-107 already writes the result it would raise an item
+from, so nothing technical blocks it.
 
-**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) is the one to pick
-up**, and it is parked in `Decision required` with two questions on it. Read
-them, and build the moment Shane rules. KPA-107 already writes the result it
-would raise a Needs you item from, so nothing technical blocks it.
+**[KPA-164](https://koinon.atlassian.net/browse/KPA-164) is the one story you
+can take alone**, 2 points. `schedules the nightly review at 03:30 Sydney` in
+`test/worker.test.ts` is flaky, and it predates every story above: checked out
+at `8d55f8a` and run five times, two failed. It polls `pgboss.job` for 30
+seconds and times out. A flaky test teaches a reader to ignore a red run, and
+the next real failure goes with it.
 
-The other eight and what each waits on:
+**Every other unblocked story needs Shane**, and there are eight:
 
 - **KPA-12** and **KPA-86** spend metered money, on Voyage and on a real model.
 - **KPA-49** and **KPA-105** need a live tracker to poll.
@@ -169,11 +178,10 @@ The other eight and what each waits on:
 **KPA-103's last criterion needs a consent screen**, which is Shane's to press.
 It is the one story In Progress.
 
-**If you are picking work up and everything above is blocked**, the useful thing
-is to read across the stories rather than within one. That is how KPA-157's two
-unreachable sweeps were found on 30 September, and how the four connection gaps
-of 1 October were found: each story was honest on its own and the gap sat
-between them.
+**When everything looks blocked, read across the stories rather than within
+one.** That is how KPA-157's two unreachable sweeps were found, how the four
+connection gaps of 1 October were found, and how the register's lost question
+was found. Each story was honest on its own and the gap sat between them.
 
-Thirty-one stories are open: 30 To Do and one In Progress, KPA-103, against 128
-stories and eight In Review.
+Thirty-one stories are open: 30 To Do and one In Progress, KPA-103, against
+130 stories and nine In Review. One sits in Decision required.

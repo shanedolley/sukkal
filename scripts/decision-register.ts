@@ -21,6 +21,7 @@
  */
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { type Comment, type Entry, entriesForIssue } from './decision-entries.ts';
 
 const SITE = process.env['KOINON_JIRA_SITE'];
 const EMAIL = process.env['KOINON_JIRA_EMAIL'];
@@ -32,25 +33,6 @@ if (!SITE || !EMAIL || !TOKEN) {
     'KOINON_JIRA_SITE, KOINON_JIRA_EMAIL and KOINON_JIRA_TOKEN must be set. ' +
       '~/.zshenv exports all three. See docs/runbooks/secrets.md.',
   );
-}
-
-/** One ruling, or one question still waiting on one. */
-interface Entry {
-  key: string;
-  status: string;
-  question: string;
-  recommended: string;
-  ruling: string | null;
-  /** The day the comment carrying the ruling was written. */
-  on: string | null;
-}
-
-type Node = { type?: string; text?: string; attrs?: Record<string, unknown>; content?: Node[] };
-
-/** Only what this file reads. Jira sends far more on every one of these. */
-interface Comment {
-  body: unknown;
-  created: string;
 }
 
 interface Issue {
@@ -65,46 +47,6 @@ interface Page {
   issues?: Issue[];
   isLast?: boolean;
   nextPageToken?: string;
-}
-
-/** Every text run under `node`, joined. Jira splits a line at every mark. */
-function flatten(node: Node | undefined): string {
-  if (!node) return '';
-  if (node.type === 'text') return node.text ?? '';
-  return (node.content ?? []).map(flatten).join('');
-}
-
-/** Walks the tree and collects every node of `type`. */
-function collect(node: unknown, type: string, out: Node[] = []): Node[] {
-  if (Array.isArray(node)) {
-    for (const child of node) collect(child, type, out);
-  } else if (node && typeof node === 'object') {
-    const it = node as Node;
-    if (it.type === type) out.push(it);
-    for (const value of Object.values(node)) collect(value, type, out);
-  }
-  return out;
-}
-
-/** The question a `DECISION NEEDED` warning panel asks, or null. */
-function questionIn(body: unknown): string | null {
-  for (const panel of collect(body, 'panel')) {
-    if (panel.attrs?.['panelType'] !== 'warning') continue;
-    const [heading, question] = panel.content ?? [];
-    if (flatten(heading).trim() === 'DECISION NEEDED') return flatten(question).trim();
-  }
-  return null;
-}
-
-/** What the comment recommended, read from the line naming it. */
-function recommendationIn(body: unknown): string | null {
-  for (const para of collect(body, 'paragraph')) {
-    const text = flatten(para).trim();
-    if (text.startsWith('MY RECOMMENDATION')) {
-      return text.replace(/^MY RECOMMENDATION:?\s*/, '').replace(/\.$/, '');
-    }
-  }
-  return null;
 }
 
 /**
@@ -132,7 +74,14 @@ async function search(token: string | null): Promise<Page> {
   return (await answer.json()) as Page;
 }
 
-/** Every question and every ruling in the project, oldest ticket first. */
+/**
+ * Every question and every ruling in the project, oldest ticket first.
+ *
+ * A `Decision required` status with no entry at all cannot happen: an issue
+ * with no question and no ruling contributes nothing, and `entriesForIssue`
+ * is where that filter lives. Filter 10047 reads the `Decision required`
+ * status, which is the queue Shane works from.
+ */
 async function read(): Promise<Entry[]> {
   const entries: Entry[] = [];
 
@@ -143,37 +92,13 @@ async function read(): Promise<Entry[]> {
     const issues = page.issues ?? [];
 
     for (const issue of issues) {
-      const comments = issue.fields.comment?.comments ?? [];
-
-      let question: string | null = null;
-      let recommended: string | null = null;
-      let ruling: string | null = null;
-      let on: string | null = null;
-
-      for (const comment of comments) {
-        question = questionIn(comment.body) ?? question;
-        recommended = recommendationIn(comment.body) ?? recommended;
-
-        for (const item of collect(comment.body, 'decisionItem')) {
-          if (item.attrs?.['state'] !== 'DECIDED') continue;
-          ruling = flatten(item).trim();
-          on = comment.created.slice(0, 10);
-        }
-      }
-
-      // A question with no ruling is still waiting, and the `Decision
-      // required` status is where such an issue sits. Filter 10047 reads that
-      // status, which is the queue Shane works from.
-      if (question || ruling) {
-        entries.push({
+      entries.push(
+        ...entriesForIssue({
           key: issue.key,
           status: issue.fields.status.name,
-          question: question ?? '(the question is not in a warning panel)',
-          recommended: recommended ?? '',
-          ruling,
-          on,
-        });
-      }
+          comments: issue.fields.comment?.comments ?? [],
+        }),
+      );
     }
 
     if (page.isLast === true) break;
@@ -209,7 +134,7 @@ function render(entries: Entry[], today: string): string {
     'the lighter rulings. A decision that meets the three tests in `CLAUDE.md`',
     'graduates to an ADR, and this register then cites it.',
     '',
-    `Generated ${today}. ${String(decided.length)} decided, ${String(waiting.length)} waiting.`,
+    `Generated ${today}. ${String(decided.length)} questions decided, ${String(waiting.length)} questions waiting.`,
     '',
     '## Decided',
     '',
@@ -248,4 +173,6 @@ const target = path.join(import.meta.dirname, '..', 'docs', 'decisions.md');
 await writeFile(target, render(entries, today), 'utf8');
 
 const decided = entries.filter((entry) => entry.ruling !== null).length;
-console.log(`decisions OK: ${String(decided)} decided, ${String(entries.length - decided)} waiting`);
+console.log(
+  `decisions OK: ${String(decided)} questions decided, ${String(entries.length - decided)} questions waiting`,
+);
