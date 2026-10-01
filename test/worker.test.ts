@@ -388,12 +388,26 @@ describe('the queue', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
     }
 
     assert.equal(opened, 1, 'the registered worker ran the review and the sweep wrote');
-    const done = await client.query<{ n: string }>(
-      `SELECT count(*) AS n FROM ${QUEUE_SCHEMA}.job
-        WHERE name = $1 AND state = 'completed'`,
-      [NIGHTLY],
-    );
-    assert.equal(done.rows[0]!.n, '1', 'and the queue records the job it finished');
+
+    // pg-boss marks the job completed only once the handler returns, and the
+    // handler still has `problems(vault)` and `advisories(client)` to run
+    // after the write above. Reading `needs_you` and reading `completed` are
+    // two different effects of the same handler, in that order, so this polls
+    // for the second rather than assuming it is already true the instant the
+    // first lands. KPA-164 found this flaking on the single read.
+    const jobDeadline = Date.now() + 30_000;
+    let done = 0;
+    while (done === 0 && Date.now() < jobDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const found = await client.query<{ n: string }>(
+        `SELECT count(*) AS n FROM ${QUEUE_SCHEMA}.job
+          WHERE name = $1 AND state = 'completed'`,
+        [NIGHTLY],
+      );
+      done = Number(found.rows[0]!.n);
+    }
+
+    assert.equal(done, 1, 'and the queue records the job it finished');
   });
 
   test('a review that breaks leaves a needs_you row saying so', async () => {

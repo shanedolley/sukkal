@@ -16,9 +16,10 @@ the reset link sends through Resend.
 real person. All three are In Review, which in this project means shipped and
 waiting only on a read.
 
-**Six stories shipped on 1 October: KPA-157, KPA-159, KPA-160, KPA-161,
-KPA-162 and KPA-163. A connection can now be fixed and renamed in place, and the worker
-sweeps what has expired.** Opening a card shows what the connection is and offers the one fix
+**Seven stories shipped on 1 October: KPA-157 and KPA-159 to KPA-164.** A
+connection can now be fixed and renamed in place, the worker sweeps what has
+expired, the decision register carries every question, and the one flaky test
+is fixed. Opening a card shows what the connection is and offers the one fix
 its method allows: Reconnect on a grant, a new key on a key. A card whose method
 takes a key may also be renamed. A grant method's card may not, because its name
 is the account the provider reported and `connectionNamed` matches on it.
@@ -91,14 +92,14 @@ vault, several suites skip and the summary still reports 1.
 
 Project KPA on `koinon.atlassian.net`. **130 stories, 89 accepted, which is 68%
 by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160
-to KPA-164 were raised and six stories shipped.
+to KPA-164 were raised and seven stories shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 9, KPA-143, KPA-154, KPA-157 and KPA-158 to KPA-163, all shipped |
+| In Review | 10, KPA-143, KPA-154, KPA-157 and KPA-158 to KPA-164, all shipped |
 | In Progress | 1, KPA-103 |
-| To Do | 30 |
+| To Do | 29 |
 | Decision required | 1, KPA-108, with two questions on it |
 
 **Read these counts by issue type.** The project holds 162 issues: 128 stories,
@@ -830,21 +831,23 @@ records the ruling on its own row saying which question it answers is not
 recorded. **KPA-108 is the first ticket this affects:** rule on it by replying
 to the question you mean, and expect the register to say it cannot tell.
 
-**`schedules the nightly review at 03:30 Sydney` in `test/worker.test.ts` is
-flaky, and it has been for longer than any story here touched it.** It polls
-`pgboss.job` for 30 seconds waiting for the job it sent to be recorded, and the
-poll sometimes times out: the assertion then reads `'0' !== '1'`.
+**`schedules the nightly review at 03:30 Sydney` was flaky and KPA-164 fixed it
+on 1 October 2026. The cause is worth knowing, because the shape repeats.** The
+test polled for the review's own effect, a `needs_you` row, and then read
+`pgboss.job` once. Those are two effects of one handler in that order:
+`nightly.ts` writes the row inside `sweep()` and then still runs
+`problems(vault)` and `advisories(client)` before it returns, and pg-boss marks
+a job completed only once the handler returns. The single read could land in
+that gap.
 
-Measured on 1 October 2026 by checking `test/worker.test.ts` and
-`src/worker/index.ts` out at commit `8d55f8a`, the commit before KPA-157, and
-running the file five times: **two of the five failed.** So it predates KPA-157,
-and the first guess here, that an agent moving files between two test files
-caused it, was wrong. Running the same file at HEAD gave 22 of 22 on four runs
-of five.
+**It was proved by widening the race rather than by watching it.** Dropping the
+`needs_you` poll interval from 250ms to 1ms makes the original code fail 5 runs
+of 5, and the fixed code pass 5 of 5 under the identical change. Ten ordinary
+runs of the fixed file were clean, and the agent that built it ran twenty.
 
-[KPA-164](https://koinon.atlassian.net/browse/KPA-164) covers it. Until it
-ships, a single red run of this one test is not a reason to stop: run it again,
-and only treat a repeat as real. Every other failure still is.
+**The rule it leaves:** when a test polls for one effect of a handler and then
+asserts a second, poll for the second too. Asserting it once assumes an order
+the handler does not promise.
 
 **Port 3000 is often already held, and `next dev` refuses rather than sharing
 it.** On 1 October 2026 a dev server was already running there, started outside
