@@ -89,6 +89,14 @@ export function recommendationIn(body: unknown): string | null {
  * one. With two or more open questions, a ruling cannot be matched to either
  * one, so it is recorded on a row of its own that says so, and every open
  * question is left open rather than closed by a guess.
+ *
+ * A ruling comment can name its question instead: it restates the question
+ * verbatim in its own `DECISION NEEDED` panel, then carries the decision
+ * block. A comment's question is read before its decision items, so when its
+ * text matches an open entry on the same ticket, that entry is the ruling's
+ * target, whatever else is open. Matching looks only at open entries, so a
+ * restatement of an already-decided question cannot touch the recorded
+ * ruling; it opens a fresh entry instead, as a reopened question would.
  */
 export function entriesForIssue(issue: { key: string; status: string; comments: Comment[] }): Entry[] {
   const entries: Entry[] = [];
@@ -97,16 +105,23 @@ export function entriesForIssue(issue: { key: string; status: string; comments: 
   for (const comment of issue.comments) {
     const question = questionIn(comment.body);
     const recommended = recommendationIn(comment.body);
+    let target: Entry | null = null;
 
     if (question !== null) {
-      entries.push({
-        key: issue.key,
-        status: issue.status,
-        question,
-        recommended: recommended ?? '',
-        ruling: null,
-        on: null,
-      });
+      target = open().find((entry) => entry.question === question) ?? null;
+      if (target) {
+        if (recommended !== null) target.recommended = recommended;
+      } else {
+        target = {
+          key: issue.key,
+          status: issue.status,
+          question,
+          recommended: recommended ?? '',
+          ruling: null,
+          on: null,
+        };
+        entries.push(target);
+      }
     } else if (recommended !== null) {
       const openEntries = open();
       // Two open questions: which one this recommendation updates is the same
@@ -118,6 +133,15 @@ export function entriesForIssue(issue: { key: string; status: string; comments: 
       if (item.attrs?.['state'] !== 'DECIDED') continue;
       const ruling = flatten(item).trim();
       const on = comment.created.slice(0, 10);
+
+      // This comment named its own question: the ruling pairs with it
+      // directly, regardless of what else is open on the ticket.
+      if (target) {
+        target.ruling = ruling;
+        target.on = on;
+        continue;
+      }
+
       const openEntries = open();
 
       if (openEntries.length === 1 && openEntries[0]) {

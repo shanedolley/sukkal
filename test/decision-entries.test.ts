@@ -48,6 +48,36 @@ function rulingComment(ruling: string, created: string) {
   };
 }
 
+/** A real Shane ruling: it restates its question in a panel, then decides it. */
+function restatedRulingComment(question: string, ruling: string, created: string) {
+  return {
+    created,
+    body: {
+      type: 'doc',
+      content: [
+        {
+          type: 'panel',
+          attrs: { panelType: 'warning' },
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'DECISION NEEDED' }] },
+            { type: 'paragraph', content: [{ type: 'text', text: question }] },
+          ],
+        },
+        {
+          type: 'decisionList',
+          content: [
+            {
+              type: 'decisionItem',
+              attrs: { state: 'DECIDED' },
+              content: [{ type: 'text', text: ruling }],
+            },
+          ],
+        },
+      ] as Node[],
+    },
+  };
+}
+
 test('one question reads as one entry, waiting', () => {
   const entries = entriesForIssue({
     key: 'KPA-1',
@@ -117,4 +147,41 @@ test('a ruling on a two-question ticket answers neither question, and both stay 
   assert.equal(entries[2]?.ruling, 'option A');
   assert.notEqual(entries[2]?.question, 'Does needs_you gain a fifth kind?');
   assert.notEqual(entries[2]?.question, 'How many days before expiry?');
+});
+
+test('KPA-165: a ruling that restates its own question pairs with it, whatever else is open', () => {
+  const entries = entriesForIssue({
+    key: 'KPA-108',
+    status: 'Done',
+    comments: [
+      questionComment('Does needs_you gain a fifth kind?', 'option A', '2026-10-01T12:28:40.187+1000'),
+      questionComment('How many days before expiry?', 'option B, 14 days', '2026-10-01T12:28:40.555+1000'),
+      restatedRulingComment('Does needs_you gain a fifth kind?', 'option A', '2026-10-01T13:00:00.000+1000'),
+      restatedRulingComment('How many days before expiry?', 'option B, 14 days', '2026-10-01T13:05:00.000+1000'),
+    ],
+  });
+
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0]?.question, 'Does needs_you gain a fifth kind?');
+  assert.equal(entries[0]?.ruling, 'option A');
+  assert.equal(entries[1]?.question, 'How many days before expiry?');
+  assert.equal(entries[1]?.ruling, 'option B, 14 days');
+});
+
+test('KPA-165: restating an already-decided question opens a fresh entry rather than overwrite the ruling', () => {
+  const entries = entriesForIssue({
+    key: 'KPA-1',
+    status: 'Done',
+    comments: [
+      questionComment('Does X happen?', 'option A', '2026-09-01T00:00:00.000+1000'),
+      restatedRulingComment('Does X happen?', 'option A', '2026-09-02T00:00:00.000+1000'),
+      restatedRulingComment('Does X happen?', 'option B', '2026-09-03T00:00:00.000+1000'),
+    ],
+  });
+
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0]?.question, 'Does X happen?');
+  assert.equal(entries[0]?.ruling, 'option A');
+  assert.equal(entries[1]?.question, 'Does X happen?');
+  assert.equal(entries[1]?.ruling, 'option B');
 });
