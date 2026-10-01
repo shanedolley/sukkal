@@ -1,6 +1,6 @@
 # Handover
 
-State as at 30 September 2026. `prompt.md` holds the instructions for a new
+State as at 1 October 2026. `prompt.md` holds the instructions for a new
 session. This file holds the facts.
 
 **The review queue was emptied and then refilled by two shipped stories.** On
@@ -10,8 +10,18 @@ every one. Each carries a comment saying what was verified and what read wrong.
 
 **Then KPA-154 and KPA-143 shipped the same day**, built in parallel by two
 agents with the integration pass run here. amaterasu is no longer called KPA, and
-the reset link sends through Resend. Both are In Review, which in this project
-means shipped and waiting only on a read.
+the reset link sends through Resend.
+
+**KPA-158 followed on 1 October**, because KPA-143 broke on first contact with a
+real person. All three are In Review, which in this project means shipped and
+waiting only on a read.
+
+**A real reset mail now sends.** On 1 October 2026 one went through the real
+Resend API with the real send-only key to the owner's own address, using
+`request()` exactly as `POST /api/reset` does. `from` read
+`"Sukkal Resend" <no-reply@sukkal.app>` and the log line read "reset: a token was
+issued and Resend accepted the link". That is the last link in the reset proved
+against reality rather than against a stub.
 
 ## Where the work is
 
@@ -33,14 +43,14 @@ proved* below says what all three mean.
 is outlined in red, and the Connections item marks the set. *Where the OAuth work
 stands* below says what it found.
 
-Thirty migration files, numbered to `031`. Neither story on 30 September added
-one: KPA-143 needed no column, because the Resend key is a credential like every
-other. Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each
-hold two. Counted with `ls` on 30 September 2026.
+**Thirty-one migration files, numbered to `032`.** KPA-158 added
+`032_connection_send_from.sql`, and KPA-143 added none, because the Resend key is
+a credential like every other. Twenty-seven ADR files, numbered to `0025`,
+because `0007` and `0008` each hold two. Counted on 1 October 2026.
 
-The suite runs **655 tests with the vault and 635 without it**, measured on
-30 September 2026 after KPA-143 added ten and the send-only ruling added five.
-One skip is reported in both, and it is meant to.
+The suite runs **667 tests with the vault and 647 without it**, measured on
+1 October 2026 after KPA-158, on a database dropped and recreated before each
+run. One skip is reported in both, and it is meant to.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -60,20 +70,20 @@ vault, several suites skip and the summary still reports 1.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **123 stories, 89 accepted, which is 72%
-by count.** Counted from Jira on 30 September 2026, paged to the end, after the
-review closed the queue and raised KPA-157.
+Project KPA on `koinon.atlassian.net`. **125 stories, 89 accepted, which is 71%
+by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-157,
+KPA-158 and KPA-159 were raised.
 
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 2, KPA-143 and KPA-154, both shipped on 30 September |
+| In Review | 3, KPA-143, KPA-154 and KPA-158, all shipped |
 | In Progress | 1, KPA-103 |
-| To Do | 31 |
+| To Do | 32 |
 | Decision required | 0 |
 
-**Read these counts by issue type.** The project holds 157 issues: 123 stories,
-13 epics and 21 subtasks. A count of everything reports 111 Done and 44 To Do,
+**Read these counts by issue type.** The project holds 159 issues: 125 stories,
+13 epics and 21 subtasks. A count of everything reports 111 Done and 43 To Do,
 which reads like disagreement and is not. Only `issuetype = Story` gives the
 table above, so a query that omits the type answers a different question.
 
@@ -449,6 +459,109 @@ ignores the status is caught by the 403 test.
 treated as dead. The errors page carries no entry for an invalid, deleted or
 never-issued key.
 
+**The key is in, and the real API agrees.** The hourly recheck ran against it on
+1 October 2026 and wrote `verified_ok = t` with
+"api.resend.com holds a live send-only key, which is all Sukkal needs". A
+least-privilege key reads as healthy, which is the whole point of reading the
+refusal.
+
+## The address is its own field, since KPA-158
+
+**KPA-143 made the connection's name do two jobs and it broke on first use.**
+Shane added the Resend card and named it "Sukkal Resend", because the Name box's
+placeholder read `BHP Resend` and its help text read "What tells this account
+from the next one on the same provider", while the method's hint said to use the
+sending address. He followed the nearer instruction, which is the right thing to
+do when a form contradicts itself. A send would have put "Sukkal Resend" in
+`from` and Resend would have refused it, silently, because `deliver` never
+throws.
+
+**So the address has `connections.send_from`**, added by
+`migrations/032_connection_send_from.sql`, nullable, with a check that it is
+shaped like an address. Nullable and unbackfilled on purpose: `sukkal_local`
+already held a Resend row with no address, so a constraining migration would have
+failed on real data, and writing `no-reply@sukkal.app` into a migration would
+bake one installation's domain into the schema.
+
+**The route is the boundary**, not the browser.
+`apps/web/app/(app)/api/connections/route.ts` refuses a non-string address, one
+that is not an email, and an empty one on a provider that sends. `needsSendFrom`
+reads that rule off the catalogue, so the handler names no provider and a second
+sender gains the rule with the field.
+
+**The name is public now and the form says so.** It appears beside the address
+in the mail recipients read: `Sukkal Resend <no-reply@sukkal.app>`.
+
+**`fromHeader` checks the raw name, not the trimmed one, and the order is the
+point.** `trim` removes a leading separator, so checking afterwards dropped the
+separator and kept the rest of what was crafted: a name of CRLF then
+`Bcc: them@example.com` became that text, quoted, as a display name. Nothing
+unsafe reached the header, because a quoted string injects nothing, and the
+residue still contradicted the function's own promise that nothing crafted
+survives.
+
+**`CONTROL` names `Zl` and `Zp` beside `Cc`, and that is tidiness rather than
+safety.** Keep the distinction straight. A header ends at CR or LF, which are
+`Cc`, so `Cc` alone closes header injection. U+2028 and U+2029 encode as three
+UTF-8 bytes that are neither and could never end a header. They are line
+separators to other readers though, including a JavaScript parser, so a display
+name is no place for them.
+
+Both were found by throwing 24 hostile names at the function rather than by
+reading it, after it was written and its own tests passed. Both are
+mutation-tested: reverting either fails the same named test.
+
+**A missing address and a missing name are different.** No address means nothing
+can go in `from`, so `deliver` logs and returns `ok: false` before it opens the
+key. No usable name means the mail sends from the bare address and returns
+`ok: true`.
+
+**Two gaps are left and neither has a story.** `listConnections` returns eleven
+fields and not `send_from`, so no screen reads the address back; KPA-159 may
+close it in passing. And three log lines in `deliver` interpolate the name raw,
+so a name holding a newline splits a log line. The header is closed against that
+and the log is not.
+
+## The sending domain is set up and verified
+
+`sukkal.app` was registered on 30 September 2026 and verified in Resend on
+1 October. Read from public DNS rather than from the dashboard:
+
+| Record | Name | Value |
+|---|---|---|
+| DKIM | `resend._domainkey.sukkal.app` | `p=MIGfMA0GCSqGSIb3...` |
+| SPF | `send.sukkal.app` | `v=spf1 ip4:52.3.252.119 ip4:44.222.39.36 ip4:199.249.231.0/24 ~all` |
+| Return path | `send.sukkal.app` | CNAME to `send.forge.rmta.net`, MX `feedback.forge.rmta.net` |
+| DMARC | `_dmarc.sukkal.app` | `v=DMARC1; p=none; rua=mailto:...@dmarc-reports.cloudflare.net` |
+
+**The DKIM key is at the root, so the sending domain is `sukkal.app`** and
+`no-reply@sukkal.app` is the right address. `send.sukkal.app` is the return path
+Resend adds for SPF alignment, not a second sending domain, and it needs no DMARC
+record of its own: DMARC applies to the domain in the From header.
+
+**DMARC reports go to Cloudflare, not to a mailbox.** Cloudflare DMARC
+Management is free on every plan, hosts the `rua` address, and parses the XML
+into sending sources and pass counts. Pointing `rua` at a person's mailbox
+delivers raw gzipped XML nobody reads. Cloudflare's own docs never publish the
+address pattern, so the live record is better evidence than the documentation.
+
+**Three things about it worth not rediscovering.** It is apex-only. Its SPF
+*editing* feature does not work on this zone, because that is unsupported when a
+CNAME points to an external domain and `send.sukkal.app` is exactly that, which
+costs nothing because Resend owns that record. And the first report can take 24
+hours, with 30 days of graph.
+
+**The SPF record costs zero DNS lookups**, three `ip4` mechanisms and nothing
+else, against a limit of ten. **`p=none` is the thing to come back to.** Leave it
+a week or two, read what Cloudflare shows, then tighten to `quarantine` and later
+`reject`. Going straight to `reject` on a domain that has never sent risks
+binning the first real mail.
+
+**The reset link still points at `http://localhost:3000`**, because `SUKKAL_URL`
+says so and the root of `sukkal.app` carries no A record. That is fine for one
+laptop. KPA-147 is the story that changes it, and the `.app` TLD is HSTS
+preloaded, so it will have to be HTTPS.
+
 **The register reads two exact strings and nothing else.**
 `scripts/decision-register.ts` finds a question only in a warning panel whose
 first paragraph flattens to exactly `DECISION NEEDED`, and a recommendation
@@ -550,10 +663,10 @@ how the trunk went red on 2 September 2026 and stayed red across two pushes.
 
 | Database | Who writes it |
 |---|---|
-| `sukkal` on amaterasu | The migration. Production. Nine migrations behind |
+| `sukkal` on amaterasu | The migration. Production. Ten migrations behind |
 | `sukkal_dev` on amaterasu | Every test that points at the env file |
 | `sukkal_dev` on this Mac | Every test that points at loopback, which is what CI does |
-| `sukkal_local` | The running application. No test names it |
+| `sukkal_local` | The running application. No test names it. 31 migrations, and it holds the live Resend card |
 | `sukkal_verify` | `scripts/verify-migration.sh`, which drops and recreates it on every run |
 
 **Two different databases are called `sukkal_dev`, one per host.** KPA-154 renamed
@@ -587,7 +700,7 @@ cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local"
 ```
 
 **Production `sukkal` holds 21 migrations and stops at `022_issue_cache.sql`.**
-023 through 031 are pending, so production is nine behind. Read from
+023 through 032 are pending, so production is ten behind. Read from
 `schema_migrations` on amaterasu on 30 September 2026, before the rename and again
 after it. There is no `002` in either place, which is why 21 rows reach 022.
 
@@ -642,7 +755,43 @@ http://localhost:3000/oauth2/callback    Sukkal. With the slash
 `noclobber` on `>`, a test run piped into `tail` reporting the wrong exit code,
 `--test-concurrency=1` on a bare `node --test`, and the stale
 `apps/web/.next/dev/types` that fails a build after a page is removed. What
-follows is new, and each cost time on 9 to 13 September 2026.
+follows is new, and each cost time between 9 September and 1 October 2026.
+
+**`connect()` returns an unconnected client, and forgetting that looks exactly
+like amaterasu being down.** It is not `async`: it hands back a `pg.Client` and
+never calls `.connect()`. A query on that client queues forever, so the process
+exits with "unsettled top-level await" after 25 seconds of nothing, which reads
+as the documented hang. On 30 September 2026 that was reported as the box being
+unreachable when `psql` had opened the same database a minute earlier. Call
+`await client.connect()` first.
+
+**A grep over server markup proves nothing about a client-rendered screen.** The
+Connections screen receives its provider catalogue and its rows through
+JavaScript, so fetching `/connections` and searching the HTML finds neither. On
+1 October 2026 that reported nine of ten providers missing and all three Google
+connections absent, all of them present. Read `/api/connections` for the rows and
+the `/_next/static/*.js` chunks for the catalogue, or render it headlessly.
+
+**The Write tool turns ` ` in a regex literal into a real line separator**,
+which breaks the file that holds it. The same happens to `\u0085`. Build a
+separator from `String.fromCharCode` instead, which is why `test/reset.test.ts`
+spells them that way.
+
+**A shell heredoc mangles backslash escapes in a regex passed to `node -e`.**
+Two attempts at an inline probe died on `Invalid regular expression` before the
+code moved into a file. Write the probe with the Write tool and run the file.
+
+**`scripts/provision-amaterasu.sh` rotates production's password every run.** It
+generates a fresh 32 characters, applies them with an unguarded `ALTER ROLE`, and
+rewrites both URLs in `~/.config/sukkal/env`. It is self-consistent, so nothing
+breaks, and it is not a way to test idempotency. KPA-154's criterion about the
+`pg_hba` block was proved from the `grep -q '^# SUKKAL'` guard and the box's
+single marker line instead.
+
+**Resend documents `restricted_api_key` twice, with two meanings.** 401 is
+"restricted to only send emails" and means the key authenticated. 403 is "API key
+is not active" and means it did not. Anything matching on the identifier alone
+reads a deactivated key as live.
 
 **Revoking Sukkal at Google's permissions page revokes workspace-mcp too.** The
 two share one OAuth client, so removing the application's access at
