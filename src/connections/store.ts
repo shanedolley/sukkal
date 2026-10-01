@@ -28,6 +28,15 @@ export interface NewConnection {
   method: string;
   /** Service ids. Empty when the provider carries one thing. */
   services?: string[];
+  /**
+   * The address a sending connection's mail comes from, and null on one that
+   * sends nothing. KPA-158 gave it a column because `name` was doing both
+   * jobs and a person naming the card after the account broke the send.
+   * `migrations/032_connection_send_from.sql` holds it to a shape and
+   * `apps/web/app/(app)/api/connections/route.ts` is what refuses a Resend
+   * card without one.
+   */
+  sendFrom?: string | null;
 }
 
 /** The dates the provider named, and neither is compulsory. */
@@ -80,9 +89,17 @@ export async function addConnection(
   connection: NewConnection,
 ): Promise<string> {
   const added = await client.query<{ id: string }>(
-    `INSERT INTO connections (provider, name, method, services)
-     VALUES ($1, $2, $3, $4) RETURNING id`,
-    [connection.provider, connection.name, connection.method, connection.services ?? []],
+    `INSERT INTO connections (provider, name, method, services, send_from)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+    [
+      connection.provider,
+      connection.name,
+      connection.method,
+      connection.services ?? [],
+      // An empty box is no address rather than an empty one, which the column's
+      // own check would refuse anyway.
+      connection.sendFrom?.trim() || null,
+    ],
   );
 
   const id = added.rows[0]?.id;

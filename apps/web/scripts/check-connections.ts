@@ -21,7 +21,15 @@ import {
 } from "../../../src/connections/store.ts";
 import { EMBEDDING } from "../../../src/embedding.ts";
 import { db } from "../lib/db.ts";
-import { asUrl, PROVIDERS, signInTarget, web } from "../lib/providers.ts";
+import {
+  asUrl,
+  initialValues,
+  isEmail,
+  needsSendFrom,
+  PROVIDERS,
+  signInTarget,
+  web,
+} from "../lib/providers.ts";
 
 // 1. Only the two web protocols reach the browser.
 for (const value of [
@@ -217,19 +225,97 @@ assert.doesNotMatch(
   /full access/i,
   "the Resend hint asks for full access again, which trades the account for a health check"
 );
-// The name box holds the address `deliver` puts in the message's `from`, so a
-// card named "Resend" sends from a mailbox that does not exist.
+// 9b. The address has its own box, and the hint stops asking for it in the
+//     name. KPA-143 read the `from` off the card's name and KPA-158 separated
+//     the two, because the Name box asks what tells one account from the next
+//     and Shane answered that question: "Sukkal Resend", which Resend refuses
+//     as an address. The form must not disagree with itself again.
+const sendFrom = (resendKey.fields ?? []).find((field) => field.kind === "email");
+assert.ok(sendFrom, "Resend asks for no Send from address, so the mail has no from");
+assert.equal(sendFrom.id, "sendFrom", "the route reads the address under sendFrom");
+assert.ok(
+  isEmail(sendFrom.placeholder),
+  "the Send from placeholder does not show an address"
+);
+// ponytail: the default is this installation's verified domain. The check is
+// that there is one and that it is an address, not which one it is.
+assert.ok(
+  isEmail(initialValues(resendKey)["sendFrom"] ?? ""),
+  "the Send from box starts empty, so every install types the same address"
+);
+assert.doesNotMatch(
+  resendKey.hint,
+  /name this card with the address/i,
+  "the Resend hint asks for the address in the name box again, which is what broke"
+);
 assert.match(
   resendKey.hint,
-  /@/,
-  "the Resend hint does not say the card is named after the sending address"
+  /Send from/,
+  "the Resend hint does not say where the address goes"
 );
+// The rule the route applies, read off the catalogue rather than from a
+// provider named in a handler. Resend sends and no other provider does.
+assert.ok(needsSendFrom("resend"), "a Resend card may be saved with no address");
+for (const entry of PROVIDERS) {
+  if (entry.id === "resend") continue;
+  assert.ok(
+    !needsSendFrom(entry.id),
+    `${entry.id} gained a required Send from address, and it sends no mail`
+  );
+}
+
+// 9c. What the route and the dialog both call an address. The route is the
+//     trust boundary, so this holds the one function both of them use.
+for (const good of ["no-reply@sukkal.app", "shane@koinon.com.au", "a.b+c@d.e.f"]) {
+  assert.ok(isEmail(good), `${good} should read as an address`);
+}
+for (const bad of [
+  "Sukkal Resend",
+  "",
+  "no-reply@sukkal",
+  "no reply@sukkal.app",
+  // The header injection the name must never carry either. `fromHeader` in
+  // src/auth/reset.ts refuses it on the name's side.
+  "no-reply@sukkal.app\r\nBcc: them@example.com",
+  '"a"@b.c',
+  "a@b.c>",
+  "a,b@c.de",
+]) {
+  assert.ok(!isEmail(bad), `${JSON.stringify(bad)} should not read as an address`);
+}
 const resendProbe = probeFor("resend", "re_a-key-shaped-string");
 assert.ok(resendProbe, "Resend names no probe, so the hourly recheck skips its key");
 assert.equal(
   resendProbe.cost,
   "free",
   "the Resend probe is metered, so the hourly recheck would skip it"
+);
+
+// 9d. The dialog says the name is public, and sends the address.
+//
+//     The form disagreeing with itself is what KPA-158 closes, so the Name
+//     box's own help text has to say the name travels with the mail. The source
+//     is read rather than imported: node strips types and leaves JSX alone, so
+//     importing a .tsx answers ERR_UNKNOWN_FILE_EXTENSION. Each pattern below
+//     is a string only the new code could produce.
+const dialog = await readFile(
+  path.join(import.meta.dirname, "..", "components", "connections", "connections.tsx"),
+  "utf8"
+);
+assert.match(
+  dialog,
+  /the name recipients see beside the address/,
+  "the Name box does not say the name appears in the mail recipients read"
+);
+assert.match(
+  dialog,
+  /placeholder=\{sends \? "Sukkal Resend"/,
+  "the Name box still offers a label-shaped placeholder on a card that sends mail"
+);
+assert.match(
+  dialog,
+  /sendFrom: from \? \(value\(from\.id\) \|\| null\) : null/,
+  "the dialog collects the Send from address and posts none of it"
 );
 
 // 10. Every card draws a mark. `BrandMark` returns null for an id it holds
@@ -252,7 +338,7 @@ for (const entry of PROVIDERS) {
 console.log(
   "connections OK: ten providers each with a mark, only web addresses open, a key opens nothing, " +
     `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, the Jira token is dated, ` +
-    "and the Resend probe costs nothing"
+    "the Resend probe costs nothing, and Resend alone asks for a Send from address"
 );
 
 // ══ The same claims, against the rows ═══════════════════════════════════════

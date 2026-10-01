@@ -200,7 +200,14 @@ export async function setPassword(
 export interface MailSender {
   id: string;
   provider: string;
+  /** The display name recipients read. It is not an address: KPA-158. */
   name: string;
+  /**
+   * The address the mail comes from, and null on a card written before the
+   * column existed or on one somebody left the box empty. `deliver` refuses to
+   * send without it, because there is nothing to put in `from`.
+   */
+  sendFrom: string | null;
 }
 
 /**
@@ -227,8 +234,13 @@ export interface MailSender {
  * request screen answers what it always answers.
  */
 export async function mailSender(client: ClientBase): Promise<MailSender | null> {
-  const found = await client.query<{ id: string; provider: string; name: string }>(
-    `SELECT c.id::text AS id, c.provider, c.name
+  const found = await client.query<{
+    id: string;
+    provider: string;
+    name: string;
+    send_from: string | null;
+  }>(
+    `SELECT c.id::text AS id, c.provider, c.name, c.send_from
        FROM connections c
        JOIN connection_credentials k ON k.connection = c.id
       WHERE c.provider = 'resend'
@@ -238,7 +250,78 @@ export async function mailSender(client: ClientBase): Promise<MailSender | null>
       LIMIT 1`,
   );
 
-  return found.rows[0] ?? null;
+  const row = found.rows[0];
+  if (row === undefined) return null;
+  return {
+    id: row.id,
+    provider: row.provider,
+    name: row.name,
+    sendFrom: row.send_from,
+  };
+}
+
+/** Every character that has no place in a mail header. `\p{Cc}` is Unicode's
+ *  control category: the carriage return and the line feed that would end the
+ *  header, and the rest of C0 and C1, which mean nothing in a display name.
+ *  Naming the category rather than the bytes keeps a control character out of
+ *  this file's own source.
+ *
+ *  `Zl` and `Zp` are here for tidiness rather than for safety, and the
+ *  distinction is worth keeping straight. A header ends at CR or LF, which are
+ *  `Cc`, so `Cc` alone closes header injection. U+2028 and U+2029 encode as
+ *  three UTF-8 bytes that are neither, so they could never end a header. They
+ *  are line separators to other readers though, including a JavaScript parser,
+ *  so a display name is no place for them. Found on 1 October 2026 by attacking
+ *  this function with 24 hostile names after it was written. */
+const CONTROL = /[\p{Cc}\p{Zl}\p{Zp}]/u;
+
+/**
+ * `from` for one message: the display name, quoted and escaped, then the
+ * address. Or the bare address, when there is no name that can safely be one.
+ *
+ * THE NAME COMES OUT OF THE DATABASE AND GOES INTO A MAIL HEADER, so this is a
+ * trust boundary rather than a formatting nicety. A carriage return or a line
+ * feed in it ends the `from` line and starts one whoever typed the name chose:
+ * a `Bcc`, a second `To`, a body. That is header injection, and it is the one
+ * failure here that matters.
+ *
+ * A NAME HOLDING ONE IS DROPPED RATHER THAN STRIPPED, deliberately. Stripping
+ * leaves the rest of what was crafted inside the header, so
+ * `Sukkal\r\nBcc: them@example.com` becomes `SukkalBcc: them@example.com`: an
+ * injected header traded for a corrupted name, and every later reader left to
+ * satisfy themselves the strip caught every form of every separator. Dropping
+ * is one branch with no residue. The mail still sends, from an address that is
+ * valid on its own, and the visible oddity is a missing name rather than a
+ * name nobody can account for. The same rule covers every other control
+ * character, none of which belongs in a display name either.
+ *
+ * WHAT IS LEFT IS QUOTED AND ESCAPED PER RFC 5322. A quoted-string carries a
+ * comma, a colon, a dot and an @ unharmed, so the escape list is exactly the
+ * two characters that would end it or escape what follows: the backslash and
+ * the double quote. A name holding neither is quoted anyway, because quoting
+ * is what makes that true rather than something to check afterwards.
+ *
+ * A name that is empty or only spaces is no name, so the bare address carries
+ * the message rather than `"" <address>`.
+ *
+ * ponytail: a non-ASCII name travels as UTF-8 rather than as an RFC 2047
+ * encoded-word, which Resend accepts. Encode it if a second vendor does not.
+ */
+export function fromHeader(name: string | null, address: string): string {
+  const raw = name ?? '';
+  // THE CHECK READS THE RAW NAME, NOT THE TRIMMED ONE, and the order is the
+  // whole point. `trim` removes a leading or trailing separator, so checking
+  // afterwards would drop the separator and keep the rest of what was crafted:
+  // a name of CRLF then "Bcc: them@example.com" became that text, quoted, as a
+  // display name. Nothing unsafe reached the header, because a quoted string
+  // injects nothing, and the residue still contradicted the promise two
+  // paragraphs above. Found on 1 October 2026 by a test written against the
+  // promise rather than against the code.
+  if (CONTROL.test(raw)) return address;
+
+  const display = raw.trim();
+  if (display === '') return address;
+  return `"${display.replace(/[\\"]/g, '\\$&')}" <${address}>`;
 }
 
 /** Where Resend takes one message. A POST and a bearer header, which Node's
@@ -287,11 +370,13 @@ function body(link: string): string {
  * that will not open and a connection whose credential vanished between the
  * two reads are all answers rather than exceptions.
  *
- * THE ADDRESS IN `from` IS THE CONNECTION'S NAME. Resend accepts a bare
- * address or `Name <address>`, and the Connections screen already asks for a
- * name on every card holding a key. Google and Microsoft name a connection
- * after the account that consented, so a card naming the address it sends as
- * is the same rule rather than a new field and a new column.
+ * `from` IS THE CARD'S OWN TWO FIELDS, and KPA-158 separated them. The address
+ * is `send_from` and the name beside it is the display name recipients read,
+ * which `fromHeader` quotes and escapes. KPA-143 had the name do both jobs, on
+ * the precedent that a Google card is named after the account that consented,
+ * and that broke the first time a person named a card the way the Name box
+ * asked them to. NO ADDRESS IS A FAILURE and no name is not: there is nothing
+ * to send a message from, where a nameless message sends perfectly well.
  *
  * `installationUrl` is what the link points at, so the address is configured
  * rather than read off a request header. `SUKKAL_URL` already held it for the
@@ -321,6 +406,17 @@ export async function deliver(
     };
   }
 
+  // A card written before migration 032, or one somebody left the box empty.
+  // The key is not opened for it: a message with nothing in `from` is refused
+  // by the vendor, so there is nothing to reach the vendor for.
+  const address = sender.sendFrom?.trim() ?? '';
+  if (address === '') {
+    return {
+      ok: false,
+      log: `reset: the Resend connection "${sender.name}" holds no Send from address, so the link has nothing to send from. Add one on the Connections screen, or run scripts/reset-password.sh --link on the server.`,
+    };
+  }
+
   let key: string | null;
   try {
     key = await secretFor(client, sender.id);
@@ -343,7 +439,7 @@ export async function deliver(
       // `src/connections/verify.ts` gives: a url reaches two access logs.
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        from: sender.name,
+        from: fromHeader(sender.name, address),
         to: [to],
         subject: SUBJECT,
         html: body(`${installationUrl()}/reset?token=${token}`),

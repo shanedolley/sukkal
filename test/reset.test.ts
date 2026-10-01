@@ -14,6 +14,7 @@ import { hash, verify } from '../src/auth/password.ts';
 import {
   LIFETIME_MINUTES,
   deliver,
+  fromHeader,
   issueFor,
   mailSender,
   request,
@@ -48,9 +49,14 @@ const TOKEN = 'a-token-shaped-string-nobody-holds';
 /** The Resend key the send tests seal. Every log line is searched for it too. */
 const RESEND_KEY = 're_a-key-shaped-string';
 
-/** What the card sends as, which is the connection's name. It is not the
- *  owner's address, so the mail can be searched for that. */
+/** The address the card sends from, which KPA-158 moved out of the name. It is
+ *  not the owner's address, so the mail can be searched for that. */
 const FROM = 'no-reply@sukkal.app';
+
+/** The name beside it, which is the display name recipients read. Shane typed
+ *  exactly this on 1 October 2026, and KPA-143 would have sent it as the whole
+ *  `from`, which Resend refuses. */
+const DISPLAY = 'Sukkal Resend';
 
 describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () => {
   let client: ClientBase & { end: () => Promise<void> };
@@ -317,12 +323,15 @@ describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' 
     return { fetcher, seen };
   }
 
-  /** A Resend card holding a sealed key, named after the address it sends as. */
-  async function resendCard(): Promise<string> {
+  /** A Resend card holding a sealed key, named the way a person names one and
+   *  carrying the address in its own field. `name` takes an override, because
+   *  the name is what reaches a mail header and the header is the boundary. */
+  async function resendCard(name = DISPLAY, sendFrom: string | null = FROM): Promise<string> {
     const id = await addConnection(client, {
       provider: 'resend',
-      name: FROM,
+      name,
       method: 'key',
+      sendFrom,
     });
     await setCredential(client, id, RESEND_KEY);
     return id;
@@ -377,6 +386,9 @@ describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' 
     const sender = await mailSender(client);
     assert.equal(sender?.provider, 'resend', 'a sender that cannot send was chosen');
     assert.equal(sender?.id, resend);
+    // The two fields come back apart, which is the whole of KPA-158.
+    assert.equal(sender?.name, DISPLAY);
+    assert.equal(sender?.sendFrom, FROM);
   });
 
   test('a box with no sender answers as it did, and reaches no vendor', async () => {
@@ -416,9 +428,10 @@ describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' 
       assert.ok(!(seen[0]?.url ?? '').includes(RESEND_KEY));
 
       const mail = message(seen[0]?.init);
-      // The connection's name is the address it sends as, the way a Google
-      // card is named after the account that consented.
-      assert.equal(mail.from, FROM);
+      // The card's two fields, in one header: the display name quoted, then
+      // the address it actually sends from. KPA-143 put the name here alone
+      // and Resend would have refused it.
+      assert.equal(mail.from, `"${DISPLAY}" <${FROM}>`);
       assert.deepEqual(mail.to, [EMAIL]);
       // Configured rather than guessed, and the trailing slash is dropped.
       assert.ok(
@@ -480,6 +493,132 @@ describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' 
     assert.equal(sent.ok, false);
     assert.match(sent.log, /will not open/);
     assert.equal(seen.length, 0, 'a message was sent with a key that would not open');
+  });
+
+  // ── The from header. KPA-158. ──────────────────────────────────────────────
+  //
+  // The display name comes out of a column somebody typed into and goes into a
+  // mail header, so it is a trust boundary. A carriage return or a line feed in
+  // it would end the `from` line and start one the typist chose, which is
+  // header injection and the one failure here that matters.
+
+  test('the display name is quoted, and a quote and a backslash are escaped', () => {
+    assert.equal(fromHeader('Sukkal Resend', FROM), `"Sukkal Resend" <${FROM}>`);
+    // A comma and a colon are ordinary inside a quoted-string, so neither is
+    // escaped and neither splits the header into two addresses.
+    assert.equal(fromHeader('Koinon, Sukkal: mail', FROM), `"Koinon, Sukkal: mail" <${FROM}>`);
+    // The two that would end the string or escape what follows it.
+    assert.equal(fromHeader('He said "hi"', FROM), `"He said \\"hi\\"" <${FROM}>`);
+    assert.equal(fromHeader('back\\slash', FROM), `"back\\\\slash" <${FROM}>`);
+  });
+
+  test('a newline in the display name never reaches the header', () => {
+    // The injection itself: a second header, smuggled through the name.
+    const crafted = 'Sukkal\r\nBcc: them@example.com';
+    assert.equal(
+      fromHeader(crafted, FROM),
+      FROM,
+      'a crafted name reached the header rather than being dropped for the bare address',
+    );
+    // Dropped rather than stripped, so no part of what was crafted survives.
+    for (const name of [crafted, 'Sukkal\nBcc: them@example.com', 'Sukkal\rX', 'a\tb']) {
+      const header = fromHeader(name, FROM);
+      assert.ok(!/[\r\n]/.test(header), `${JSON.stringify(name)} put a newline in the header`);
+      assert.ok(
+        !header.includes('Bcc'),
+        `${JSON.stringify(name)} left its crafted header behind: ${header}`,
+      );
+      assert.equal(header, FROM, `${JSON.stringify(name)} was stripped rather than dropped`);
+    }
+  });
+
+  test('no hostile display name survives into the header', () => {
+    // Written after attacking fromHeader with 24 names on 1 October 2026, which
+    // found U+2028 and U+2029 passing a check that named only `Cc`. Neither
+    // could ever have ended a header, since a header ends at CR or LF, but a
+    // line separator belongs in no display name. Every separator is built from
+    // its code point, because writing a real U+2028 into a regex breaks the
+    // file that holds it.
+    const CR = String.fromCharCode(13);
+    const LF = String.fromCharCode(10);
+    const SEPARATORS = [CR, LF, String.fromCharCode(0x85), String.fromCharCode(0x2028), String.fromCharCode(0x2029)];
+
+    const hostile = [
+      `Sukkal${CR}${LF}Bcc: them@example.com`,
+      `${CR}${LF}Bcc: them@example.com`,
+      `Sukkal${CR}${LF}${CR}${LF}Injected body`,
+      `Sukkal${String.fromCharCode(0)}Resend`,
+      `Sukkal${String.fromCharCode(11)}Resend`,
+      `Sukkal${String.fromCharCode(12)}Resend`,
+      `Sukkal${String.fromCharCode(0x85)}Bcc: x@example.com`,
+      `Sukkal${String.fromCharCode(0x2028)}Bcc: x@example.com`,
+      `Sukkal${String.fromCharCode(0x2029)}Bcc: x@example.com`,
+    ];
+
+    for (const name of hostile) {
+      const header = fromHeader(name, FROM);
+      for (const separator of SEPARATORS) {
+        assert.ok(
+          !header.includes(separator),
+          `${JSON.stringify(name)} put a separator in the header: ${JSON.stringify(header)}`,
+        );
+      }
+      assert.equal(header, FROM, `${JSON.stringify(name)} was not dropped for the bare address`);
+    }
+
+    // A name that is merely awkward is kept, quoted and escaped. Dropping these
+    // would be the other failure: a header with no name where one was asked for.
+    for (const name of ['Evil <attacker@example.com>', 'Bcc: them@example.com', 'a, b; c']) {
+      const header = fromHeader(name, FROM);
+      assert.ok(header.endsWith(`<${FROM}>`), `${JSON.stringify(name)} lost its address`);
+      assert.ok(header.startsWith('"'), `${JSON.stringify(name)} was not quoted`);
+      // One balanced quoted-string, so nothing broke out of the quotes.
+      assert.equal(
+        (header.match(/(?<!\\)"/g) ?? []).length % 2,
+        0,
+        `${JSON.stringify(name)} left the quotes unbalanced: ${header}`,
+      );
+    }
+  });
+
+  test('no name at all is the bare address rather than an empty pair', () => {
+    assert.equal(fromHeader(null, FROM), FROM);
+    assert.equal(fromHeader('', FROM), FROM);
+    assert.equal(fromHeader('   ', FROM), FROM);
+    // Spaces around a real name are trimmed and the name is kept.
+    assert.equal(fromHeader('  Sukkal Resend  ', FROM), `"Sukkal Resend" <${FROM}>`);
+  });
+
+  test('a card whose name holds a newline sends from the bare address', async () => {
+    // `connections_every_field_says_something` only refuses a blank name, and
+    // btrim does not strip a carriage return, so this row is storable. The row
+    // is the realistic route to the header, which is why this runs through one
+    // rather than through `fromHeader` alone.
+    await resendCard('Sukkal\r\nBcc: them@example.com', FROM);
+    const { fetcher, seen } = answering(200);
+    const sent = await deliver(client, EMAIL, TOKEN, fetcher);
+
+    // A missing name is not a failure: there is still an address to send from.
+    assert.equal(sent.ok, true, sent.log);
+    const mail = message(seen[0]?.init);
+    assert.equal(mail.from, FROM, 'a crafted display name reached the from header');
+    assert.ok(!mail.from.includes('Bcc'), `the header carried a second one: ${mail.from}`);
+  });
+
+  test('a Resend card with no address sends nothing and says so', async () => {
+    // The row `sukkal_local` already holds: a card written before migration 032
+    // gave the address a column. Migration 032 leaves it null rather than
+    // failing on it, so this is the state the route and this path refuse.
+    await resendCard(DISPLAY, null);
+    const { fetcher, seen } = answering(200);
+    const sent = await deliver(client, EMAIL, TOKEN, fetcher);
+
+    // Unlike a missing name, a missing address is a failure: there is nothing
+    // to put in `from`, so the vendor is never reached.
+    assert.equal(sent.ok, false, 'a card with no address read as a send');
+    assert.match(sent.log, /no Send from address/);
+    assert.match(sent.log, /reset-password\.sh --link/);
+    assert.equal(seen.length, 0, 'a message was sent with nothing in from');
   });
 
   test('no log line carries the token or the key, on any path', async () => {

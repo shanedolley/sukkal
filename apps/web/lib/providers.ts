@@ -39,9 +39,16 @@ export interface Field {
   /**
    * A secret goes in a password box and is written nowhere. A url is opened
    * in a tab, so it is checked before the browser is sent to it. A date takes
-   * the browser's own date box, which spells the format out for the reader.
+   * the browser's own date box, which spells the format out for the reader. An
+   * email is the address a sending connection's mail comes from, and it is
+   * checked here and again at the route.
    */
-  kind?: "secret" | "url" | "date";
+  kind?: "secret" | "url" | "date" | "email";
+  /**
+   * What the box starts with, when the answer is the same on almost every
+   * installation. Only the send-from address has one.
+   */
+  initial?: string;
 }
 
 /** A way in. Two of them means the provider offers a real choice. */
@@ -121,12 +128,13 @@ function oauth(signIn: string, fields: Field[] = [], grant = false): Method {
  * vendor whether the key still works, and writes the answer to the row beside
  * this date.
  */
-function apiKey(placeholder: string, hint: string): Method {
+function apiKey(placeholder: string, hint: string, extra: Field[] = []): Method {
   return {
     id: "key",
     label: "API key",
     hint,
     fields: [
+      ...extra,
       { id: "key", label: "API key", placeholder, kind: "secret" },
       {
         id: "expires",
@@ -137,6 +145,29 @@ function apiKey(placeholder: string, hint: string): Method {
     ],
   };
 }
+
+/**
+ * The address a sending connection's mail comes from.
+ *
+ * KPA-143 read it off the card's name, and that broke on 1 October 2026: the
+ * Name box asks what tells one account from the next, so the card was named
+ * "Sukkal Resend" and Resend refuses that as a `from`. The two are separate
+ * questions and this is the second one. The name is still public, because it is
+ * the display name beside this address.
+ *
+ * ponytail: the default is this installation's verified Resend domain and not a
+ * product-wide truth. It is here because one person runs one installation and a
+ * box pre-filled with the right answer beats a setting nobody has a screen for.
+ * Move it to a stored setting, or read it from the domains Resend says are
+ * verified, the first time a second installation exists.
+ */
+const SEND_FROM: Field = {
+  id: "sendFrom",
+  label: "Send from",
+  placeholder: "no-reply@sukkal.app",
+  kind: "email",
+  initial: "no-reply@sukkal.app",
+};
 
 const SITE: Field = {
   id: "site",
@@ -304,16 +335,60 @@ export const PROVIDERS: Provider[] = [
     blurb: "Sends the password reset link.",
     services: [],
     methods: [
+      // The one method that asks for a Send from address. The name box above
+      // holds the display name beside it, so `deliver` in src/auth/reset.ts
+      // sends as "Sukkal Resend <no-reply@sukkal.app>". KPA-143 had the name
+      // carry both jobs and KPA-158 separated them.
       apiKey(
         "re_...",
-        // The name box above holds the sending address: `deliver` in
-        // src/auth/reset.ts puts it in the message's `from`, the way a Google
-        // card is named after the account that consented.
-        "Resend makes the key at resend.com/api-keys. Give it sending access only, because sending is the one thing Sukkal asks Resend to do. Name this card with the address the mail comes from, such as no-reply@sukkal.app, because that is what Sukkal sends as."
+        "Resend makes the key at resend.com/api-keys. Give it sending access only, because sending is the one thing Sukkal asks Resend to do. The mail comes from the Send from address below, and the name above it is what recipients see beside that address.",
+        [SEND_FROM]
       ),
     ],
   },
 ];
+
+/**
+ * Whether `value` is shaped like an email address.
+ *
+ * It proves one @, something either side of it, a dot in the domain, and none
+ * of the characters that would end a mail header or a quoted name. It proves
+ * nothing about the mailbox existing or the domain being verified at the
+ * vendor: no check short of a send does.
+ *
+ * The route calls it, and so does the dialog. The route is the trust boundary
+ * and the dialog is the convenience, which is the order to keep them in.
+ */
+export function isEmail(value: string): boolean {
+  return /^[^\s@,;:"<>\\]+@[^\s@,;:"<>\\]+\.[^\s@,;:"<>\\]+$/.test(value.trim());
+}
+
+/**
+ * Whether a card on this provider has to carry a Send from address.
+ *
+ * The catalogue decides, rather than the route naming a provider: a provider
+ * whose form asks for the address is a provider that sends, and one that does
+ * not is unaffected. A second sender therefore gains the rule by gaining the
+ * field, which is the only place the two could have drifted.
+ */
+export function needsSendFrom(id: string): boolean {
+  return PROVIDERS.some(
+    (entry) =>
+      entry.id === id &&
+      entry.methods.some((method) =>
+        (method.fields ?? []).some((field) => field.kind === "email")
+      )
+  );
+}
+
+/** What a method's boxes start with. Empty for every method but Resend's. */
+export function initialValues(method: Method): Record<string, string> {
+  return Object.fromEntries(
+    (method.fields ?? []).flatMap((field) =>
+      field.initial === undefined ? [] : [[field.id, field.initial] as const]
+    )
+  );
+}
 
 /**
  * An address the browser may be sent to.

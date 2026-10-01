@@ -38,7 +38,7 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { PROVIDERS } from "@/lib/providers";
+import { isEmail, needsSendFrom, PROVIDERS } from "@/lib/providers";
 import { requireOwner } from "@/lib/session";
 import { revokeConnection } from "../../../../../../src/connections/oauth.ts";
 import {
@@ -114,7 +114,8 @@ export async function POST(request: Request): Promise<Response> {
   > | null;
   if (!body) return bad("Send a JSON body.");
 
-  const { provider, name, method, services, secret, expiresOn } = body;
+  const { provider, name, method, services, secret, expiresOn, sendFrom } =
+    body;
 
   if (
     typeof provider !== "string" ||
@@ -142,6 +143,27 @@ export async function POST(request: Request): Promise<Response> {
     return bad("Write the expiry as YYYY-MM-DD.");
   }
 
+  // THE SEND FROM ADDRESS IS CHECKED HERE, AND THE BROWSER'S CHECK IS A
+  // CONVENIENCE. KPA-158 gave it a column because `name` was carrying it, and
+  // `deliver` in src/auth/reset.ts puts it in a mail header: an address holding
+  // whitespace, a comma or an angle bracket is a header somebody else wrote.
+  // The column's own check is a floor and refuses the same shapes, so this
+  // answers with a sentence rather than letting Postgres answer with a
+  // constraint name.
+  if (sendFrom != null && typeof sendFrom !== "string") {
+    return bad("Write Send from as an email address.");
+  }
+  const address = typeof sendFrom === "string" ? sendFrom.trim() : "";
+  if (address !== "" && !isEmail(address)) {
+    return bad("Write Send from as an email address.");
+  }
+  // A provider whose form asks for the address has to have one, and every
+  // other provider is untouched. `needsSendFrom` reads that off the catalogue
+  // rather than naming Resend, so a second sender gains the rule with the field.
+  if (address === "" && needsSendFrom(provider)) {
+    return bad("Give it the address the mail comes from.");
+  }
+
   const client = await db().connect();
   try {
     await client.query("BEGIN");
@@ -150,6 +172,7 @@ export async function POST(request: Request): Promise<Response> {
       name: name.trim(),
       method: method.trim(),
       services: chosen as string[],
+      sendFrom: address === "" ? null : address,
     });
     if (key.trim() !== "") {
       await setCredential(client, id, key, {

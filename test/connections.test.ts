@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
+import { isEmail, needsSendFrom } from '../apps/web/lib/providers.ts';
 import { KEY_VARIABLE, decrypt, encrypt } from '../src/connections/crypto.ts';
 import {
   addConnection,
@@ -428,6 +430,74 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     );
   });
 
+  // ── The send-from address. KPA-158. ────────────────────────────────────────
+
+  test('a sending connection keeps its address apart from its name', async () => {
+    await clear();
+    const id = await addConnection(client, {
+      provider: 'resend',
+      name: 'Sukkal Resend',
+      method: 'key',
+      sendFrom: '  no-reply@sukkal.app  ',
+    });
+
+    const stored = await client.query<{ name: string; send_from: string | null }>(
+      'SELECT name, send_from FROM connections WHERE id = $1',
+      [id],
+    );
+    // The name is the display name and the address is its own column. KPA-143
+    // had one column doing both, and this is the row that broke it.
+    assert.equal(stored.rows[0]?.name, 'Sukkal Resend');
+    assert.equal(stored.rows[0]?.send_from, 'no-reply@sukkal.app');
+  });
+
+  test('a connection that sends nothing holds no address, and migration 032 allows it', async () => {
+    await clear();
+    // `sukkal_local` holds a Resend card written before the column existed, so
+    // the column is nullable and the migration backfills nothing. Constraining
+    // the existing data would have failed on the one installation there is.
+    const zoom = await addConnection(client, { provider: 'zoom', name: 'Koinon Zoom', method: 'oauth' });
+    const resend = await addConnection(client, {
+      provider: 'resend',
+      name: 'Sukkal Resend',
+      method: 'key',
+    });
+
+    const stored = await client.query<{ send_from: string | null }>(
+      'SELECT send_from FROM connections WHERE id = ANY($1) ORDER BY id',
+      [[zoom, resend]],
+    );
+    assert.deepEqual(stored.rows.map((row) => row.send_from), [null, null]);
+  });
+
+  test('the table holds the address to a shape, which is a floor and not the check', async () => {
+    await clear();
+    // What the column proves: one @, something either side, a dot in the
+    // domain, no whitespace. It proves nothing about the mailbox existing, and
+    // it does not know that a Resend card needs one at all. The route is where
+    // both of those live.
+    for (const wrong of [
+      'Sukkal Resend',
+      'no-reply@sukkal',
+      'no reply@sukkal.app',
+      '@sukkal.app',
+      // The header injection. The column refuses it on the way in and
+      // `fromHeader` refuses it on the way out.
+      'no-reply@sukkal.app\r\nBcc: them@example.com',
+    ]) {
+      await assert.rejects(
+        addConnection(client, {
+          provider: 'resend',
+          name: `Resend ${wrong}`,
+          method: 'key',
+          sendFrom: wrong,
+        }),
+        /connections_send_from_is_shaped_like_an_address/,
+        `the table admitted ${JSON.stringify(wrong)}`,
+      );
+    }
+  });
+
   test('the table refuses an empty provider, name, method or service', async () => {
     await clear();
     await assert.rejects(
@@ -437,6 +507,59 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     await assert.rejects(
       addConnection(client, { provider: 'zoom', name: 'Koinon Zoom', method: 'oauth', services: [''] }),
       /connections_every_service_is_named/,
+    );
+  });
+});
+
+// Where a Resend card with no address is refused, and it is the route. KPA-158.
+//
+// The dialog checks first and that is a convenience: a request body is what
+// crosses the boundary, and the dialog is the only caller today rather than the
+// only caller possible. This needs no database, so it runs on a box with none.
+describe('the send-from address at the trust boundary', () => {
+  test('the rule reads off the catalogue, so only a sender requires one', () => {
+    assert.ok(needsSendFrom('resend'), 'a Resend card may be saved with no address');
+    assert.ok(!needsSendFrom('zoom'), 'Zoom gained a required address and sends no mail');
+    assert.ok(!needsSendFrom('google'), 'Google gained a required address');
+  });
+
+  test('what counts as an address, and what the name box answered instead', () => {
+    assert.ok(isEmail('no-reply@sukkal.app'));
+    assert.ok(!isEmail('Sukkal Resend'), 'a display name read as an address');
+    assert.ok(!isEmail(''), 'an empty box read as an address');
+    assert.ok(
+      !isEmail('no-reply@sukkal.app\r\nBcc: them@example.com'),
+      'a second header read as an address',
+    );
+  });
+
+  test('the route calls both, so a browser is not the only check', () => {
+    const route = readFileSync(
+      path.join(
+        import.meta.dirname,
+        '..',
+        'apps',
+        'web',
+        'app',
+        '(app)',
+        'api',
+        'connections',
+        'route.ts',
+      ),
+      'utf8',
+    );
+    // The exact calls, which only the refusals could produce. Matching the
+    // names alone would pass on the import line.
+    assert.match(route, /!isEmail\(address\)/, 'the route admits an address nobody checked');
+    assert.match(
+      route,
+      /address === "" && needsSendFrom\(provider\)/,
+      'the route admits a sending connection with no address',
+    );
+    assert.match(
+      route,
+      /sendFrom: address === "" \? null : address/,
+      'the route checks the address and stores none',
     );
   });
 });

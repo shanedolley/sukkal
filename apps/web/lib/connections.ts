@@ -55,6 +55,12 @@ export interface NewConnection {
   secret?: string;
   /** The date the provider's key runs out, when the form asked for it. */
   expiresOn?: string | null;
+  /**
+   * The address the mail comes from, on a provider that sends. The name above
+   * it is the display name recipients read beside it, so the pair reads
+   * "Sukkal Resend <no-reply@sukkal.app>". KPA-158.
+   */
+  sendFrom?: string | null;
 }
 
 const store = createRemoteStore<Connection[]>(URL, []);

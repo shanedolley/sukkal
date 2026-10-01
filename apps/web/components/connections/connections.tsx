@@ -62,6 +62,8 @@ import {
   PROVIDERS,
   provider as providerById,
   asUrl,
+  initialValues,
+  isEmail,
   signInTarget,
   type Provider,
 } from "@/lib/providers";
@@ -148,8 +150,11 @@ function ConnectionForm({
   const [method, setMethod] = useState(chosen.methods[0].id);
   // Keyed by field id. A secret sits here while it is typed, goes to the
   // route on submit, and is dropped with the whole object when the dialog
-  // closes. Nothing writes it to this browser.
-  const [values, setValues] = useState<Record<string, string>>({});
+  // closes. Nothing writes it to this browser. A box with a default starts
+  // filled: only the send-from address has one.
+  const [values, setValues] = useState<Record<string, string>>(
+    initialValues(chosen.methods[0])
+  );
   // Every service on, because an account is usually added for all of them.
   const [services, setServices] = useState<string[]>(
     chosen.services.map((service) => service.id)
@@ -166,15 +171,22 @@ function ConnectionForm({
   // The provider names the account that consented, so a grant asks for no
   // name and the box would be a question with no use for the answer.
   const grant = chosenMethod.grant === true;
+  // A method asking for a send-from address is a card whose mail somebody
+  // else reads, so the Name box says the name travels with it.
+  const sends = fields.some((field) => field.kind === "email");
 
   function value(id: string): string {
     return (values[id] ?? "").trim();
   }
 
+  // The address is checked here so the button stays dead on a typo, and again
+  // at the route, which is the boundary a request actually crosses.
   const filled = fields.every((field) =>
     field.kind === "url"
       ? asUrl(value(field.id)) !== null
-      : value(field.id).length > 0
+      : field.kind === "email"
+        ? isEmail(value(field.id))
+        : value(field.id).length > 0
   );
   const ready =
     (grant || name.trim().length > 0) &&
@@ -236,6 +248,7 @@ function ConnectionForm({
     // neither.
     const key = fields.find((field) => field.kind === "secret");
     const expiry = fields.find((field) => field.kind === "date");
+    const from = fields.find((field) => field.kind === "email");
     onAdd({
       provider: chosen.id,
       name: name.trim(),
@@ -243,6 +256,7 @@ function ConnectionForm({
       services,
       secret: key ? value(key.id) : undefined,
       expiresOn: expiry ? (value(expiry.id) || null) : null,
+      sendFrom: from ? (value(from.id) || null) : null,
     });
   }
 
@@ -272,12 +286,18 @@ function ConnectionForm({
             id={nameId}
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder={`BHP ${chosen.name}`}
+            // A card that sends mail shows a name that reads well in somebody
+            // else's inbox. "BHP Resend" told two accounts apart and
+            // contradicted the hint below it, which is the form disagreeing
+            // with itself that KPA-158 closes.
+            placeholder={sends ? "Sukkal Resend" : `BHP ${chosen.name}`}
             autoComplete="off"
             autoFocus
           />
           <p className="text-muted-foreground text-xs">
-            What tells this account from the next one on the same provider.
+            {sends
+              ? "What tells this account from the next one on the same provider, and the name recipients see beside the address: Sukkal Resend <no-reply@sukkal.app>."
+              : "What tells this account from the next one on the same provider."}
           </p>
         </div>
       )}
@@ -291,8 +311,14 @@ function ConnectionForm({
             value={method}
             onChange={(next) => {
               setMethod(next);
-              // The boxes belong to the method that asked for them.
-              setValues({});
+              // The boxes belong to the method that asked for them, so the
+              // new method's own defaults replace the old method's answers.
+              setValues(
+                initialValues(
+                  chosen.methods.find((entry) => entry.id === next) ??
+                    chosen.methods[0]
+                )
+              );
             }}
           />
         </div>
@@ -311,7 +337,13 @@ function ConnectionForm({
               // A date takes the browser's own box, which spells the format
               // out and rejects a day that does not exist.
               type={
-                secret ? "password" : field.kind === "date" ? "date" : "text"
+                secret
+                  ? "password"
+                  : field.kind === "date"
+                    ? "date"
+                    : field.kind === "email"
+                      ? "email"
+                      : "text"
               }
               value={values[field.id] ?? ""}
               onChange={(event) =>
@@ -328,6 +360,12 @@ function ConnectionForm({
               <p className="text-muted-foreground text-xs">
                 The key goes to the server and is sealed there. This browser
                 keeps no copy of it, and no screen reads it back.
+              </p>
+            )}
+            {field.kind === "email" && (
+              <p className="text-muted-foreground text-xs">
+                Resend sends only from a domain verified with it, so this
+                address has to sit on one.
               </p>
             )}
           </div>

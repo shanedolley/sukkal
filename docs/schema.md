@@ -43,7 +43,7 @@ check constraint here rather than an instruction in a prompt.
 | `issues` | A cache of the issues a tracker owns, keyed by workspace and key, carrying the tracker's own `updated` stamp |
 | `issue_blocks` | One blocking link, stored once from the blocker |
 | `issue_writes` | A write the tracker has not accepted, with the stamp it expected and, on a conflict, the one it found |
-| `connections` | One account on one provider. Provider, name, method, and the services it may be reached for |
+| `connections` | One account on one provider. Provider, name, method, the services it may be reached for, and the address it sends mail from |
 | `connection_credentials` | The sealed secret for one connection, with the dates the provider named, the last verdict, and whether it worked |
 | `workspaces` | One Jira tracker and the space it belongs to. The id is stable, the name is not, and nothing files anything under the name |
 | `projects` | One piece of work inside a workspace, and the one rule that matches its issues: a Jira label, or a Jira key prefix |
@@ -355,6 +355,38 @@ and `setCredential`. It does not import `secretFor`, and
 `test/connections-read.test.ts` reads every file under
 `apps/web/app/(app)/api/` to hold that. A secret travels one way: the dialog
 posts it, `setCredential` seals it, and no read carries it back.
+
+**The address the mail comes from is `send_from`**, added by
+`migrations/032_connection_send_from.sql` for KPA-158. KPA-143 had `name` do
+both jobs, and it broke on 1 October 2026: the Name box asks what tells this
+account from the next one, so the card was named `Sukkal Resend`, and Resend
+refuses that as a `from`. The name is now the display name beside the address,
+and the header reads `Sukkal Resend <no-reply@sukkal.app>`.
+
+The column is nullable and carries a format check only. Nine of the ten
+providers send no mail, and `sukkal_local` already held a Resend card written
+before the column existed, so constraining the existing data would have failed
+the migration on the one installation there is. Nothing is backfilled either: a
+default of `no-reply@sukkal.app` is one installation's verified domain, not a
+product-wide truth. **The check is a floor.** It proves one `@`, something
+either side of it, a dot in the domain and no whitespace, and nothing about
+whether the mailbox exists or whether a Resend card has an address at all.
+`apps/web/app/(app)/api/connections/route.ts` is the trust boundary and refuses
+both, because a route is what a request reaches and a browser check is a
+convenience.
+
+**A display name reaching a mail header is quoted and escaped, and a control
+character drops the name.** `fromHeader` in `src/auth/reset.ts` is the one
+place that builds the header. It wraps the name in double quotes and
+backslash-escapes a backslash and a double quote, which is RFC 5322's
+quoted-string; a comma, a colon and an @ need no escape inside one. A name
+holding a carriage return, a line feed or any other control character is
+**dropped in favour of the bare address rather than stripped**: stripping
+leaves the rest of what somebody crafted in the header, where dropping leaves
+no residue and still sends. A name that is empty after trimming is dropped the
+same way. A missing name is therefore not a failure and a missing address is:
+`deliver` logs and answers `ok: false` when `send_from` is null, because
+nothing can go in `from`.
 
 **Nothing is unique on provider alone.** Shane holds a Microsoft account at BHP
 and another at Sydney Water. `UNIQUE (provider, name)` is what separates them,
