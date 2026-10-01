@@ -28,11 +28,20 @@
 // fourth provider is a key in that object and a flag on this card. Nothing has
 // asked a provider whether a stored key works either, so a card reads "Key
 // stored" rather than "Connected".
+//
+// OPENING A CARD RECONNECTS IT. KPA-159: the only fix for a dead credential
+// used to be deleting the connection and rebuilding it, which threw away the
+// row's id, its created_at and its verification history. The card's body is
+// now a dialog trigger, and the dialog carries Reconnect for a grant method or
+// a new-key form for one that takes a secret. Both call PATCH
+// /api/connections, which replaces the credential in place rather than
+// inserting a row POST would refuse as a duplicate.
 
 import { useId, useState } from "react";
 import { CircleXIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 import { isFailing } from "@/lib/connection-health";
+import { formatDay } from "@/lib/format";
 
 import { Badge } from "@/components/reui/badge";
 import { BrandMark } from "@/components/ui/svgs/brands";
@@ -54,6 +63,7 @@ import { Label } from "@/components/ui/label";
 import {
   addConnection,
   removeConnection,
+  replaceKey,
   useConnections,
   type Connection,
   type NewConnection,
@@ -65,6 +75,7 @@ import {
   initialValues,
   isEmail,
   signInTarget,
+  type Method,
   type Provider,
 } from "@/lib/providers";
 import { cn } from "@/lib/utils";
@@ -484,6 +495,220 @@ function AddConnection() {
   );
 }
 
+/** One labelled fact in the detail dialog. A null value reads as a plain
+ *  sentence rather than a dash, because a dash answers nothing. */
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className="text-sm">{value}</span>
+    </div>
+  );
+}
+
+/** Starts a real grant for a connection that already exists. The same POST
+ *  `ConnectionForm` makes, so a first connection and a reconnect seal a token
+ *  the same way; only the caller differs. */
+function Reconnect({ connection }: { connection: Connection }) {
+  const [busy, setBusy] = useState(false);
+  const [fault, setFault] = useState("");
+
+  function start() {
+    setBusy(true);
+    setFault("");
+    fetch("/api/connections/authorize", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        provider: connection.provider,
+        services: connection.services,
+        returnsTo: "/connections",
+      }),
+    })
+      .then(async (response) => {
+        const body = (await response.json().catch(() => null)) as {
+          url?: string;
+          error?: string;
+        } | null;
+        if (response.ok && body?.url) {
+          window.location.assign(body.url);
+          return;
+        }
+        setFault(body?.error ?? "The grant could not start.");
+        setBusy(false);
+      })
+      .catch((cause: unknown) => {
+        console.error("authorize:", cause);
+        setFault("The server did not answer. Try again.");
+        setBusy(false);
+      });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Button type="button" onClick={start} disabled={busy}>
+        {busy ? "Opening the provider..." : "Reconnect"}
+      </Button>
+      <p className="text-muted-foreground text-xs">
+        Signing in as a different account creates a second connection. It does
+        not update this one, because the match is on the account the provider
+        reports, not on the card you opened.
+      </p>
+      {fault && (
+        <p
+          role="alert"
+          className="border-destructive/40 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm"
+        >
+          {fault}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Replaces the key on a connection that already exists, over PATCH. The box
+ *  is a password box held in component state alone: it is written to no
+ *  storage, and the sentence below it says where it goes instead. */
+function ReplaceKey({ connection, method }: { connection: Connection; method: Method }) {
+  const secretId = useId();
+  const dateId = useId();
+  const dateField = (method.fields ?? []).find((field) => field.kind === "date");
+  const [secret, setSecret] = useState("");
+  const [expiresOn, setExpiresOn] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [fault, setFault] = useState("");
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (secret.trim() === "") return;
+    setBusy(true);
+    setFault("");
+    void replaceKey(connection.id, secret, expiresOn || null).then((said) => {
+      setBusy(false);
+      if (said !== null) {
+        setFault(said);
+        return;
+      }
+      setSecret("");
+      setExpiresOn("");
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={secretId}>New key</Label>
+        <Input
+          id={secretId}
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          value={secret}
+          onChange={(event) => setSecret(event.target.value)}
+          placeholder="Paste the new key"
+        />
+        <p className="text-muted-foreground text-xs">
+          The key goes to the server and is sealed there. This browser keeps
+          no copy of it, and no screen reads it back.
+        </p>
+      </div>
+      {dateField && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={dateId}>{dateField.label}</Label>
+          <Input
+            id={dateId}
+            type="date"
+            value={expiresOn}
+            onChange={(event) => setExpiresOn(event.target.value)}
+          />
+        </div>
+      )}
+      {fault && (
+        <p
+          role="alert"
+          className="border-destructive/40 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm"
+        >
+          {fault}
+        </p>
+      )}
+      <Button type="submit" disabled={busy || secret.trim() === ""}>
+        {busy ? "Sealing..." : "Replace key"}
+      </Button>
+    </form>
+  );
+}
+
+/** What a card opens into: the connection as it stands, and the one way this
+ *  method offers to fix a dead credential. A method that neither grants nor
+ *  takes a key, such as a subscription, shows the facts and offers neither. */
+function ConnectionDetail({
+  connection,
+  entry,
+}: {
+  connection: Connection;
+  entry: Provider;
+}) {
+  const method = entry.methods.find((item) => item.id === connection.method);
+  const grant = method?.grant === true;
+  const secretField = (method?.fields ?? []).some((field) => field.kind === "secret");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Provider" value={entry.name} />
+        <Field label="Name" value={connection.name} />
+        <Field label="Method" value={method?.label ?? connection.method} />
+        <Field
+          label="Issued"
+          value={connection.issuedOn ? formatDay(connection.issuedOn) : "Not recorded."}
+        />
+        <Field
+          label="Expires"
+          value={connection.expiresOn ? formatDay(connection.expiresOn) : "No expiry set."}
+        />
+        <Field
+          label="Last checked"
+          value={
+            connection.verifiedOn ? formatDay(connection.verifiedOn) : "Not checked yet."
+          }
+        />
+      </div>
+
+      {/* The verdict is a sentence the provider wrote, and one of them runs to
+          three lines. It sat in the Last checked box until 1 October 2026 and
+          stretched that column past every other, so it reads on its own row. */}
+      {connection.verdict && (
+        <div className="flex flex-col gap-0.5">
+          <span className="text-muted-foreground text-xs">What the check said</span>
+          <span
+            className={cn("text-sm", connection.verifiedOk === false && "text-destructive")}
+          >
+            {connection.verdict}
+          </span>
+        </div>
+      )}
+
+      {connection.services.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-muted-foreground text-xs">Services</span>
+          <div className="flex flex-wrap gap-1.5">
+            {connection.services.map((id) => (
+              <Badge key={id} size="sm" variant="outline">
+                {entry.services.find((service) => service.id === id)?.label ?? id}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {grant && <Reconnect connection={connection} />}
+      {!grant && secretField && method && (
+        <ReplaceKey connection={connection} method={method} />
+      )}
+    </div>
+  );
+}
+
 function ConnectionCard({ connection }: { connection: Connection }) {
   const entry = providerById(connection.provider);
   // A refused removal, in the provider's own terms. The card stays either way,
@@ -500,94 +725,126 @@ function ConnectionCard({ connection }: { connection: Connection }) {
   const failing = isFailing(connection);
 
   return (
-    <Card
-      size="sm"
-      data-failing={failing || undefined}
-      className={
-        failing
-          ? "ring-destructive justify-between ring-2"
-          : "justify-between"
-      }
-    >
-      <CardHeader className="grid-cols-[auto_1fr_auto] items-center gap-3">
-        <ProviderTile id={entry.id} />
-        <div className="flex min-w-0 flex-col">
-          <CardTitle className="flex min-w-0 items-center gap-1.5">
-            {failing && (
-              <CircleXIcon
-                className="text-destructive size-4 shrink-0"
-                role="img"
-                aria-label="Not working"
+    <Dialog>
+      <Card
+        size="sm"
+        data-failing={failing || undefined}
+        className={
+          failing
+            ? "ring-destructive justify-between ring-2"
+            : "justify-between"
+        }
+      >
+        <CardHeader className="grid-cols-[auto_1fr_auto] items-center gap-3">
+          {/* The trigger covers the tile and the name, and nothing else: the
+              trash button below is its sibling, not its child, so pressing
+              it can never also open the dialog. */}
+          <DialogTrigger
+            render={
+              <button
+                type="button"
+                aria-label={`Open ${connection.name}`}
+                className="col-span-2 grid cursor-pointer grid-cols-[auto_1fr] items-center gap-3 rounded-md text-left focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"
               />
-            )}
-            <span className="truncate">{connection.name}</span>
-          </CardTitle>
-          <span className="text-muted-foreground text-xs">
-            {entry.name}
-            {method ? ` · ${method.label}` : ""}
-          </span>
-        </div>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          disabled={going}
-          aria-label={`Remove ${connection.name}`}
-          onClick={() => {
-            setGoing(true);
-            setFault("");
-            void removeConnection(connection.id).then((said) => {
-              // Nothing sets `going` back on success, because the card is
-              // gone by then and setting state on it would say so in the
-              // console.
-              if (said !== null) {
-                setFault(said);
-                setGoing(false);
-              }
-            });
-          }}
-        >
-          <Trash2Icon aria-hidden="true" />
-        </Button>
-      </CardHeader>
+            }
+          >
+            <ProviderTile id={entry.id} />
+            <div className="flex min-w-0 flex-col">
+              <CardTitle className="flex min-w-0 items-center gap-1.5">
+                {failing && (
+                  <CircleXIcon
+                    className="text-destructive size-4 shrink-0"
+                    role="img"
+                    aria-label="Not working"
+                  />
+                )}
+                <span className="truncate">{connection.name}</span>
+              </CardTitle>
+              <span className="text-muted-foreground text-xs">
+                {entry.name}
+                {method ? ` · ${method.label}` : ""}
+              </span>
+            </div>
+          </DialogTrigger>
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            disabled={going}
+            aria-label={`Remove ${connection.name}`}
+            onClick={() => {
+              setGoing(true);
+              setFault("");
+              void removeConnection(connection.id).then((said) => {
+                // Nothing sets `going` back on success, because the card is
+                // gone by then and setting state on it would say so in the
+                // console.
+                if (said !== null) {
+                  setFault(said);
+                  setGoing(false);
+                }
+              });
+            }}
+          >
+            <Trash2Icon aria-hidden="true" />
+          </Button>
+        </CardHeader>
 
-      {fault && (
-        <CardContent className="pt-0">
-          <p role="alert" className="text-destructive text-xs">
-            {fault}
-          </p>
-        </CardContent>
-      )}
+        {fault && (
+          <CardContent className="pt-0">
+            <p role="alert" className="text-destructive text-xs">
+              {fault}
+            </p>
+          </CardContent>
+        )}
 
-      {failing && connection.hasSecret && connection.verdict && (
-        <CardContent className="pt-0">
-          <p className="text-destructive text-xs">
-            Last check{connection.verifiedOn ? ` on ${connection.verifiedOn}` : ""}:{" "}
-            {connection.verdict}
-          </p>
-        </CardContent>
-      )}
+        {failing && connection.hasSecret && connection.verdict && (
+          <CardContent className="pt-0">
+            <p className="text-destructive text-xs">
+              Last check
+              {connection.verifiedOn ? ` on ${formatDay(connection.verifiedOn)}` : ""}:{" "}
+              {connection.verdict}
+            </p>
+          </CardContent>
+        )}
 
-      <CardContent className="flex flex-wrap items-center gap-1.5">
-        {connection.services.map((id) => (
-          <Badge key={id} size="sm" variant="outline">
-            {entry.services.find((service) => service.id === id)?.label ?? id}
+        <CardContent className="flex flex-wrap items-center gap-1.5">
+          {connection.services.map((id) => (
+            <Badge key={id} size="sm" variant="outline">
+              {entry.services.find((service) => service.id === id)?.label ?? id}
+            </Badge>
+          ))}
+          <Badge
+            size="sm"
+            variant={failing ? "destructive-light" : "outline"}
+            className="ml-auto"
+          >
+            {!connection.hasSecret
+              ? "Not connected"
+              : connection.verifiedOk === false
+                ? "Not working"
+                : connection.verifiedOk === true
+                  ? "Working"
+                  : "Key stored"}
           </Badge>
-        ))}
-        <Badge
-          size="sm"
-          variant={failing ? "destructive-light" : "outline"}
-          className="ml-auto"
-        >
-          {!connection.hasSecret
-            ? "Not connected"
-            : connection.verifiedOk === false
-              ? "Not working"
-              : connection.verifiedOk === true
-                ? "Working"
-                : "Key stored"}
-        </Badge>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{connection.name}</DialogTitle>
+          <DialogDescription>
+            What this connection is, and the one way to fix a dead credential
+            without deleting it.
+          </DialogDescription>
+        </DialogHeader>
+        <ConnectionDetail connection={connection} entry={entry} />
+        <DialogFooter>
+          <DialogClose render={<Button variant="outline" type="button" />}>
+            Close
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

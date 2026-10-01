@@ -3,9 +3,13 @@
  *
  * NO SHAPE OF THIS HANDLER RETURNS A SECRET. `listConnections` names its
  * columns and `ciphertext` is not among them, so `GET` cannot carry one out.
- * `POST` answers `{ ok: true }` and `DELETE` answers the same, so neither
- * hands back what it was given. `test/connections-read.test.ts` asserts the
- * exact key set.
+ * `POST`, `PATCH` and `DELETE` answer `{ ok: true }`, so none hands back what
+ * it was given. `test/connections-read.test.ts` asserts the exact key set.
+ *
+ * `PATCH` RECONNECTS A ROW RATHER THAN REPLACING IT. KPA-159 asks for a way
+ * to retype a dead key without losing the connection's id and history, and
+ * `POST` cannot do that: it inserts, and the table refuses a duplicate
+ * (provider, name). `PATCH` is the one route change this story adds.
  *
  * `DELETE` TELLS THE PROVIDER FIRST, AND STILL NAMES NO PLAINTEXT.
  * `revokeConnection` in `src/connections/oauth.ts` opens the secret, sends it
@@ -44,6 +48,7 @@ import { revokeConnection } from "../../../../../../src/connections/oauth.ts";
 import {
   addConnection,
   listConnections,
+  providerOf,
   removeConnection,
   setCredential,
 } from "../../../../../../src/connections/store.ts";
@@ -189,6 +194,66 @@ export async function POST(request: Request): Promise<Response> {
     // The secret is not in `cause`. `setCredential` seals it before the
     // statement runs, so the parameter the driver reports is the ciphertext.
     return refused("connection write", cause);
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Replaces the credential on a connection that already exists. KPA-159.
+ *
+ * POST CANNOT DO THIS. `addConnection` inserts a row, and the table refuses a
+ * second row on the same (provider, name), so posting the same account back
+ * answers "That account is already on this provider." A dead key therefore
+ * had no way to be retyped without deleting the connection first, which threw
+ * away its id, its created_at and its verification history. PATCH updates the
+ * credential in place instead, through the same `setCredential` POST already
+ * calls, so a reconnect and a first connection seal a key the same way.
+ */
+export async function PATCH(request: Request): Promise<Response> {
+  // The proxy already refused a stranger. This is the second check Next's
+  // documentation asks for, because a matcher change removes the first
+  // silently.
+  try {
+    await requireOwner();
+  } catch {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+
+  const id = new URL(request.url).searchParams.get("id");
+  // The column is a bigint, so anything else is a request Postgres would
+  // refuse for its syntax rather than a connection nobody holds.
+  if (!id || !/^\d+$/.test(id)) return bad("Name the connection to update.");
+
+  const body = (await request.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+  if (!body) return bad("Send a JSON body.");
+
+  const { secret, expiresOn } = body;
+  if (typeof secret !== "string" || secret.trim() === "") {
+    return bad("Give the new key.");
+  }
+  if (expiresOn != null && (typeof expiresOn !== "string" || !DAY.test(expiresOn))) {
+    return bad("Write the expiry as YYYY-MM-DD.");
+  }
+
+  const client = await db().connect();
+  try {
+    // Refuses an id that holds no row, rather than sealing a key against a
+    // connection nobody holds.
+    const provider = await providerOf(client, id);
+    if (provider === null) return bad("That connection does not exist.");
+
+    await setCredential(client, id, secret, {
+      expiresOn: (expiresOn as string | undefined) ?? null,
+    });
+    return NextResponse.json({ ok: true });
+  } catch (cause) {
+    // The secret is not in `cause`. `setCredential` seals it before the
+    // statement runs, so the parameter the driver reports is the ciphertext.
+    return refused("connection update", cause);
   } finally {
     client.release();
   }

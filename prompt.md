@@ -133,53 +133,56 @@ Link every Jira ID as a clickable markdown link.
 Say what you dispatched to a subagent and what came back, and verify it before
 repeating it as fact.
 
+
 ## Start here
 
-Measured on 1 October 2026 at source: the board paged to the end, 125 stories,
-and CI read with `gh run list --limit 1`. amaterasu answers again. Nothing waits
-on a ruling: the decision queue is empty and `npm run decisions` reports 10
-decided, 0 waiting.
+Measured on 1 October 2026 at source: the board paged to the end, 128 stories,
+and CI read with `gh run list --limit 1`. amaterasu answers. Nothing waits on a
+ruling: the decision queue is empty and `npm run decisions` reports 10 decided,
+0 waiting.
 
-**The last session shipped four stories.** KPA-154 moved production off the KPA
-name, KPA-143 and KPA-158 built the reset mail through Resend, and a real reset
-mail was sent and accepted. `handover.md` carries what each proved.
+**The last session shipped
+[KPA-159](https://koinon.atlassian.net/browse/KPA-159) and raised three stories,
+KPA-160, KPA-161 and KPA-162.** Opening a connection card now shows what the
+connection is and offers the one fix its method allows. `handover.md` carries
+what it proved and how.
 
-**Eleven of the 32 To Do stories are unblocked, and only two of those need
-nobody but you.** The rest wait on Shane for metered spend, a live tracker, a
-real mailbox, or a consent screen. Take them in this order.
+**Thirty-four stories sit in To Do. Thirteen are unblocked, and four of those
+need nobody but you.** The rest wait on Shane for metered spend, a live tracker,
+a real mailbox, or a consent screen. Take them in this order.
 
-1. **[KPA-159](https://koinon.atlassian.net/browse/KPA-159), 2 points.** Open an
-   existing connection to reconnect it. Two Google connections sit dead with
-   `invalid_grant` and the only route today is to delete and rebuild, which
-   throws away the row and its history. **The server already does the hard
-   part:** the OAuth callback calls `connectionNamed(provider, account)` and
-   `setCredential` runs `ON CONFLICT (connection) DO UPDATE`, so a second grant
-   replaces the credential in place. Only the affordance is missing. Say on the
-   screen that signing in as a different account makes a second connection,
-   because the match is on the account the provider reports and not on the card
-   that was opened.
-2. **[KPA-157](https://koinon.atlassian.net/browse/KPA-157), 2 points.** Two
+1. **[KPA-162](https://koinon.atlassian.net/browse/KPA-162), 2 points.** Rename a
+   connection. Shane asked for it on 1 October 2026, naming the Resend card,
+   whose name is the display name every recipient reads. **The rule is the whole
+   design:** a key method may be renamed and a grant method may not, because
+   `connectionNamed` matches a grant on the account name the provider reported.
+   Rename such a card and the next grant writes a second row. The detail dialog
+   and the `PATCH` route both exist, so the work is one field and one guard.
+2. **[KPA-161](https://koinon.atlassian.net/browse/KPA-161), 1 point.** Four log
+   lines in `deliver` interpolate the connection's name raw, at
+   `src/auth/reset.ts:405`, `416`, `426` and `432`. A name holding a newline
+   splits a log line. `fromHeader` already closes the mail header against the
+   same names, so the shape of the fix is written beside the defect.
+3. **[KPA-160](https://koinon.atlassian.net/browse/KPA-160), 1 point.**
+   `listConnections` names eleven columns and `send_from` is not among them, so
+   nothing reads the sending address back. One column in one SELECT, one field
+   on two types, and the `SEEN` array in `apps/web/scripts/check-connections.ts`.
+4. **[KPA-157](https://koinon.atlassian.net/browse/KPA-157), 2 points.** Two
    `sweepExpired` functions are written, tested, and called by nothing but their
-   own tests, at `src/auth/session.ts:216` and `src/connections/oauth.ts:580`.
-   An abandoned grant holds a PKCE verifier, which is why this is worth doing
-   rather than noting. A test must prove the scheduler registers the job, since
-   both functions already have tests and neither caught that nobody called them.
-3. **[KPA-108](https://koinon.atlassian.net/browse/KPA-108), 3 points.** KPA-107
+   own tests, at `src/auth/session.ts:216` and `src/connections/oauth.ts:580`. An
+   abandoned grant holds a PKCE verifier, which is why this is worth doing rather
+   than noting. A test must prove the scheduler registers the job, since both
+   functions already have tests and neither caught that nobody called them.
+5. **[KPA-108](https://koinon.atlassian.net/browse/KPA-108), 3 points.** KPA-107
    writes the result it would raise a Needs you item from, so it is unblocked in
    substance. It carries two decisions, a fifth `needs_you` kind or a deadline,
    and the expiry window. Post both before building.
 
-**Two gaps are worth raising as stories and nobody has.** `listConnections`
-returns eleven fields and not `send_from`, so no screen reads the sending
-address back; KPA-159 may close that as it goes. And three log lines in
-`deliver` interpolate the connection's name raw, so a name holding a newline
-splits a log line. The mail header is closed against that and the log is not.
-
 **What still waits on Shane**: KPA-12 and KPA-86 on metered spend, KPA-50 on a
 ruling and a live Jira ticket, KPA-71 on nabium at both ends, KPA-84 on real
-mailboxes, KPA-49 and KPA-105 on live trackers, and KPA-103's last criterion on
-a consent screen. KPA-147 now has a domain in `sukkal.app` and still has no
-address, because the root carries no A record.
+mailboxes, KPA-49 and KPA-105 on live trackers, and KPA-103's last criterion on a
+consent screen. KPA-147 has a domain in `sukkal.app` and still has no address,
+because the root carries no A record.
 
-Thirty-three stories are open: 31 To Do, one In Progress and one Decision
-required, against 122 stories and 30 In Review.
+Thirty-five stories are open: 34 To Do and one In Progress, KPA-103, against
+128 stories and four In Review. Nothing sits in Decision required.

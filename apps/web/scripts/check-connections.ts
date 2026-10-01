@@ -335,10 +335,48 @@ for (const entry of PROVIDERS) {
   );
 }
 
+// 10b. Opening a card reconnects it rather than deleting and rebuilding it.
+//      KPA-159. The source is read rather than imported, for the reason 9d
+//      gives: node strips types and leaves JSX alone, so importing a .tsx
+//      answers ERR_UNKNOWN_FILE_EXTENSION. Each pattern is a string only the
+//      new code could produce, checked against the pre-change file before
+//      this story and found in none of them.
+assert.match(
+  dialog,
+  /function ConnectionDetail/,
+  "the connections screen has no detail dialog to open a card into"
+);
+assert.match(
+  dialog,
+  /function Reconnect\(/,
+  "the detail dialog offers no way to reconnect a grant method"
+);
+assert.match(
+  dialog,
+  /provider: connection\.provider,[\s\S]{0,80}services: connection\.services,[\s\S]{0,80}returnsTo: "\/connections"/,
+  "Reconnect does not post the standing connection to /api/connections/authorize"
+);
+assert.match(
+  dialog,
+  /Signing in as a different account creates a second connection/,
+  "the dialog does not say a reconnect under a different account makes a second row"
+);
+assert.match(
+  dialog,
+  /id=\{secretId\}\s*\n\s*type="password"/,
+  "the replacement key box is not a password box"
+);
+assert.match(
+  dialog,
+  /replaceKey\(connection\.id, secret, expiresOn \|\| null\)/,
+  "the typed key reaches no PATCH, so the form collects it and sends it nowhere"
+);
+
 console.log(
   "connections OK: ten providers each with a mark, only web addresses open, a key opens nothing, " +
     `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, the Jira token is dated, ` +
-    "the Resend probe costs nothing, and Resend alone asks for a Send from address"
+    "the Resend probe costs nothing, Resend alone asks for a Send from address, " +
+    "and a card reconnects in place rather than deleting and rebuilding"
 );
 
 // ══ The same claims, against the rows ═══════════════════════════════════════

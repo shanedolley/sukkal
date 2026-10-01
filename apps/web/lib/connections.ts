@@ -91,3 +91,21 @@ export function addConnection(connection: NewConnection): void {
 export function removeConnection(id: string): Promise<string | null> {
   return send(store, `${URL}?id=${encodeURIComponent(id)}`, "DELETE");
 }
+
+/**
+ * Reconnects a standing row by sealing a new key against it. KPA-159.
+ *
+ * `addConnection` cannot do this: it inserts, and the table refuses a second
+ * row on the same provider and name. This calls PATCH instead, which replaces
+ * the credential and keeps the row's id and created_at.
+ */
+export function replaceKey(
+  id: string,
+  secret: string,
+  expiresOn: string | null
+): Promise<string | null> {
+  return send(store, `${URL}?id=${encodeURIComponent(id)}`, "PATCH", {
+    secret,
+    expiresOn,
+  });
+}

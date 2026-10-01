@@ -16,6 +16,11 @@ the reset link sends through Resend.
 real person. All three are In Review, which in this project means shipped and
 waiting only on a read.
 
+**KPA-159 followed, and a dead connection can now be reconnected in place.**
+Opening a card shows what the connection is and offers the one fix its method
+allows: Reconnect on a grant, a new key on a key. The row keeps its id, its
+`created_at` and its history, which deleting and rebuilding threw away.
+
 **A real reset mail now sends.** On 1 October 2026 one went through the real
 Resend API with the real send-only key to the owner's own address, using
 `request()` exactly as `POST /api/reset` does. `from` read
@@ -45,12 +50,14 @@ stands* below says what it found.
 
 **Thirty-one migration files, numbered to `032`.** KPA-158 added
 `032_connection_send_from.sql`, and KPA-143 added none, because the Resend key is
-a credential like every other. Twenty-seven ADR files, numbered to `0025`,
-because `0007` and `0008` each hold two. Counted on 1 October 2026.
+a credential like every other. KPA-159 added none, because it writes no column.
+Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
+two. Counted on 1 October 2026.
 
-The suite runs **667 tests with the vault and 647 without it**, measured on
-1 October 2026 after KPA-158, on a database dropped and recreated before each
-run. One skip is reported in both, and it is meant to.
+The suite runs **668 tests with the vault and 648 without it**, measured on
+1 October 2026 after KPA-159, on a database dropped and recreated before each
+run. One skip is reported in both, and it is meant to. KPA-159 added the one
+test that moved both counts.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -70,28 +77,27 @@ vault, several suites skip and the summary still reports 1.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **125 stories, 89 accepted, which is 71%
-by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-157,
-KPA-158 and KPA-159 were raised.
+Project KPA on `koinon.atlassian.net`. **128 stories, 89 accepted, which is 70%
+by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160,
+KPA-161 and KPA-162 were raised and KPA-159 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 3, KPA-143, KPA-154 and KPA-158, all shipped |
+| In Review | 4, KPA-143, KPA-154, KPA-158 and KPA-159, all shipped |
 | In Progress | 1, KPA-103 |
-| To Do | 32 |
+| To Do | 34 |
 | Decision required | 0 |
 
-**Read these counts by issue type.** The project holds 159 issues: 125 stories,
-13 epics and 21 subtasks. A count of everything reports 111 Done and 43 To Do,
-which reads like disagreement and is not. Only `issuetype = Story` gives the
-table above, so a query that omits the type answers a different question.
+**Read these counts by issue type.** The project holds 162 issues: 128 stories,
+13 epics and 21 subtasks. A count of everything answers a different question, so
+every number here names `issuetype = Story`.
 
-**No story sits In Review.** Every story that reached `main` has been read and
-accepted. One epic, KPA-149, is still In Review, which is why a count of
-everything shows one. A story that ships from here goes to In Review and waits
-for the same treatment, so the status keeps its meaning and its queue is simply
-empty.
+**In Review means shipped and waiting on a read.** Every story in that column
+reached `main` with CI green. Shane walked the previous 30 on 30 September 2026
+and accepted every one, so the column holds only what shipped after that date.
+One epic, KPA-149, is In Review too, which is why a count of everything shows
+one more.
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -516,11 +522,17 @@ can go in `from`, so `deliver` logs and returns `ok: false` before it opens the
 key. No usable name means the mail sends from the bare address and returns
 `ok: true`.
 
-**Two gaps are left and neither has a story.** `listConnections` returns eleven
-fields and not `send_from`, so no screen reads the address back; KPA-159 may
-close it in passing. And three log lines in `deliver` interpolate the name raw,
-so a name holding a newline splits a log line. The header is closed against that
-and the log is not.
+**Both gaps now have a story, and one count was wrong.**
+[KPA-160](https://koinon.atlassian.net/browse/KPA-160) covers the read:
+`listConnections` names eleven columns and `send_from` is not among them, so no
+screen reads the address back. KPA-159 did not close it, because its criteria
+name the fields and that is not one of them.
+
+[KPA-161](https://koinon.atlassian.net/browse/KPA-161) covers the log. This file
+said three log lines interpolate the name raw. The true count is **four**, at
+`src/auth/reset.ts:405`, `416`, `426` and `432`, counted on 1 October 2026. A
+fifth use at line 442 is the mail header, which `fromHeader` already closes. The
+header is closed and the log is not.
 
 ## The sending domain is set up and verified
 
@@ -603,6 +615,19 @@ Measured by running the worker once against `sukkal_local`: it rechecked all
 three connections at 11:09 and wrote three rows. `shane@koinon.com.au` verified
 OK. The other two still answer `invalid_grant`. The worker had last run on
 25 September, so the token also survived five days with nobody using it.
+
+**Since KPA-159 the two dead cards can be fixed without losing them.** Open
+either one on `/connections` and press Reconnect. It starts a grant for that
+provider, and the callback's `connectionNamed` plus `setCredential` replace the
+credential in place. Proved against the real route over HTTP on 1 October 2026,
+on a throwaway row in `sukkal_local`: two PATCH calls, the id and `created_at`
+unchanged across both, one credential row rather than two, and the sealed bytes
+different each time. The row was removed afterwards and Shane's four
+connections were untouched.
+
+**Signing in as a different account still makes a second connection.** The match
+is on the account the provider reports, not on the card that was opened, so the
+dialog says so in as many words.
 
 So something else killed the two from 12 September, and the seven-day rule is not
 it. Reading the publishing status in Google Cloud project
@@ -756,6 +781,25 @@ http://localhost:3000/oauth2/callback    Sukkal. With the slash
 `--test-concurrency=1` on a bare `node --test`, and the stale
 `apps/web/.next/dev/types` that fails a build after a page is removed. What
 follows is new, and each cost time between 9 September and 1 October 2026.
+
+**Port 3000 is often already held, and `next dev` refuses rather than sharing
+it.** On 1 October 2026 a dev server was already running there, started outside
+this session, against `sukkal_local`. A second `npm run dev` took port 3001,
+printed "Another next dev server is already running", and exited 1. Turbopack
+watches the files, so the server already running serves your edits: use it
+rather than stopping it. A server you did not start belongs to somebody else.
+
+**To see a screen you need a session, and minting one beats setting a
+password.** `scripts/reset-password.sh` changes the owner's real password, which
+is Shane's. Instead insert a row in `sessions`: the id is the SHA-256 of a token
+you make, which `fingerprint` in `src/auth/session.ts:87` computes, and the
+cookie is `__Host-sukkal_session`. Chrome accepts a `Secure` cookie on
+`http://localhost`. Delete the row when you are done.
+
+**`psql -tAc` on an `INSERT ... RETURNING` prints the command tag as well.** The
+output is the id, then `INSERT 0 1`, so a variable capturing it holds both and
+the next statement fails on a syntax error naming `INSERT`. Pipe through
+`head -1`. Cost one cycle on 1 October 2026.
 
 **`connect()` returns an unconnected client, and forgetting that looks exactly
 like amaterasu being down.** It is not `async`: it hands back a `pg.Client` and

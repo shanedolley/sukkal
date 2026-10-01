@@ -8,6 +8,7 @@ import { isEmail, needsSendFrom } from '../apps/web/lib/providers.ts';
 import { KEY_VARIABLE, decrypt, encrypt } from '../src/connections/crypto.ts';
 import {
   addConnection,
+  connectionNamed,
   listConnections,
   recordVerification,
   removeConnection,
@@ -364,6 +365,52 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     assert.equal(replaced.verdict, null);
     assert.equal(replaced.verifiedOn, null);
     assert.equal(replaced.verifiedOk, null, 'a new secret is unchecked, not still working');
+  });
+
+  // KPA-159. The old fix for a dead credential was deleting the connection
+  // and rebuilding it, which threw away its id, its created_at and its
+  // verification history. A reconnect is `connectionNamed` followed by
+  // `setCredential`, exactly what the OAuth callback already does on a
+  // second grant, so this proves the row survives it rather than assuming so.
+  test('a reconnect keeps the row\'s id and created_at, and replaces the secret', async () => {
+    await clear();
+    const id = await addConnection(client, {
+      provider: 'microsoft',
+      name: 'BHP Microsoft',
+      method: 'oauth',
+    });
+    await setCredential(client, id, 'first-secret');
+    await recordVerification(client, id, 'Reached the mailbox.', true);
+
+    // created_at is a timestamptz, so the driver hands back a Date rather than
+    // text the way a date column does. Two Date instances naming the same
+    // moment are never the same object, so the comparison below reads the
+    // instant each one names.
+    const before = await client.query<{ id: string; created_at: Date }>(
+      'SELECT id, created_at FROM connections WHERE id = $1',
+      [id],
+    );
+    const row = before.rows[0];
+    assert.ok(row);
+
+    const found = await connectionNamed(client, 'microsoft', 'BHP Microsoft');
+    assert.equal(found, id, 'the reconnect matched a different row');
+    await setCredential(client, found!, 'second-secret');
+
+    const after = await client.query<{ id: string; created_at: Date }>(
+      'SELECT id, created_at FROM connections WHERE id = $1',
+      [id],
+    );
+    const changed = after.rows[0];
+    assert.ok(changed);
+    assert.equal(changed.id, row.id, 'the reconnect changed the row id');
+    assert.equal(
+      changed.created_at.getTime(),
+      row.created_at.getTime(),
+      'the reconnect changed when the row was created',
+    );
+    assert.equal(await secretFor(client, id), 'second-secret');
+    assert.equal((await listConnections(client)).length, 1, 'the reconnect added a second row');
   });
 
   test('a verification of a connection holding no credential throws', async () => {
