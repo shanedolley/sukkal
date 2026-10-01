@@ -43,6 +43,9 @@ export interface Connection {
   verdict: string | null;
   /** Whether the hourly recheck last found it working. Null until it has run. */
   verifiedOk: boolean | null;
+  /** The address a sending connection's mail comes from. Null on one that
+   *  sends nothing. KPA-160. */
+  sendFrom: string | null;
 }
 
 /** What the dialog collected. The secret is passed on and never kept. */

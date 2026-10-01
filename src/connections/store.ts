@@ -66,6 +66,9 @@ export interface Connection {
   /** Whether the last check found it working. Null until a check has run,
    *  which reads as unknown rather than broken. KPA-107. */
   verifiedOk: boolean | null;
+  /** The address a sending connection's mail comes from. Null on one that
+   *  sends nothing. KPA-160. */
+  sendFrom: string | null;
 }
 
 interface Row {
@@ -80,6 +83,7 @@ interface Row {
   verified_on: string | null;
   verdict: string | null;
   verified_ok: boolean | null;
+  send_from: string | null;
 }
 
 /** Adds one account and returns its id. The table refuses a second account of
@@ -257,7 +261,7 @@ export async function recordVerification(
  */
 export async function listConnections(client: ClientBase): Promise<Connection[]> {
   const rows = await client.query<Row>(
-    `SELECT c.id, c.provider, c.name, c.method, c.services,
+    `SELECT c.id, c.provider, c.name, c.method, c.services, c.send_from,
             (k.connection IS NOT NULL) AS has_secret,
             k.issued_on, k.expires_on, k.verified_on, k.verdict, k.verified_ok
        FROM connections c
@@ -277,6 +281,7 @@ export async function listConnections(client: ClientBase): Promise<Connection[]>
     verifiedOn: row.verified_on,
     verdict: row.verdict,
     verifiedOk: row.verified_ok,
+    sendFrom: row.send_from,
   }));
 }
 

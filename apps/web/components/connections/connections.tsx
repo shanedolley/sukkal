@@ -736,6 +736,7 @@ function ConnectionDetail({
             connection.verifiedOn ? formatDay(connection.verifiedOn) : "Not checked yet."
           }
         />
+        {connection.sendFrom && <Field label="Send from" value={connection.sendFrom} />}
       </div>
 
       {/* No rename here, and no hint that a reconnect is one. A grant under a

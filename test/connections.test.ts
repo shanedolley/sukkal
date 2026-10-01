@@ -230,7 +230,7 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     // fails here rather than reaching a screen.
     assert.deepEqual(Object.keys(row).sort(), [
       'expiresOn', 'hasSecret', 'id', 'issuedOn', 'method',
-      'name', 'provider', 'services', 'verdict', 'verifiedOk', 'verifiedOn',
+      'name', 'provider', 'sendFrom', 'services', 'verdict', 'verifiedOk', 'verifiedOn',
     ]);
     assert.equal(row.hasSecret, true);
     assert.equal(JSON.stringify(listed).includes(SECRET), false);
@@ -596,6 +596,25 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
       [[zoom, resend]],
     );
     assert.deepEqual(stored.rows.map((row) => row.send_from), [null, null]);
+  });
+
+  test('listConnections reads the send-from address back, and null for a connection that sends nothing', async () => {
+    await clear();
+    const resend = await addConnection(client, {
+      provider: 'resend',
+      name: 'Sukkal Resend',
+      method: 'key',
+      sendFrom: 'no-reply@sukkal.app',
+    });
+    const jira = await addConnection(client, {
+      provider: 'jira',
+      name: 'BHP Jira',
+      method: 'token',
+    });
+
+    const list = await listConnections(client);
+    assert.equal(list.find((one) => one.id === resend)?.sendFrom, 'no-reply@sukkal.app');
+    assert.equal(list.find((one) => one.id === jira)?.sendFrom, null);
   });
 
   test('the table holds the address to a shape, which is a floor and not the check', async () => {

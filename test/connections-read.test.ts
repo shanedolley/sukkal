@@ -36,7 +36,7 @@ const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const API = path.join(import.meta.dirname, '..', 'apps', 'web', 'app', '(app)', 'api');
 const url = process.env['DATABASE_URL_TEST'];
 
-/** The ten fields a screen may see. `ciphertext` is not among them. */
+/** The twelve fields a screen may see. `ciphertext` is not among them. */
 const SEEN = [
   'expiresOn',
   'hasSecret',
@@ -45,6 +45,7 @@ const SEEN = [
   'method',
   'name',
   'provider',
+  'sendFrom',
   'services',
   'verdict',
   'verifiedOk',
@@ -114,7 +115,7 @@ describe(
       else process.env[KEY_VARIABLE] = held;
     });
 
-    test('the read answers ten fields, and the secret is in none of them', async () => {
+    test('the read answers twelve fields, and the secret is in none of them', async () => {
       const id = await addConnection(client, {
         provider: 'jira',
         name: 'BHP Jira',

@@ -412,12 +412,22 @@ assert.match(
   "the rename form opens for a grant method, which the provider alone may name"
 );
 
+// 10d. The detail dialog shows the address on a connection that has one.
+//      KPA-160. The pattern names the behaviour, not the whitespace, and it
+//      is checked against the pre-change source and found in none of it.
+assert.match(
+  dialog,
+  /connection\.sendFrom && <Field label="Send from" value=\{connection\.sendFrom\} \/>/,
+  "the detail dialog does not show the send-from address"
+);
+
 console.log(
   "connections OK: ten providers each with a mark, only web addresses open, a key opens nothing, " +
     `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, the Jira token is dated, ` +
     "the Resend probe costs nothing, Resend alone asks for a Send from address, " +
-    "a card reconnects in place rather than deleting and rebuilding, and a card whose " +
-    "method takes a key may be renamed while a grant method's card says the provider names it"
+    "a card reconnects in place rather than deleting and rebuilding, a card whose " +
+    "method takes a key may be renamed while a grant method's card says the provider " +
+    "names it, and the detail dialog reads the sending address back"
 );
 
 // ══ The same claims, against the rows ═══════════════════════════════════════
@@ -428,7 +438,7 @@ console.log(
 // here, and each one is silent when it breaks.
 //
 // The read narrows. `listConnections` names its columns, so its answer holds
-// the ten fields below and no secret.
+// the twelve fields below and no secret.
 //
 // The plaintext is nowhere in the answer. Searching the serialised read for
 // the secret itself catches a column carrying it under another name, which
@@ -462,7 +472,9 @@ const pool = db();
 const client = await pool.connect();
 const SECRET = "sk-or-v1-a-key-shaped-string";
 
-/** The ten fields a screen may see. The sealed bytes are not among them. */
+/** The twelve fields a screen may see. The sealed bytes are not among them.
+ *  Counted from this array on 1 October 2026: the comment above it read "ten"
+ *  while the array held eleven, and KPA-160 added the twelfth. */
 const SEEN = [
   "expiresOn",
   "hasSecret",
@@ -471,6 +483,7 @@ const SEEN = [
   "method",
   "name",
   "provider",
+  "sendFrom",
   "services",
   "verdict",
   "verifiedOk",
@@ -524,7 +537,7 @@ try {
   }
 
   console.log(
-    `connection rows OK: ${list.length} read, ten fields each, and no secret among them`,
+    `connection rows OK: ${list.length} read, twelve fields each, and no secret among them`,
   );
 } finally {
   if (added) await removeConnection(client, added);
