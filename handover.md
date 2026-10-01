@@ -16,8 +16,8 @@ the reset link sends through Resend.
 real person. All three are In Review, which in this project means shipped and
 waiting only on a read.
 
-**KPA-159 and KPA-162 followed, and a connection can now be fixed and renamed
-in place.** Opening a card shows what the connection is and offers the one fix
+**Four connection stories shipped on 1 October: KPA-159, KPA-160, KPA-161 and
+KPA-162. A connection can now be fixed and renamed in place.** Opening a card shows what the connection is and offers the one fix
 its method allows: Reconnect on a grant, a new key on a key. A card whose method
 takes a key may also be renamed. A grant method's card may not, because its name
 is the account the provider reported and `connectionNamed` matches on it.
@@ -59,15 +59,16 @@ stands* below says what it found.
 
 **Thirty-one migration files, numbered to `032`.** KPA-158 added
 `032_connection_send_from.sql`, and KPA-143 added none, because the Resend key is
-a credential like every other. KPA-159 and KPA-162 added none, because neither
-writes a column.
+a credential like every other. KPA-159, KPA-160, KPA-161 and KPA-162 added none,
+because none of them writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
 two. Counted on 1 October 2026.
 
-The suite runs **672 tests with the vault and 652 without it**, measured on
-1 October 2026 after KPA-162, on a database dropped and recreated before each
-run. One skip is reported in both, and it is meant to. KPA-159 added one test
-and KPA-162 added three, which is what moved both counts.
+The suite runs **677 tests with the vault and 657 without it**, measured on
+1 October 2026 after KPA-160 and KPA-161, on a database dropped and recreated
+before the run. One skip is reported in both, and it is meant to. KPA-159 added
+one test, KPA-162 three, KPA-160 one and KPA-161 four, which is what moved both
+counts.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -89,14 +90,14 @@ vault, several suites skip and the summary still reports 1.
 
 Project KPA on `koinon.atlassian.net`. **128 stories, 89 accepted, which is 70%
 by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160,
-KPA-161 and KPA-162 were raised and KPA-159 and KPA-162 shipped.
+KPA-161 and KPA-162 were raised and all four of them shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 5, KPA-143, KPA-154, KPA-158, KPA-159 and KPA-162, all shipped |
+| In Review | 7, KPA-143, KPA-154 and KPA-158 to KPA-162, all shipped |
 | In Progress | 1, KPA-103 |
-| To Do | 33 |
+| To Do | 31 |
 | Decision required | 0 |
 
 **Read these counts by issue type.** The project holds 162 issues: 128 stories,
@@ -535,17 +536,22 @@ can go in `from`, so `deliver` logs and returns `ok: false` before it opens the
 key. No usable name means the mail sends from the bare address and returns
 `ok: true`.
 
-**Both gaps now have a story, and one count was wrong.**
-[KPA-160](https://koinon.atlassian.net/browse/KPA-160) covers the read:
-`listConnections` names eleven columns and `send_from` is not among them, so no
-screen reads the address back. KPA-159 did not close it, because its criteria
-name the fields and that is not one of them.
+**Both gaps are closed, and two counts in this file were wrong.**
+[KPA-160](https://koinon.atlassian.net/browse/KPA-160) added `send_from` to
+`listConnections`, so the detail dialog reads the sending address back. The read
+now answers **twelve** fields, not eleven: `SEEN` in
+`apps/web/scripts/check-connections.ts` and in `test/connections-read.test.ts`
+held eleven names under a comment saying "ten", and KPA-160 added the twelfth
+while carrying the off-by-one forward to "eleven". Counted from the arrays on
+1 October 2026 and corrected in both.
 
-[KPA-161](https://koinon.atlassian.net/browse/KPA-161) covers the log. This file
-said three log lines interpolate the name raw. The true count is **four**, at
-`src/auth/reset.ts:405`, `416`, `426` and `432`, counted on 1 October 2026. A
-fifth use at line 442 is the mail header, which `fromHeader` already closes. The
-header is closed and the log is not.
+[KPA-161](https://koinon.atlassian.net/browse/KPA-161) closed the log. This file
+said three log lines interpolate the name raw. The true count was **four**. All
+four now route through `forLog` in `src/auth/reset.ts`, which replaces each
+control character, line separator and paragraph separator with a space, using
+`CONTROL.source` so its set can never drift from the header's. A space rather
+than a drop, because the name is the only thing in the line that says which card
+it is about.
 
 ## The sending domain is set up and verified
 

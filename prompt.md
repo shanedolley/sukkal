@@ -140,44 +140,40 @@ and CI read with `gh run list --limit 1`. amaterasu answers. Nothing waits on a
 ruling: the decision queue is empty and `npm run decisions` reports 10 decided,
 0 waiting.
 
-**The last session shipped
-[KPA-159](https://koinon.atlassian.net/browse/KPA-159) and
-[KPA-162](https://koinon.atlassian.net/browse/KPA-162), and raised two more.**
-Opening a connection card now shows what the connection is, offers the one fix
-its method allows, and lets a key card be renamed. `handover.md` carries what
-each proved and how.
+**The last session shipped four connection stories.**
+[KPA-159](https://koinon.atlassian.net/browse/KPA-159) opened the card,
+[KPA-162](https://koinon.atlassian.net/browse/KPA-162) made the name editable
+where the provider does not own it,
+[KPA-160](https://koinon.atlassian.net/browse/KPA-160) read the sending address
+back, and [KPA-161](https://koinon.atlassian.net/browse/KPA-161) held a
+connection name to one log line. `handover.md` carries what each proved.
 
 **The two dead Google connections were reconnected and kept their rows.** Ids 1
 and 3 still carry their `created_at` of 12 September. That is KPA-159 proved
 against the connections it was raised for.
 
-**Thirty-three stories sit in To Do. Twelve are unblocked, and three of those
-need nobody but you.** The rest wait on Shane for metered spend, a live tracker,
-a real mailbox, or a consent screen. Take them in this order.
+**Thirty-one stories sit in To Do. Ten are unblocked, and one of those needs
+nobody but you.** The rest wait on Shane for metered spend, a live tracker, a
+real mailbox, or a consent screen.
 
-1. **[KPA-161](https://koinon.atlassian.net/browse/KPA-161), 1 point.** Four log
-   lines in `deliver` interpolate the connection's name raw, at
-   `src/auth/reset.ts:405`, `416`, `426` and `432`. A name holding a newline
-   splits a log line. `fromHeader` already closes the mail header against the
-   same names, so the shape of the fix is written beside the defect. **The name
-   is now editable**, since KPA-162, so a name reaching those lines is one
-   somebody typed today rather than one a provider reported.
-2. **[KPA-160](https://koinon.atlassian.net/browse/KPA-160), 1 point.**
-   `listConnections` names eleven columns and `send_from` is not among them, so
-   nothing reads the sending address back. One column in one SELECT, one field
-   on two types, and the `SEEN` array in `apps/web/scripts/check-connections.ts`.
-   The detail dialog KPA-159 built is where it should appear.
-3. **[KPA-157](https://koinon.atlassian.net/browse/KPA-157), 2 points.** Two
-   `sweepExpired` functions are written, tested, and called by nothing but their
-   own tests, at `src/auth/session.ts:216` and `src/connections/oauth.ts:580`.
-   `sukkal_local` still holds two abandoned grants, from 13 and 19 September,
-   each holding a PKCE verifier. A test must prove the scheduler registers the
-   job, since both functions already have tests and neither caught that nobody
-   called them.
-4. **[KPA-108](https://koinon.atlassian.net/browse/KPA-108), 3 points.** KPA-107
+1. **[KPA-157](https://koinon.atlassian.net/browse/KPA-157), 2 points. Take this
+   one.** Two `sweepExpired` functions are written, tested, and called by nothing
+   but their own tests, at `src/auth/session.ts:216` and
+   `src/connections/oauth.ts:580`. `sukkal_local` still holds two abandoned
+   grants, from 13 and 19 September, each holding a PKCE verifier. The two
+   successful grants run on 1 October left nothing behind, because claiming one
+   is a `DELETE ... RETURNING`, so those two are abandoned rather than ordinary.
+   A test must prove the scheduler registers the job, since both functions
+   already have tests and neither caught that nobody called them.
+2. **[KPA-108](https://koinon.atlassian.net/browse/KPA-108), 3 points.** KPA-107
    writes the result it would raise a Needs you item from, so it is unblocked in
    substance. It carries two decisions, a fifth `needs_you` kind or a deadline,
-   and the expiry window. Post both before building.
+   and the expiry window. Post both before building, in the format
+   `scripts/decision-register.ts` reads.
+
+After those two, every remaining unblocked story needs Shane. **The connections
+work is finished for now**: the four stories above closed every gap this file
+had recorded against it.
 
 **What still waits on Shane**: KPA-12 and KPA-86 on metered spend, KPA-50 on a
 ruling and a live Jira ticket, KPA-71 on nabium at both ends, KPA-84 on real
@@ -185,5 +181,5 @@ mailboxes, KPA-49 and KPA-105 on live trackers, and KPA-103's last criterion on 
 consent screen. KPA-147 has a domain in `sukkal.app` and still has no address,
 because the root carries no A record.
 
-Thirty-four stories are open: 33 To Do and one In Progress, KPA-103, against 128
-stories and five In Review. Nothing sits in Decision required.
+Thirty-two stories are open: 31 To Do and one In Progress, KPA-103, against 128
+stories and seven In Review. Nothing sits in Decision required.

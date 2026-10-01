@@ -324,6 +324,31 @@ export function fromHeader(name: string | null, address: string): string {
   return `"${display.replace(/[\\"]/g, '\\$&')}" <${address}>`;
 }
 
+/** `CONTROL`, with the `g` flag, built from its own source so the two never
+ *  drift apart. `deliver` reuses it below: the set of characters a mail
+ *  header refuses is the same set a log line should never carry either. */
+const CONTROL_EVERYWHERE = new RegExp(CONTROL.source, 'gu');
+
+/**
+ * `name`, safe for one line in the server's log.
+ *
+ * KPA-161: the connection name is now typed by a person (KPA-162), so a name
+ * reaching a log line is one somebody chose rather than one a provider
+ * reported, and the four call sites in `deliver` below all put it straight
+ * into a log line. A newline in it would write two lines where the server
+ * wrote one.
+ *
+ * EACH SEPARATOR BECOMES A SPACE RATHER THAN BEING DROPPED. `fromHeader` drops
+ * the whole name on a hit, because a header is quoted and a missing name is no
+ * loss there. A log line has no such quoting to fall back on, and the name is
+ * the only thing in the line that says which card this is about, so losing it
+ * outright would fail criterion 3. Dropping just the separator and keeping the
+ * rest would run words together instead, so a space is kept between them.
+ */
+function forLog(name: string): string {
+  return name.replace(CONTROL_EVERYWHERE, ' ');
+}
+
 /** Where Resend takes one message. A POST and a bearer header, which Node's
  *  own `fetch` carries, so nothing was added to the package for this. */
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
@@ -402,7 +427,7 @@ export async function deliver(
   if (sender.provider !== 'resend') {
     return {
       ok: true,
-      log: `reset: a token was issued. The ${sender.provider} connection "${sender.name}" would carry it, and nothing sends through ${sender.provider} yet. Run scripts/reset-password.sh --link on the server.`,
+      log: `reset: a token was issued. The ${sender.provider} connection "${forLog(sender.name)}" would carry it, and nothing sends through ${sender.provider} yet. Run scripts/reset-password.sh --link on the server.`,
     };
   }
 
@@ -413,7 +438,7 @@ export async function deliver(
   if (address === '') {
     return {
       ok: false,
-      log: `reset: the Resend connection "${sender.name}" holds no Send from address, so the link has nothing to send from. Add one on the Connections screen, or run scripts/reset-password.sh --link on the server.`,
+      log: `reset: the Resend connection "${forLog(sender.name)}" holds no Send from address, so the link has nothing to send from. Add one on the Connections screen, or run scripts/reset-password.sh --link on the server.`,
     };
   }
 
@@ -423,13 +448,13 @@ export async function deliver(
   } catch (cause) {
     return {
       ok: false,
-      log: `reset: the Resend key on "${sender.name}" will not open: ${reason(cause)}`,
+      log: `reset: the Resend key on "${forLog(sender.name)}" will not open: ${reason(cause)}`,
     };
   }
   // `mailSender` joins the credential, so this is a row removed between the
   // two reads rather than a card somebody left half filled in.
   if (key === null) {
-    return { ok: false, log: `reset: the Resend connection "${sender.name}" holds no key.` };
+    return { ok: false, log: `reset: the Resend connection "${forLog(sender.name)}" holds no key.` };
   }
 
   try {

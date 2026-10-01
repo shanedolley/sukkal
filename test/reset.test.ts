@@ -651,4 +651,72 @@ describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' 
       assert.ok(!sent.log.includes(RESEND_KEY), `${String(status)} logged the key`);
     }
   });
+
+  // ── The log line. KPA-161. ─────────────────────────────────────────────────
+  //
+  // KPA-162 made the connection's name a box a person types into, so a name
+  // reaching one of the four log lines below is no longer one a provider
+  // reported. Each case drives a different one of the four, and each holds a
+  // different separator `fromHeader` already refuses in the header.
+
+  /** No `\r`, `\n`, U+2028 or U+2029 anywhere in `log`, and the name is still
+   *  readable in it. */
+  function assertOneLine(log: string, nameFragment: string): void {
+    assert.ok(!/[\r\n\u2028\u2029]/.test(log), `the log held a line break: ${JSON.stringify(log)}`);
+    assert.ok(log.includes(nameFragment), `the log lost the name: ${JSON.stringify(log)}`);
+  }
+
+  test('a newline in a non-Resend connection name writes one log line', async () => {
+    const id = await addConnection(client, {
+      provider: 'google',
+      name: 'Koinon Google\nBcc: them@example.com',
+      method: 'oauth',
+      services: ['gmail'],
+    });
+    await setCredential(client, id, 'a-refresh-token-shaped-string');
+
+    const sent = await deliver(client, EMAIL, TOKEN, answering(200).fetcher);
+    assertOneLine(sent.log, 'Koinon Google');
+  });
+
+  test('a carriage return in a Resend card with no address writes one log line', async () => {
+    await resendCard('Sukkal Resend\rsecond line', null);
+
+    const sent = await deliver(client, EMAIL, TOKEN, answering(200).fetcher);
+    assertOneLine(sent.log, 'Sukkal Resend');
+  });
+
+  test('U+2028 in a card whose key will not open writes one log line', async () => {
+    const id = await resendCard(`Sukkal Resend${String.fromCharCode(0x2028)}second line`);
+    await client.query(
+      `UPDATE connection_credentials
+          SET ciphertext = set_byte(ciphertext, 40, get_byte(ciphertext, 40) # 1)
+        WHERE connection = $1`,
+      [id],
+    );
+
+    const sent = await deliver(client, EMAIL, TOKEN, answering(200).fetcher);
+    assertOneLine(sent.log, 'Sukkal Resend');
+  });
+
+  test('U+2029 in a card whose credential vanished writes one log line', async () => {
+    await resendCard(`Sukkal Resend${String.fromCharCode(0x2029)}second line`);
+
+    // `mailSender` already joined the credential by the time `secretFor` asks
+    // for it again, so the row has to go missing in between to reach the
+    // branch `deliver`'s own comment names, rather than a card left half
+    // filled in. The same stand-in client `test/gates.test.ts` uses makes
+    // that window.
+    const real = client.query.bind(client);
+    const racing = Object.create(client) as ClientBase;
+    racing.query = (async (text: unknown, ...rest: unknown[]) => {
+      if (typeof text === 'string' && text.startsWith('SELECT ciphertext')) {
+        await client.query('DELETE FROM connection_credentials');
+      }
+      return (real as (...args: unknown[]) => unknown)(text, ...rest);
+    }) as ClientBase['query'];
+
+    const sent = await deliver(racing, EMAIL, TOKEN, answering(200).fetcher);
+    assertOneLine(sent.log, 'Sukkal Resend');
+  });
 });
