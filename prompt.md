@@ -136,50 +136,44 @@ repeating it as fact.
 ## Start here
 
 Measured on 1 October 2026 at source: the board paged to the end, 128 stories,
-and CI read with `gh run list --limit 1`. amaterasu answers. Nothing waits on a
-ruling: the decision queue is empty and `npm run decisions` reports 10 decided,
-0 waiting.
+and CI read with `gh run list --limit 1`. amaterasu answers.
 
-**The last session shipped four connection stories.**
-[KPA-159](https://koinon.atlassian.net/browse/KPA-159) opened the card,
-[KPA-162](https://koinon.atlassian.net/browse/KPA-162) made the name editable
-where the provider does not own it,
+**The last session shipped five stories.**
+[KPA-159](https://koinon.atlassian.net/browse/KPA-159) opened the connection
+card, [KPA-162](https://koinon.atlassian.net/browse/KPA-162) made the name
+editable where the provider does not own it,
 [KPA-160](https://koinon.atlassian.net/browse/KPA-160) read the sending address
-back, and [KPA-161](https://koinon.atlassian.net/browse/KPA-161) held a
-connection name to one log line. `handover.md` carries what each proved.
+back, [KPA-161](https://koinon.atlassian.net/browse/KPA-161) held a connection
+name to one log line, and [KPA-157](https://koinon.atlassian.net/browse/KPA-157)
+gave both expiry sweeps a schedule. `handover.md` carries what each proved.
 
-**The two dead Google connections were reconnected and kept their rows.** Ids 1
-and 3 still carry their `created_at` of 12 September. That is KPA-159 proved
-against the connections it was raised for.
+**Thirty stories sit in To Do. Nine are unblocked, and every one of them needs
+Shane**, for metered spend, a live tracker, a real mailbox, or a consent screen.
+That is the honest state: the work this session could do alone is done.
 
-**Thirty-one stories sit in To Do. Ten are unblocked, and one of those needs
-nobody but you.** The rest wait on Shane for metered spend, a live tracker, a
-real mailbox, or a consent screen.
+**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) is the one to pick
+up**, and it is parked in `Decision required` with two questions on it. Read
+them, and build the moment Shane rules. KPA-107 already writes the result it
+would raise a Needs you item from, so nothing technical blocks it.
 
-1. **[KPA-157](https://koinon.atlassian.net/browse/KPA-157), 2 points. Take this
-   one.** Two `sweepExpired` functions are written, tested, and called by nothing
-   but their own tests, at `src/auth/session.ts:216` and
-   `src/connections/oauth.ts:580`. `sukkal_local` still holds two abandoned
-   grants, from 13 and 19 September, each holding a PKCE verifier. The two
-   successful grants run on 1 October left nothing behind, because claiming one
-   is a `DELETE ... RETURNING`, so those two are abandoned rather than ordinary.
-   A test must prove the scheduler registers the job, since both functions
-   already have tests and neither caught that nobody called them.
-2. **[KPA-108](https://koinon.atlassian.net/browse/KPA-108), 3 points.** KPA-107
-   writes the result it would raise a Needs you item from, so it is unblocked in
-   substance. It carries two decisions, a fifth `needs_you` kind or a deadline,
-   and the expiry window. Post both before building, in the format
-   `scripts/decision-register.ts` reads.
+The other eight and what each waits on:
 
-After those two, every remaining unblocked story needs Shane. **The connections
-work is finished for now**: the four stories above closed every gap this file
-had recorded against it.
+- **KPA-12** and **KPA-86** spend metered money, on Voyage and on a real model.
+- **KPA-49** and **KPA-105** need a live tracker to poll.
+- **KPA-50** needs a ruling and a live Jira ticket.
+- **KPA-71** needs somebody at both ends of the nabium push.
+- **KPA-84** needs real mailboxes.
+- **KPA-147** has a domain in `sukkal.app` and still has no address, because
+  the root carries no A record.
 
-**What still waits on Shane**: KPA-12 and KPA-86 on metered spend, KPA-50 on a
-ruling and a live Jira ticket, KPA-71 on nabium at both ends, KPA-84 on real
-mailboxes, KPA-49 and KPA-105 on live trackers, and KPA-103's last criterion on a
-consent screen. KPA-147 has a domain in `sukkal.app` and still has no address,
-because the root carries no A record.
+**KPA-103's last criterion needs a consent screen**, which is Shane's to press.
+It is the one story In Progress.
 
-Thirty-two stories are open: 31 To Do and one In Progress, KPA-103, against 128
-stories and seven In Review. Nothing sits in Decision required.
+**If you are picking work up and everything above is blocked**, the useful thing
+is to read across the stories rather than within one. That is how KPA-157's two
+unreachable sweeps were found on 30 September, and how the four connection gaps
+of 1 October were found: each story was honest on its own and the gap sat
+between them.
+
+Thirty-one stories are open: 30 To Do and one In Progress, KPA-103, against 128
+stories and eight In Review.

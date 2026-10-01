@@ -16,8 +16,9 @@ the reset link sends through Resend.
 real person. All three are In Review, which in this project means shipped and
 waiting only on a read.
 
-**Four connection stories shipped on 1 October: KPA-159, KPA-160, KPA-161 and
-KPA-162. A connection can now be fixed and renamed in place.** Opening a card shows what the connection is and offers the one fix
+**Five stories shipped on 1 October: KPA-157, KPA-159, KPA-160, KPA-161 and
+KPA-162. A connection can now be fixed and renamed in place, and the worker
+sweeps what has expired.** Opening a card shows what the connection is and offers the one fix
 its method allows: Reconnect on a grant, a new key on a key. A card whose method
 takes a key may also be renamed. A grant method's card may not, because its name
 is the account the provider reported and `connectionNamed` matches on it.
@@ -64,11 +65,11 @@ because none of them writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
 two. Counted on 1 October 2026.
 
-The suite runs **677 tests with the vault and 657 without it**, measured on
-1 October 2026 after KPA-160 and KPA-161, on a database dropped and recreated
-before the run. One skip is reported in both, and it is meant to. KPA-159 added
-one test, KPA-162 three, KPA-160 one and KPA-161 four, which is what moved both
-counts.
+The suite runs **680 tests with the vault and 660 without it**, measured on
+1 October 2026 after KPA-157, on a database dropped and recreated before the
+run, and read three times rather than once. One skip is reported in both, and it
+is meant to. KPA-159 added one test, KPA-162 three, KPA-160 one, KPA-161 four and
+KPA-157 three, which is what moved both counts.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -90,14 +91,14 @@ vault, several suites skip and the summary still reports 1.
 
 Project KPA on `koinon.atlassian.net`. **128 stories, 89 accepted, which is 70%
 by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160,
-KPA-161 and KPA-162 were raised and all four of them shipped.
+KPA-161 and KPA-162 were raised and five stories shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 7, KPA-143, KPA-154 and KPA-158 to KPA-162, all shipped |
+| In Review | 8, KPA-143, KPA-154, KPA-157 and KPA-158 to KPA-162, all shipped |
 | In Progress | 1, KPA-103 |
-| To Do | 31 |
+| To Do | 30 |
 | Decision required | 0 |
 
 **Read these counts by issue type.** The project holds 162 issues: 128 stories,
@@ -138,7 +139,11 @@ All 30 stories that sat In Review were verified against the repository on
 30 September 2026, then accepted. **No story was found broken and no shipped work
 needed rework.** Four things came out of it that are worth keeping.
 
-**1. Two sweeps are written and nothing runs them. [KPA-157] fixes it.**
+**1. Two sweeps were written and nothing ran them. KPA-157 fixed it on
+1 October 2026.** `src/worker/sweep.ts` registers `expired.sweep`, daily at
+04:15 and once at start-up, and runs both through `Promise.allSettled` so one
+throwing cannot skip the other or fail the job. What follows is what the review
+found, kept because it says why the grants mattered.
 
     src/auth/session.ts:216       sweepExpired   expired session rows
     src/connections/oauth.ts:580  sweepExpired   abandoned OAuth grants
@@ -800,6 +805,14 @@ http://localhost:3000/oauth2/callback    Sukkal. With the slash
 `--test-concurrency=1` on a bare `node --test`, and the stale
 `apps/web/.next/dev/types` that fails a build after a page is removed. What
 follows is new, and each cost time between 9 September and 1 October 2026.
+
+**An agent's own test file can pass alone and fail in the full suite.** On
+1 October 2026 KPA-157's new worker tests passed three times against their own
+file and the full run then failed `schedules the nightly review at 03:30
+Sydney`, which the story never touched. The cause was the agent mid-move between
+two test files, and three later full runs were clean. Read a full run before you
+trust a file that starts pg-boss: two files starting a queue against one
+database interact, and the agent that wrote one cannot see the other.
 
 **Port 3000 is often already held, and `next dev` refuses rather than sharing
 it.** On 1 October 2026 a dev server was already running there, started outside

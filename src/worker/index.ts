@@ -21,6 +21,7 @@ import { connect, connectionString } from '../db/connect.ts';
 import { backlog, read, runDelivery, type Handler } from './deliveries.ts';
 import { NIGHTLY, NIGHTLY_CRON, schedule as scheduleNightly } from './nightly.ts';
 import { RECHECK, RECHECK_CRON, schedule as scheduleRecheck } from './recheck.ts';
+import { EXPIRY, EXPIRY_CRON, schedule as scheduleExpiry } from './sweep.ts';
 
 /** Migration 011 creates this. pg-boss owns every table inside it. */
 export const QUEUE_SCHEMA = 'pgboss';
@@ -158,9 +159,11 @@ async function main(): Promise<void> {
   await register(boss, client, HANDLERS);
   await scheduleNightly(boss, client);
   await scheduleRecheck(boss, client);
+  await scheduleExpiry(boss, client);
   console.log(
     `kpa-worker: ${DRAIN} every minute, ${TAKE} on demand, ` +
-      `${NIGHTLY} at ${NIGHTLY_CRON}, ${RECHECK} at ${RECHECK_CRON}`,
+      `${NIGHTLY} at ${NIGHTLY_CRON}, ${RECHECK} at ${RECHECK_CRON}, ` +
+      `${EXPIRY} at ${EXPIRY_CRON}`,
   );
 
   const stop = async (signal: string): Promise<void> => {

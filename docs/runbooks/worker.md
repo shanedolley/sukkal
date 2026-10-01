@@ -16,7 +16,7 @@ this process. They meet at the database and nowhere else.
 | Command | `npm run worker` |
 | Reads | `DATABASE_URL`, from `~/.config/sukkal/env` |
 | Queue | pg-boss, in the `pgboss` schema of the same database |
-| Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, `nightly.review` at 03:30 Sydney, and `connections.recheck` at five past every hour |
+| Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, `nightly.review` at 03:30 Sydney, `connections.recheck` at five past every hour, and `expired.sweep` at quarter past four |
 
 ## Before you start it
 
@@ -192,6 +192,37 @@ after the hourly run costs no second call.
 likely Google's limit for an OAuth client whose consent screen is in Testing.
 Reconnecting fixes it for another seven days. Moving the consent screen to In
 production ends the limit.
+
+## The expiry sweep
+
+`expired.sweep` runs once a day, at quarter past four, and once when the
+worker starts, in `src/worker/sweep.ts`. It removes two kinds of row.
+
+1. Session rows past `expires_at`, with `sweepExpired` in `src/auth/session.ts`.
+2. Abandoned OAuth grants past `expires_at`, with `sweepExpired` in
+   `src/connections/oauth.ts`.
+
+A session row past its expiry is already inert: `src/auth/session.ts` refuses
+to read one. An OAuth grant row holds a PKCE verifier until the browser
+returns, so an abandoned one is a small standing exposure rather than only
+growth, and clearing it is the reason this job exists.
+
+The two sweeps run together and neither waits on the other. One throwing
+leaves the row behind for the next run and still lets the other sweep finish,
+so the job never fails as a whole over one broken table. The run prints one
+line naming both counts.
+
+```
+expired.sweep: sessions 2, grants 1
+```
+
+A sweep that fails prints a second line naming which one and why, and the
+count beside it reads `failed` rather than a number.
+
+```
+expired.sweep: sessions failed, grants 1
+expired.sweep: sessions sweep failed: error: relation "sessions" does not exist
+```
 
 ## Under systemd
 

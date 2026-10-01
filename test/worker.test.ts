@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import type { ClientBase } from 'pg';
@@ -23,8 +25,10 @@ import {
   raiseFailure,
   schedule,
 } from '../src/worker/nightly.ts';
+import { EXPIRY, EXPIRY_CRON, schedule as scheduleExpiry } from '../src/worker/sweep.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
+const INDEX = path.join(import.meta.dirname, '..', 'src', 'worker', 'index.ts');
 const url = process.env['DATABASE_URL_TEST'];
 
 /** Puts one delivery in the table and hands back its id. */
@@ -64,6 +68,65 @@ function stub(throws?: string): Handler & { calls: Delivery[] } {
   };
   return Object.assign(handler, { calls });
 }
+
+/** A 64-character hex id, the shape `sessions` and `oauth_grants` both
+ *  require. Neither table's own value matters to the sweep, only its age. */
+function hexId(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+/** `expired` picks a `created_at`/`expires_at` pair either side of now, both
+ *  before `now()` or both after it, so the row satisfies the table's own
+ *  rule that an expiry follows the row's creation. */
+async function session(client: ClientBase, expired: boolean): Promise<string> {
+  const id = hexId();
+  const [created, expires] = expired
+    ? ["now() - interval '2 hours'", "now() - interval '1 hour'"]
+    : ['now()', "now() + interval '60 minutes'"];
+  await client.query(
+    `INSERT INTO sessions (id, owner_id, created_at, expires_at)
+     VALUES ($1, 1, ${created}, ${expires})`,
+    [id],
+  );
+  return id;
+}
+
+async function grant(client: ClientBase, expired: boolean): Promise<string> {
+  const id = hexId();
+  const [created, expires] = expired
+    ? ["now() - interval '20 minutes'", "now() - interval '10 minutes'"]
+    : ['now()', "now() + interval '10 minutes'"];
+  await client.query(
+    `INSERT INTO oauth_grants (id, provider, verifier, created_at, expires_at)
+     VALUES ($1, 'google', $2, ${created}, ${expires})`,
+    [id, 'v'.repeat(43)],
+  );
+  return id;
+}
+
+async function countRows(client: ClientBase, table: string): Promise<number> {
+  const found = await client.query<{ n: string }>(`SELECT count(*) AS n FROM ${table}`);
+  return Number(found.rows[0]!.n);
+}
+
+// `main()` needs a live database and a live boss, so it is read as source
+// rather than called. This is the check that catches KPA-157's actual gap:
+// `sweepExpired` already worked and was already tested, and nothing called
+// it from the worker. It needs no database, so it is not inside a describe
+// that skips without one.
+test('the worker calls the sweep schedule at start-up, the way it calls recheck', async () => {
+  const source = await readFile(INDEX, 'utf8');
+  assert.match(
+    source,
+    /schedule as scheduleExpiry\s*\}\s*from\s*'\.\/sweep\.ts'/,
+    'index.ts imports the sweep schedule',
+  );
+  assert.match(
+    source,
+    /await scheduleExpiry\(boss, client\)/,
+    'main() calls it, not only imports it',
+  );
+});
 
 describe('the delivery backlog', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () => {
   let client: ClientBase & { end: () => Promise<void> };
@@ -232,6 +295,8 @@ describe('the queue', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
 
   beforeEach(async () => {
     await client.query('DELETE FROM inbound_deliveries');
+    await client.query('DELETE FROM sessions');
+    await client.query('DELETE FROM oauth_grants');
   });
 
   test('installs into the schema the migration created, not into public', async () => {
@@ -356,6 +421,78 @@ describe('the queue', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
     } finally {
       await client.query('ALTER TABLE edges_hidden RENAME TO edges');
       await client.query('DELETE FROM needs_you');
+    }
+  });
+
+  test('schedules the expiry sweep daily, and removes only what expired', async () => {
+    // `scheduleExpiry` sends one start-up job itself, before any row below
+    // exists, so that first run removes nothing. The job it registers is
+    // what this test reads next.
+    await scheduleExpiry(boss, client);
+
+    const cron = await client.query<{ name: string; cron: string }>(
+      `SELECT name, cron FROM ${QUEUE_SCHEMA}.schedule WHERE name = $1`,
+      [EXPIRY],
+    );
+    assert.equal(cron.rows[0]?.cron, EXPIRY_CRON, 'the worker registered the sweep on a cron');
+
+    const liveSession = await session(client, false);
+    await session(client, true);
+    const liveGrant = await grant(client, false);
+    await grant(client, true);
+
+    await boss.send(EXPIRY, {});
+
+    const deadline = Date.now() + 30_000;
+    let sessionsLeft = await countRows(client, 'sessions');
+    let grantsLeft = await countRows(client, 'oauth_grants');
+    while ((sessionsLeft > 1 || grantsLeft > 1) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      sessionsLeft = await countRows(client, 'sessions');
+      grantsLeft = await countRows(client, 'oauth_grants');
+    }
+
+    const remainingSessions = await client.query<{ id: string }>('SELECT id FROM sessions');
+    assert.deepEqual(remainingSessions.rows.map((row) => row.id), [liveSession]);
+    const remainingGrants = await client.query<{ id: string }>('SELECT id FROM oauth_grants');
+    assert.deepEqual(remainingGrants.rows.map((row) => row.id), [liveGrant]);
+  });
+
+  test('a sweep that fails does not stop the other, and the job still completes', async () => {
+    // A real failure, not a stub, the same way the nightly review test above
+    // breaks a table the advisories read.
+    await scheduleExpiry(boss, client);
+    const liveGrant = await grant(client, false);
+    await grant(client, true);
+
+    await client.query('ALTER TABLE sessions RENAME TO sessions_hidden');
+    try {
+      await boss.send(EXPIRY, {});
+
+      const deadline = Date.now() + 30_000;
+      let grantsLeft = await countRows(client, 'oauth_grants');
+      while (grantsLeft > 1 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        grantsLeft = await countRows(client, 'oauth_grants');
+      }
+
+      const remaining = await client.query<{ id: string }>('SELECT id FROM oauth_grants');
+      assert.deepEqual(
+        remaining.rows.map((row) => row.id),
+        [liveGrant],
+        'the grants sweep ran and removed the expired one, even though sessions could not be reached',
+      );
+
+      const done = await client.query<{ n: string }>(
+        `SELECT count(*) AS n FROM ${QUEUE_SCHEMA}.job WHERE name = $1 AND state = 'completed'`,
+        [EXPIRY],
+      );
+      assert.ok(
+        Number(done.rows[0]!.n) > 0,
+        'the handler did not reject, so pg-boss marked the job completed rather than retrying it',
+      );
+    } finally {
+      await client.query('ALTER TABLE sessions_hidden RENAME TO sessions');
     }
   });
 });
