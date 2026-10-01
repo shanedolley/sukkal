@@ -47,9 +47,11 @@ import { requireOwner } from "@/lib/session";
 import { revokeConnection } from "../../../../../../src/connections/oauth.ts";
 import {
   addConnection,
+  connectionNamed,
   listConnections,
-  providerOf,
+  methodOf,
   removeConnection,
+  renameConnection,
   setCredential,
 } from "../../../../../../src/connections/store.ts";
 
@@ -200,15 +202,28 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 /**
- * Replaces the credential on a connection that already exists. KPA-159.
+ * Replaces the credential on a connection that already exists, renames it, or
+ * both. KPA-159 and KPA-162.
  *
- * POST CANNOT DO THIS. `addConnection` inserts a row, and the table refuses a
- * second row on the same (provider, name), so posting the same account back
+ * POST CANNOT DO EITHER. `addConnection` inserts a row, and the table refuses
+ * a second row on the same (provider, name), so posting the same account back
  * answers "That account is already on this provider." A dead key therefore
  * had no way to be retyped without deleting the connection first, which threw
  * away its id, its created_at and its verification history. PATCH updates the
  * credential in place instead, through the same `setCredential` POST already
  * calls, so a reconnect and a first connection seal a key the same way.
+ *
+ * A GRANT METHOD IS NOT RENAMEABLE. `connectionNamed` matches a second grant
+ * to its row by provider and `lower(name)`, which the OAuth callback calls on
+ * every grant. A name this route let drift on such a card would make the next
+ * grant match nothing, write a second row, and leave the first dead beside
+ * it: the failure KPA-159 shipped to prevent, arriving by another door. The
+ * screen already hides the rename form on such a card; this check is the
+ * boundary, which admits a request the screen never sends.
+ *
+ * A RENAME AND A RESEAL ARE ONE WRITE, when a request carries both. Both
+ * statements run on one client inside a transaction, so a failed seal leaves
+ * no renamed row.
  */
 export async function PATCH(request: Request): Promise<Response> {
   // The proxy already refused a stranger. This is the second check Next's
@@ -231,26 +246,67 @@ export async function PATCH(request: Request): Promise<Response> {
   > | null;
   if (!body) return bad("Send a JSON body.");
 
-  const { secret, expiresOn } = body;
-  if (typeof secret !== "string" || secret.trim() === "") {
-    return bad("Give the new key.");
+  const { secret, expiresOn, name } = body;
+  if (secret === undefined && name === undefined) {
+    return bad("Give the new key, or a new name.");
+  }
+
+  let newSecret: string | null = null;
+  if (secret !== undefined) {
+    if (typeof secret !== "string" || secret.trim() === "") {
+      return bad("Give the new key.");
+    }
+    newSecret = secret;
   }
   if (expiresOn != null && (typeof expiresOn !== "string" || !DAY.test(expiresOn))) {
     return bad("Write the expiry as YYYY-MM-DD.");
   }
 
+  let newName: string | null = null;
+  if (name !== undefined) {
+    if (typeof name !== "string" || name.trim() === "") {
+      return bad("Name the connection.");
+    }
+    newName = name.trim();
+  }
+
   const client = await db().connect();
   try {
-    // Refuses an id that holds no row, rather than sealing a key against a
-    // connection nobody holds.
-    const provider = await providerOf(client, id);
-    if (provider === null) return bad("That connection does not exist.");
+    // Refuses an id that holds no row, rather than acting on a connection
+    // nobody holds.
+    const row = await methodOf(client, id);
+    if (row === null) return bad("That connection does not exist.");
 
-    await setCredential(client, id, secret, {
-      expiresOn: (expiresOn as string | undefined) ?? null,
-    });
+    if (newName !== null) {
+      const method = PROVIDERS.find((entry) => entry.id === row.provider)?.methods.find(
+        (entry) => entry.id === row.method
+      );
+      if (method?.grant) {
+        return bad("The provider names that card.");
+      }
+
+      // A case-insensitive clash would make a grant ambiguous while passing
+      // the table's own check, which is case sensitive.
+      const clash = await connectionNamed(client, row.provider, newName);
+      if (clash !== null && clash !== id) {
+        return bad("That account is already on this provider.");
+      }
+    }
+
+    await client.query("BEGIN");
+    if (newName !== null) await renameConnection(client, id, newName);
+    if (newSecret !== null) {
+      await setCredential(client, id, newSecret, {
+        expiresOn: (expiresOn as string | undefined) ?? null,
+      });
+    }
+    await client.query("COMMIT");
     return NextResponse.json({ ok: true });
   } catch (cause) {
+    await client.query("ROLLBACK").catch(() => {});
+    if (refusedByTable(cause)) {
+      return bad("That account is already on this provider.");
+    }
     // The secret is not in `cause`. `setCredential` seals it before the
     // statement runs, so the parameter the driver reports is the ciphertext.
     return refused("connection update", cause);

@@ -23,7 +23,7 @@ import {
 } from '../src/auth/reset.ts';
 import { fingerprint, issue, read } from '../src/auth/session.ts';
 import { KEY_VARIABLE } from '../src/connections/crypto.ts';
-import { addConnection, setCredential } from '../src/connections/store.ts';
+import { addConnection, renameConnection, setCredential } from '../src/connections/store.ts';
 import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 
@@ -603,6 +603,28 @@ describe('a password reset', { skip: url ? false : 'DATABASE_URL_TEST is unset' 
     const mail = message(seen[0]?.init);
     assert.equal(mail.from, FROM, 'a crafted display name reached the from header');
     assert.ok(!mail.from.includes('Bcc'), `the header carried a second one: ${mail.from}`);
+  });
+
+  // KPA-162. Renaming the card the mail is sent from is the one way the
+  // header anybody reads can change, so the rename has to reach it rather
+  // than stopping at the row.
+  test('a renamed Resend card changes what the From header reads', async () => {
+    const id = await resendCard(DISPLAY, FROM);
+
+    const before = await mailSender(client);
+    assert.ok(before);
+    const headerBefore = fromHeader(before.name, FROM);
+    assert.equal(headerBefore, fromHeader(DISPLAY, FROM));
+
+    await renameConnection(client, id, 'Koinon Resend');
+
+    const after = await mailSender(client);
+    assert.ok(after);
+    const headerAfter = fromHeader(after.name, FROM);
+    assert.equal(headerAfter, fromHeader('Koinon Resend', FROM));
+    assert.notEqual(headerAfter, headerBefore, 'the rename did not change the From header');
+    // Still one quoted-string and one address, escaped the same way as before.
+    assert.equal(headerAfter, `"Koinon Resend" <${FROM}>`);
   });
 
   test('a Resend card with no address sends nothing and says so', async () => {

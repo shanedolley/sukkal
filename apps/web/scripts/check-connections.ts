@@ -372,11 +372,52 @@ assert.match(
   "the typed key reaches no PATCH, so the form collects it and sends it nowhere"
 );
 
+// 10c. A card whose method takes a key may be renamed, and a card whose
+//      method runs a grant may not. KPA-162. The rule is the same one
+//      `connectionNamed` depends on: a grant method's name is the account the
+//      provider reported, so letting it drift breaks the match a second grant
+//      makes. Each pattern below is a string only the new code could produce,
+//      checked against the pre-change file and found in none of it.
+assert.match(
+  dialog,
+  /function RenameConnection\(/,
+  "the connections screen offers no way to rename a connection"
+);
+assert.match(
+  dialog,
+  /renameConnection\(connection\.id, trimmed\)/,
+  "the rename form reaches no PATCH, so the typed name goes nowhere"
+);
+assert.match(
+  dialog,
+  /The provider names this card, so it cannot be renamed here\./,
+  "a grant method's card does not say the provider names it"
+);
+// The same screen must not then offer a reconnect as the way to rename it. A
+// grant under a different account makes a second connection, which the
+// Reconnect block says, so the two sentences would disagree.
+assert.doesNotMatch(
+  dialog,
+  /Reconnect under a different account to change it/,
+  "the screen offers a reconnect as a rename, and contradicts its own Reconnect text"
+);
+assert.match(
+  dialog,
+  /Renaming it changes the name recipients see beside the address/,
+  "a sending connection's rename form does not say the name travels in the mail"
+);
+assert.match(
+  dialog,
+  /\{!grant && <RenameConnection connection=\{connection\} sends=\{sends\} \/>\}/,
+  "the rename form opens for a grant method, which the provider alone may name"
+);
+
 console.log(
   "connections OK: ten providers each with a mark, only web addresses open, a key opens nothing, " +
     `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, the Jira token is dated, ` +
     "the Resend probe costs nothing, Resend alone asks for a Send from address, " +
-    "and a card reconnects in place rather than deleting and rebuilding"
+    "a card reconnects in place rather than deleting and rebuilding, and a card whose " +
+    "method takes a key may be renamed while a grant method's card says the provider names it"
 );
 
 // ══ The same claims, against the rows ═══════════════════════════════════════

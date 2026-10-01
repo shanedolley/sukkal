@@ -153,6 +153,35 @@ export async function providerOf(
 }
 
 /**
+ * The provider and method a connection runs, or null when no such row exists.
+ *
+ * The rename route calls it to refuse a grant method, which only the row
+ * names and the request body does not.
+ */
+export async function methodOf(
+  client: ClientBase,
+  id: string,
+): Promise<{ provider: string; method: string } | null> {
+  const found = await client.query<{ provider: string; method: string }>(
+    'SELECT provider, method FROM connections WHERE id = $1',
+    [id],
+  );
+  return found.rows[0] ?? null;
+}
+
+/**
+ * Renames a connection. A rename touches no credential: the ciphertext, the
+ * id and the created_at of the row it points at are all untouched.
+ */
+export async function renameConnection(
+  client: ClientBase,
+  id: string,
+  name: string,
+): Promise<void> {
+  await client.query('UPDATE connections SET name = $2 WHERE id = $1', [id, name]);
+}
+
+/**
  * Seals `secret` and stores it against `id`, replacing whatever was there.
  *
  * Retyping a key is the ordinary case, so this replaces rather than refuses.

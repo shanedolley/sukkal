@@ -12,6 +12,7 @@ import {
   listConnections,
   recordVerification,
   removeConnection,
+  renameConnection,
   secretFor,
   setCredential,
 } from '../src/connections/store.ts';
@@ -367,6 +368,86 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     assert.equal(replaced.verifiedOk, null, 'a new secret is unchecked, not still working');
   });
 
+  // KPA-162. A rename writes `connections.name` alone, so the row's id, its
+  // created_at, its sealed credential and its verification all have to read
+  // back unchanged.
+  test('a rename changes the name and touches no credential', async () => {
+    await clear();
+    const id = await addConnection(client, {
+      provider: 'linear',
+      name: 'Koinon Linear',
+      method: 'key',
+    });
+    await setCredential(client, id, SECRET);
+    await recordVerification(client, id, 'Reached the workspace.', true);
+
+    const before = await client.query<{ id: string; created_at: Date }>(
+      'SELECT id, created_at FROM connections WHERE id = $1',
+      [id],
+    );
+    const row = before.rows[0];
+    assert.ok(row);
+    const sealedBefore = await client.query<{ ciphertext: Buffer }>(
+      'SELECT ciphertext FROM connection_credentials WHERE connection = $1',
+      [id],
+    );
+
+    await renameConnection(client, id, 'Koinon Linear, renamed');
+
+    const after = await client.query<{ id: string; created_at: Date; name: string }>(
+      'SELECT id, created_at, name FROM connections WHERE id = $1',
+      [id],
+    );
+    const changed = after.rows[0];
+    assert.ok(changed);
+    assert.equal(changed.name, 'Koinon Linear, renamed');
+    assert.equal(changed.id, row.id, 'the rename changed the row id');
+    assert.equal(
+      changed.created_at.getTime(),
+      row.created_at.getTime(),
+      'the rename changed when the row was created',
+    );
+
+    const sealedAfter = await client.query<{ ciphertext: Buffer }>(
+      'SELECT ciphertext FROM connection_credentials WHERE connection = $1',
+      [id],
+    );
+    assert.deepEqual(
+      sealedAfter.rows[0]?.ciphertext,
+      sealedBefore.rows[0]?.ciphertext,
+      'the rename touched the sealed credential',
+    );
+    assert.equal(await secretFor(client, id), SECRET, 'the rename changed the stored secret');
+
+    const listed = (await listConnections(client)).find((one) => one.id === id);
+    assert.ok(listed);
+    assert.equal(listed.verdict, 'Reached the workspace.', 'the rename cleared the verification');
+    assert.equal(listed.verifiedOk, true, 'the rename cleared the verification');
+  });
+
+  // KPA-162. `connectionNamed` is what the OAuth callback matches a second
+  // grant against, and it is case insensitive while the table's own unique
+  // index is not. The route's duplicate-name guard on a rename has to read
+  // the same way, or two cards differing only in case would make the next
+  // grant ambiguous while the table admitted the rename.
+  test('connectionNamed matches a clash differing only in case', async () => {
+    await clear();
+    const bhp = await addConnection(client, {
+      provider: 'microsoft',
+      name: 'BHP Microsoft',
+      method: 'oauth',
+    });
+    await addConnection(client, {
+      provider: 'microsoft',
+      name: 'Sydney Water Microsoft',
+      method: 'oauth',
+    });
+
+    const clash = await connectionNamed(client, 'microsoft', 'sydney water microsoft');
+    assert.notEqual(clash, null, 'a case-insensitive clash matched no row');
+    assert.notEqual(clash, bhp, 'the clash matched the row being renamed rather than the other one');
+  });
+
   // KPA-159. The old fix for a dead credential was deleting the connection
   // and rebuilding it, which threw away its id, its created_at and its
   // verification history. A reconnect is `connectionNamed` followed by
@@ -607,6 +688,44 @@ describe('the send-from address at the trust boundary', () => {
       route,
       /sendFrom: address === "" \? null : address/,
       'the route checks the address and stores none',
+    );
+  });
+});
+
+// Where a rename onto a grant method, or onto a name another card on the same
+// provider already holds, is refused. KPA-162. The functional proof is above,
+// against the store; this is the wiring, read off the route the way the
+// send-from boundary is read off above it.
+describe('renaming a connection at the trust boundary', () => {
+  test('the route refuses a grant method and a case-insensitive clash', () => {
+    const route = readFileSync(
+      path.join(
+        import.meta.dirname,
+        '..',
+        'apps',
+        'web',
+        'app',
+        '(app)',
+        'api',
+        'connections',
+        'route.ts',
+      ),
+      'utf8',
+    );
+    assert.match(
+      route,
+      /if \(method\?\.grant\) \{\s*\n\s*return bad\("The provider names that card\."\);/,
+      'the route admits a rename of a grant method',
+    );
+    assert.match(
+      route,
+      /connectionNamed\(client, row\.provider, newName\)/,
+      'the route checks no case-insensitive clash before renaming',
+    );
+    assert.match(
+      route,
+      /clash !== null && clash !== id/,
+      'the route refuses no clash that is not the row being renamed',
     );
   });
 });

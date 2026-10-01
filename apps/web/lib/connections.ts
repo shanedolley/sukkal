@@ -109,3 +109,14 @@ export function replaceKey(
     expiresOn,
   });
 }
+
+/**
+ * Renames a connection whose method takes a key. KPA-162.
+ *
+ * A grant method's name is the account the provider reported, matched by
+ * `connectionNamed` in `src/connections/store.ts` on every later grant, so
+ * the route refuses to rename one and this is never called for one.
+ */
+export function renameConnection(id: string, name: string): Promise<string | null> {
+  return send(store, `${URL}?id=${encodeURIComponent(id)}`, "PATCH", { name });
+}

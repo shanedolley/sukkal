@@ -63,6 +63,7 @@ import { Label } from "@/components/ui/label";
 import {
   addConnection,
   removeConnection,
+  renameConnection,
   replaceKey,
   useConnections,
   type Connection,
@@ -638,6 +639,66 @@ function ReplaceKey({ connection, method }: { connection: Connection; method: Me
   );
 }
 
+/**
+ * Changes the name on a connection whose method takes a key. KPA-162.
+ *
+ * A grant method's card is named by the provider, so no such form opens for
+ * one: `ConnectionDetail` below holds the choice, and the route refuses the
+ * request anyway, since the screen is a convenience and the route is the
+ * boundary.
+ */
+function RenameConnection({ connection, sends }: { connection: Connection; sends: boolean }) {
+  const nameId = useId();
+  const [name, setName] = useState(connection.name);
+  const [busy, setBusy] = useState(false);
+  const [fault, setFault] = useState("");
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const trimmed = name.trim();
+    if (trimmed === "" || trimmed === connection.name) return;
+    setBusy(true);
+    setFault("");
+    void renameConnection(connection.id, trimmed).then((said) => {
+      setBusy(false);
+      if (said !== null) setFault(said);
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-2">
+      <Label htmlFor={nameId}>Name</Label>
+      <Input
+        id={nameId}
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        autoComplete="off"
+      />
+      <p className="text-muted-foreground text-xs">
+        {sends
+          ? "What tells this account from the next one on the same provider. Renaming it changes the name recipients see beside the address."
+          : "What tells this account from the next one on the same provider."}
+      </p>
+      {fault && (
+        <p
+          role="alert"
+          className="border-destructive/40 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm"
+        >
+          {fault}
+        </p>
+      )}
+      <Button
+        type="submit"
+        size="sm"
+        className="self-start"
+        disabled={busy || name.trim() === "" || name.trim() === connection.name}
+      >
+        {busy ? "Saving..." : "Save name"}
+      </Button>
+    </form>
+  );
+}
+
 /** What a card opens into: the connection as it stands, and the one way this
  *  method offers to fix a dead credential. A method that neither grants nor
  *  takes a key, such as a subscription, shows the facts and offers neither. */
@@ -651,12 +712,15 @@ function ConnectionDetail({
   const method = entry.methods.find((item) => item.id === connection.method);
   const grant = method?.grant === true;
   const secretField = (method?.fields ?? []).some((field) => field.kind === "secret");
+  // A method whose form asks for a send-from address is one whose mail a
+  // stranger reads, so renaming such a card says so where the name is edited.
+  const sends = (method?.fields ?? []).some((field) => field.kind === "email");
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
         <Field label="Provider" value={entry.name} />
-        <Field label="Name" value={connection.name} />
+        {grant && <Field label="Name" value={connection.name} />}
         <Field label="Method" value={method?.label ?? connection.method} />
         <Field
           label="Issued"
@@ -673,6 +737,18 @@ function ConnectionDetail({
           }
         />
       </div>
+
+      {/* No rename here, and no hint that a reconnect is one. A grant under a
+          different account makes a second connection, which the Reconnect
+          block below says in as many words, so a sentence pointing at it as a
+          way to rename this card would contradict it. */}
+      {grant && (
+        <p className="text-muted-foreground text-xs">
+          The provider names this card, so it cannot be renamed here. The name
+          is the account that consented.
+        </p>
+      )}
+      {!grant && <RenameConnection connection={connection} sends={sends} />}
 
       {/* The verdict is a sentence the provider wrote, and one of them runs to
           three lines. It sat in the Last checked box until 1 October 2026 and

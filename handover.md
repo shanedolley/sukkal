@@ -16,10 +16,19 @@ the reset link sends through Resend.
 real person. All three are In Review, which in this project means shipped and
 waiting only on a read.
 
-**KPA-159 followed, and a dead connection can now be reconnected in place.**
-Opening a card shows what the connection is and offers the one fix its method
-allows: Reconnect on a grant, a new key on a key. The row keeps its id, its
-`created_at` and its history, which deleting and rebuilding threw away.
+**KPA-159 and KPA-162 followed, and a connection can now be fixed and renamed
+in place.** Opening a card shows what the connection is and offers the one fix
+its method allows: Reconnect on a grant, a new key on a key. A card whose method
+takes a key may also be renamed. A grant method's card may not, because its name
+is the account the provider reported and `connectionNamed` matches on it.
+
+**The two dead Google connections were reconnected on 1 October 2026, and the
+rows survived.** `shanevdolley@gmail.com` and `shane.dolley@collibra.com` kept
+ids 1 and 3 and their `created_at` of 12 September, and their credentials now
+read `issued_on` 1 October with the verification cleared, which is what
+`setCredential` does to a key nobody has tried. Deleting and rebuilding would
+have made two new rows. That is KPA-159 proved against the connections it was
+raised for, rather than against a fixture.
 
 **A real reset mail now sends.** On 1 October 2026 one went through the real
 Resend API with the real send-only key to the owner's own address, using
@@ -50,14 +59,15 @@ stands* below says what it found.
 
 **Thirty-one migration files, numbered to `032`.** KPA-158 added
 `032_connection_send_from.sql`, and KPA-143 added none, because the Resend key is
-a credential like every other. KPA-159 added none, because it writes no column.
+a credential like every other. KPA-159 and KPA-162 added none, because neither
+writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
 two. Counted on 1 October 2026.
 
-The suite runs **668 tests with the vault and 648 without it**, measured on
-1 October 2026 after KPA-159, on a database dropped and recreated before each
-run. One skip is reported in both, and it is meant to. KPA-159 added the one
-test that moved both counts.
+The suite runs **672 tests with the vault and 652 without it**, measured on
+1 October 2026 after KPA-162, on a database dropped and recreated before each
+run. One skip is reported in both, and it is meant to. KPA-159 added one test
+and KPA-162 added three, which is what moved both counts.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -79,14 +89,14 @@ vault, several suites skip and the summary still reports 1.
 
 Project KPA on `koinon.atlassian.net`. **128 stories, 89 accepted, which is 70%
 by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160,
-KPA-161 and KPA-162 were raised and KPA-159 shipped.
+KPA-161 and KPA-162 were raised and KPA-159 and KPA-162 shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 4, KPA-143, KPA-154, KPA-158 and KPA-159, all shipped |
+| In Review | 5, KPA-143, KPA-154, KPA-158, KPA-159 and KPA-162, all shipped |
 | In Progress | 1, KPA-103 |
-| To Do | 34 |
+| To Do | 33 |
 | Decision required | 0 |
 
 **Read these counts by issue type.** The project holds 162 issues: 128 stories,
@@ -135,9 +145,12 @@ needed rework.** Four things came out of it that are worth keeping.
 Both are tested, and only their tests call them. `src/worker/index.ts` registers
 deliveries, nightly and recheck, and `nightly.ts` imports `sweep` from
 `src/memory/sweep.ts`, which reviews facts and is a different function.
-`sukkal_local` held two expired sessions and two stale grants when this was
-found. An expired session is inert, because a read refuses it. An abandoned grant
-holds a PKCE verifier, which is why this is worth doing rather than noting.
+`sukkal_local` still holds the two stale grants, measured on 1 October 2026:
+they were created on 13 and 19 September and each expired ten minutes later. The
+two successful grants run on 1 October left nothing behind, because claiming one
+is a `DELETE ... RETURNING`. So the two that remain are abandoned rather than
+ordinary, and each holds a PKCE verifier. An expired session is inert, because a
+read refuses it. The verifier is why this is worth doing rather than noting.
 
 **2. The issue cache has no caller.** KPA-98, KPA-99 and KPA-100 built `issues`,
 `issue_blocks`, `sprints` and `issue_writes` across migrations 022, 027 and 028.
