@@ -16,6 +16,7 @@ import {
   ArrowUpRightIcon,
   CalendarClockIcon,
   CircleHelpIcon,
+  KeyRoundIcon,
   MailIcon,
   ShieldAlertIcon,
 } from "lucide-react";
@@ -37,6 +38,11 @@ const KIND: Record<
     icon: ShieldAlertIcon,
     label: "Refused by policy",
     tone: "text-destructive",
+  },
+  credential: {
+    icon: KeyRoundIcon,
+    label: "Credential",
+    tone: "text-warning",
   },
 };
 

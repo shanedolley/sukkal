@@ -31,6 +31,7 @@
  */
 import type { ClientBase } from 'pg';
 
+import { reconcileCredentialItems } from './needs-you.ts';
 import { GRANTS, renew, whoami } from './oauth.ts';
 import { recordVerification, secretFor, setCredential } from './store.ts';
 import { probeFor, verify } from './verify.ts';
@@ -108,8 +109,15 @@ export async function checkOne(
 }
 
 /**
- * Checks every credential not checked inside the window, and records each
- * answer on its row. Returns what it found, for the worker's log.
+ * Checks every credential not checked inside the window, records each answer
+ * on its row, and reconciles the "needs you" item each credential may hold
+ * (KPA-108: expiring, lapsed, or failing). Returns what it found, for the
+ * worker's log.
+ *
+ * The reconcile runs last and over every connection, not just the ones due
+ * this run: a credential inside its verification window can still cross into
+ * its expiry window between runs, and reconciling only the due rows would
+ * miss that.
  */
 export async function recheck(client: ClientBase, now: Date, fetcher: typeof fetch): Promise<Checked[]> {
   const due = await client.query<Due>(
@@ -131,5 +139,8 @@ export async function recheck(client: ClientBase, now: Date, fetcher: typeof fet
     await recordVerification(client, connection.id, answer.verdict, answer.ok);
     found.push({ id: connection.id, name: connection.name, ...answer });
   }
+
+  await reconcileCredentialItems(client, now.toISOString().slice(0, 10));
+
   return found;
 }

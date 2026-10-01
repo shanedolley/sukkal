@@ -34,7 +34,7 @@ check constraint here rather than an instruction in a prompt.
 | `rejections` | A candidate that did not become a fact, and why, so a later run does not raise it again |
 | `policies` | The rules a policy engine consults before every outbound action |
 | `audit` | One entry per attempt, allowed or denied alike. Append only |
-| `needs_you` | The four kinds of item waiting on Shane. A row closes rather than disappears |
+| `needs_you` | The five kinds of item waiting on Shane. A row closes rather than disappears |
 | `meetings` | A calendar event, never the transcript it produces |
 | `conversations` | A chat, with the answers and citations below |
 | `answers` | One question and its answer, read back in the order asked |
@@ -64,7 +64,7 @@ check constraint here rather than an instruction in a prompt.
 | `edge_kind` | `derived_from`, `links_to`, `supersedes` |
 | `source_kind` | `meeting`, `mail`, `document`, `chat` |
 | `audit_outcome` | `allowed`, `denied`, `attempted` |
-| `needs_you_kind` | `draft`, `question`, `denied-action`, `deadline` |
+| `needs_you_kind` | `draft`, `question`, `denied-action`, `deadline`, `credential` |
 | `contract_date_source` | `typed`, `salesforce` |
 | `issue_status` | `backlog`, `todo`, `in-progress`, `in-review`, `done`, `cancelled` |
 | `issue_kind` | `epic`, `story`, `subtask` |
@@ -237,14 +237,19 @@ just the denials and newest first, come from one index.
 
 ## The needs-you queue
 
-Three writers fill this table and one of them closes a row. The sweep in
+Four writers fill this table and two of them close a row. The sweep in
 `src/memory/sweep.ts` opens a `deadline` row per stale fact, and it is the only
 thing that closes one, when the fact has stopped being stale. `raiseFailure` in
 `src/worker/nightly.ts` opens a `question` row when the nightly run breaks.
 `src/policy/act.ts` opens a `denied-action` row when the policy refuses an
-action Shane has to decide about. Nothing else closes a row: ADR-0017's
-re-confirm write moves `stale_after` and leaves the item open, and
-`apps/web/lib/needs-you.ts` reads only the open ones.
+action Shane has to decide about. `reconcileCredentialItems` in
+`src/connections/needs-you.ts` opens and closes a `credential` row: open when
+a connection's credential fails the hourly recheck or its expiry falls inside
+`EXPIRY_WINDOW_DAYS`, closed when the connection verifies OK and its expiry, if
+any, has moved back outside that window. `recheck()` calls it once a run has
+checked everything due. Nothing else closes a row: ADR-0017's re-confirm write
+moves `stale_after` and leaves the item open, and `apps/web/lib/needs-you.ts`
+reads only the open ones.
 
 `raised_for` records the `stale_after` a `deadline` row was raised for, and
 the sweep opens nothing for a staleness a row already names, open or closed.
@@ -271,14 +276,23 @@ Closing the item settles that refusal, and the next attempt opens a fresh one.
 share one intent string collapse to one item. The log still records both.
 Narrow the guard when a target column arrives.
 
+A `credential` row guards on the connection and on being open, never on a
+date: unlike `deadline`, none of its three triggers -- an expiry inside the
+window, a lapsed credential, or a failed recheck -- always carries one, so
+`raised_for` stays null here too and the guard cannot key on it the way
+`deadline`'s does. `connection_id` names the connection and `ON DELETE
+CASCADE` takes the row with it if the connection is ever removed, because
+once it is gone there is nothing left to renew. Migration 033.
+
 A denial the policy table failed to load raises nothing. `deny-by-default`
 covers four failures, and only one of them, an action no rule describes,
 judged the action. The other three ask an operator to repair the table, and an
 item raised on one would name a rule that never fired. ADR-0021.
 
-Four kinds wait on Shane: a draft to send, a question to answer, an action the
-policy refused, and a deadline coming. The screen reads them as one list in
-arrival order, so they share one table and one shape.
+Five kinds wait on Shane: a draft to send, a question to answer, an action the
+policy refused, a deadline coming, and a credential needing attention. The
+screen reads them as one list in arrival order, so they share one table and
+one shape.
 
 A denial names the audit entry that refused it, so the screen can show what the
 policy said rather than only that something was stopped. A row may point at the

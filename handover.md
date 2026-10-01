@@ -16,10 +16,19 @@ the reset link sends through Resend.
 real person. All three are In Review, which in this project means shipped and
 waiting only on a read.
 
-**Seven stories shipped on 1 October: KPA-157 and KPA-159 to KPA-164.** A
-connection can now be fixed and renamed in place, the worker sweeps what has
-expired, the decision register carries every question, and the one flaky test
-is fixed. Opening a card shows what the connection is and offers the one fix
+**Nine stories shipped on 1 October: KPA-157, KPA-159 to KPA-165, and
+KPA-108.** A connection can now be fixed and renamed in place, the worker
+sweeps what has expired, the decision register carries every question and pairs
+every ruling, the one flaky test is fixed, and a credential that expires,
+lapses or fails the recheck reaches the briefing.
+
+**KPA-108 was the epic's payoff and Shane ruled both of its decisions on
+1 October**, in conversation, recorded on the ticket as decision blocks
+carrying the whole reasoning. `needs_you` gained a fifth kind, `credential`,
+rather than reusing `deadline`, because two of the three triggers carry no date
+and could not deduplicate on `raised_for`. The expiry window is 14 days, as
+`EXPIRY_WINDOW_DAYS` in `src/connections/needs-you.ts`, matching
+`LIFETIME_DAYS`. Opening a card shows what the connection is and offers the one fix
 its method allows: Reconnect on a grant, a new key on a key. A card whose method
 takes a key may also be renamed. A grant method's card may not, because its name
 is the account the provider reported and `connectionNamed` matches on it.
@@ -59,18 +68,19 @@ proved* below says what all three mean.
 is outlined in red, and the Connections item marks the set. *Where the OAuth work
 stands* below says what it found.
 
-**Thirty-one migration files, numbered to `032`.** KPA-158 added
+**Thirty-two migration files, numbered to `033`.** KPA-108 added
+`033_credential_needs_you.sql`. KPA-158 added
 `032_connection_send_from.sql`, and KPA-143 added none, because the Resend key is
-a credential like every other. KPA-159, KPA-160, KPA-161 and KPA-162 added none,
+a credential like every other. KPA-157 and KPA-159 to KPA-165 added none,
 because none of them writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
 two. Counted on 1 October 2026.
 
-The suite runs **684 tests with the vault and 664 without it**, measured on
-1 October 2026 after KPA-163, on a database dropped and recreated before the
+The suite runs **692 tests with the vault and 672 without it**, measured on
+1 October 2026 after KPA-108, on a database dropped and recreated before the
 run, and read more than once. One skip is reported in both, and it is meant to.
-KPA-159 added one test, KPA-162 three, KPA-160 one, KPA-161 four, KPA-157 three
-and KPA-163 four, which is what moved both counts.
+KPA-159 added one test, KPA-162 three, KPA-160 one, KPA-161 four, KPA-157 three,
+KPA-163 four, KPA-165 two and KPA-108 six, which is what moved both counts.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -90,17 +100,17 @@ vault, several suites skip and the summary still reports 1.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **130 stories, 89 accepted, which is 68%
+Project KPA on `koinon.atlassian.net`. **131 stories, 89 accepted, which is 68%
 by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160
-to KPA-164 were raised and seven stories shipped.
+to KPA-165 were raised and nine stories shipped.
 
 | Status | Stories |
 |---|---|
 | Done | 89 |
-| In Review | 10, KPA-143, KPA-154, KPA-157 and KPA-158 to KPA-164, all shipped |
+| In Review | 12, KPA-143, KPA-154, KPA-157, KPA-158 to KPA-165 and KPA-108, all shipped |
 | In Progress | 1, KPA-103 |
 | To Do | 29 |
-| Decision required | 1, KPA-108, with two questions on it |
+| Decision required | 0. KPA-108's two questions were ruled on 1 October and it shipped |
 
 **Read these counts by issue type.** The project holds 162 issues: 128 stories,
 13 epics and 21 subtasks. A count of everything answers a different question, so
@@ -820,16 +830,36 @@ The register now writes one row per question, and
 `npm run decisions` counts questions rather than issues: it reads
 "10 questions decided, 2 questions waiting".
 
-**A ruling still cannot always name the question it answers, and the register no
-longer guesses.** A `decisionItem` carries no fixed reference. KPA-80's ruling
+**A ruling names its question by restating it, since KPA-165.** A ruling
+comment repeats the question verbatim in its own `DECISION NEEDED` panel and
+then carries the decision block. `entriesForIssue` matches that text against the
+open entries and pairs the ruling with it, whatever else is open. That is the
+convention Shane's two KPA-108 rulings follow and the only link the data
+supports. **Posting the first two rulings is what found the gap**: before
+KPA-165 the register answered "12 questions decided, 4 waiting" with six KPA-108
+rows, and four of those read as waiting while every one was answered. It now
+reads two rows, both decided.
+
+**A ruling that names no question still cannot be paired, and the register
+still does not guess.** A `decisionItem` carries no fixed reference. KPA-80's ruling
 comment has a `parentId` naming its question comment and KPA-96's has none, on
 the same one-question shape, and `/rest/api/3/search/jql` with
 `fields: ['comment']`, which the script calls, drops `parentId` altogether while
 `/rest/api/3/issue/<key>/comment` returns it. All three checked on
 1 October 2026. So a ticket with one open question pairs, and a ticket with two
 records the ruling on its own row saying which question it answers is not
-recorded. **KPA-108 is the first ticket this affects:** rule on it by replying
-to the question you mean, and expect the register to say it cannot tell.
+recorded. **Restate the question when a ticket carries two.** A ruling that names none,
+on a ticket with two open, is still recorded on a row of its own saying so.
+
+**A credential item closes only when the credential is healthy on both counts,
+and that is not a flicker.** The KPA-108 agent flagged a suspected one-cycle
+flicker: an item closing while the expiry is still inside the window. It cannot
+happen. The close statement in `src/connections/needs-you.ts` requires
+`verified_ok IS TRUE` **and** the expiry outside the window, so a healthy
+connection with a near expiry is never closed. Proved on 1 October 2026 by
+running `reconcileCredentialItems` three times against a connection with
+`verified_ok` true and an expiry ten days out: the item stayed open on all
+three. Do not re-investigate this.
 
 **`schedules the nightly review at 03:30 Sydney` was flaky and KPA-164 fixed it
 on 1 October 2026. The cause is worth knowing, because the shape repeats.** The

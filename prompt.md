@@ -135,30 +135,26 @@ repeating it as fact.
 
 ## Start here
 
-Measured on 1 October 2026 at source: the board paged to the end, 130 stories,
-and CI read with `gh run list --limit 1`. amaterasu answers.
+Measured on 1 October 2026 at source: the board paged to the end, 131 stories,
+and CI read with `gh run list --limit 1`. amaterasu answers. The decision queue
+is empty: `npm run decisions` reports 12 questions decided and 0 waiting.
 
-**The last session shipped seven stories**, KPA-157 and KPA-159 to KPA-164.
-Opening a connection card now shows what the connection is and offers the one
-fix its method allows; a key card can be renamed and a grant card cannot; the
-sending address reads back; a connection name cannot split a log line; the
-worker sweeps what has expired; the decision register carries every question;
-and the one flaky test is fixed. `handover.md` carries what each proved.
+**The last session shipped nine stories**, KPA-157, KPA-159 to KPA-165, and
+KPA-108. The connection card opens, reconnects, renames and shows its sending
+address; a connection name cannot split a log line; the worker sweeps what has
+expired; the decision register carries every question and pairs every ruling;
+the one flaky test is fixed; and a credential that expires, lapses or fails the
+recheck now reaches the briefing. `handover.md` carries what each proved.
+
+**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) was the epic's
+payoff and it is done.** Shane ruled both of its decisions in conversation on
+1 October and both are recorded on the ticket as decision blocks carrying the
+whole reasoning rather than the words that chose them.
 
 **Nothing is left that you can build alone.** Every unblocked story in To Do
-waits on Shane, and the two questions he holds are the next thing that moves
-this project.
+waits on Shane, and twelve stories sit In Review with none read.
 
-**Two questions wait on him**, both on
-[KPA-108](https://koinon.atlassian.net/browse/KPA-108), which sits in
-`Decision required`. Whether `needs_you` gains a fifth kind for a credential,
-and how many days before expiry the briefing starts asking. Each carries its
-options, what each costs and buys, and a recommendation measured rather than
-guessed. **Build KPA-108 the moment he rules**: KPA-107 already writes the
-result it would raise an item from, so nothing technical blocks it. Read both
-questions in `docs/decisions.md` or on the ticket.
-
-**The eight other unblocked stories, and what each waits on:**
+**The nine unblocked stories, and what each waits on:**
 
 - **KPA-12** and **KPA-86** spend metered money, on Voyage and on a real model.
 - **KPA-49** and **KPA-105** need a live tracker to poll.
@@ -172,11 +168,18 @@ questions in `docs/decisions.md` or on the ticket.
 It is the one story In Progress.
 
 **If you arrive and everything is blocked, read across the stories rather than
-within one.** Every defect found on 1 October was found that way: KPA-157's two
-unreachable sweeps, the four connection gaps, the register's lost question, and
-a flaky test that three separate agents each passed over. Each story was honest
-on its own and the gap sat between them. Ten stories sit In Review and none has
-been read.
+within one.** Every defect found on 1 October was found that way: two sweeps
+nothing called, four gaps around the connection card, a question the register
+dropped, a wrong pairing it would have invented, a flaky test three agents each
+passed over, and an ISO date in a brand-new string on a screen whose dates had
+just been changed. Each story was honest on its own and the gap sat between
+them.
 
-Thirty stories are open: 29 To Do and one In Progress, KPA-103, against 130
-stories and ten In Review. One sits in Decision required.
+**The second rule that paid, repeatedly: check what an agent reports before you
+repeat it.** On 1 October a report named a flicker that its own SQL ruled out,
+another carried a miscount forward from a comment that had been wrong for
+weeks, and a third blamed a flake on a file move that predated it by a day. All
+three were settled by running something, and `handover.md` records what.
+
+Thirty stories are open: 29 To Do and one In Progress, KPA-103, against 131
+stories and twelve In Review. Nothing sits in Decision required.

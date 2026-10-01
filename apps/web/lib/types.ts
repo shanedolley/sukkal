@@ -91,8 +91,9 @@ export interface Fact {
   rejectionReason?: string;
 }
 
-/** A row in "Needs you". Each waits on a decision from Shane. */
-export type NeedsYouKind = "draft" | "question" | "denied-action" | "deadline";
+/** A row in "Needs you". Each waits on a decision from Shane. `credential` is
+ *  a credential expiring, lapsed, or failing the recheck. KPA-108. */
+export type NeedsYouKind = "draft" | "question" | "denied-action" | "deadline" | "credential";
 
 export interface NeedsYouItem {
   id: string;

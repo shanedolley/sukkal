@@ -62,6 +62,7 @@ import {
   SPACE_LABELS,
   type Fact,
   type NeedsYouItem,
+  type NeedsYouKind,
   type Provenance,
   type Source,
   type SourceKind,
@@ -108,12 +109,13 @@ const KIND_LABEL: Record<SourceKind, string> = {
   chat: "Chat",
 };
 
-const NEEDS_YOU_LABEL = {
+const NEEDS_YOU_LABEL: Record<NeedsYouKind, string> = {
   draft: "Draft ready",
   question: "Question",
   deadline: "Waiting",
   "denied-action": "Refused by policy",
-} as const;
+  credential: "Credential",
+};
 
 // ── Building blocks ──────────────────────────────────────────────────────
 
