@@ -35,15 +35,40 @@ with `linkedIssues("KPA-50","is blocked by")`, which returns both.
 
 **KPA-147 needs a deployment first.** Shane asked which DNS records it needs,
 and comment 11780 answers: one proxied CNAME, `app.sukkal.app` to the tunnel,
-which Cloudflare writes itself. amaterasu has no Node, no `cloudflared` and no
-Sukkal service, checked on 14 October 2026. KPA-166, raised that day, deploys
-the web tier and blocks KPA-147. It sits in To Do.
+which Cloudflare writes itself. KPA-166, raised that day, deploys the web tier
+and blocks KPA-147.
 
-**KPA-167 shipped on 14 October 2026.** `npm run decisions` now runs with no
-prefix. `scripts/decision-credentials.ts` uses `KOINON_JIRA_TOKEN` with
-`KOINON_JIRA_EMAIL` when the token is set, and otherwise reads the Keychain item
-`kothar-jira-agent` and pairs it with `claude@koinon.com.au`.
-`docs/runbooks/secrets.md` says the order.
+**amaterasu already runs a tunnel, in Docker.** On 14 October 2026 it had no
+Node, no `cloudflared` binary and no Sukkal service, but `docker ps` showed a
+container named `cloudflared`, image `cloudflare/cloudflared:latest`, up for 17
+hours. `free -m` read 6.9 GB available. The brief's *Deployment* row says bare
+metal and no containers, and it is out of date on the second. Which hostnames
+that tunnel serves is unknown here; KPA-166 comment 11790 asks Shane.
+
+**`docker inspect cloudflared` prints the tunnel token.** The token sits on the
+container's command line, so any member of the `docker` group reads it. The
+measuring agent read it into its own transcript on 14 October 2026. Comment
+11790 asks Shane to rotate it. Never run `docker inspect` on that container in a
+session.
+
+**KPA-166 waits in HIL Review on its runtime question**, comment 11790: Docker
+with a compose file, or Node 22 under systemd. The recommendation is Docker,
+because the box already pays the daemon's cost and the tunnel already runs as a
+container. Memory does not decide it: the two differ by under 30 MB.
+
+**KPA-167 shipped on 14 October 2026 and waits in HIL Review.** `npm run
+decisions` now runs with no prefix. `scripts/decision-credentials.ts` uses
+`KOINON_JIRA_TOKEN` with `KOINON_JIRA_EMAIL` when the token is set, and
+otherwise reads the Keychain item `kothar-jira-agent` and pairs it with
+`claude@koinon.com.au`. `docs/runbooks/secrets.md` says the order.
+
+**The project manager moves no KPA story to AI Review, because KPA has no pull
+requests.** Its status map wants a pull request with passing checks for AI
+Review, and again for Done. KPA commits straight to `main`, so it refused
+KPA-167 on 14 October 2026 although commit `71f3a82` was on `origin/main` and CI
+was green. The same gate holds the 10 stories already in AI Review: none can
+reach Done through the project manager. Comment 11788 on KPA-167 asks Shane how
+to resolve it, and recommends a branch and a pull request per story from now on.
 
 **A sweep on 14 October 2026 corrected stale documents**: `README.md`,
 `docs/project-brief.md`, `CLAUDE.md` and four runbooks. The brief's slice table
@@ -158,10 +183,10 @@ count.** Counted from Jira on 14 October 2026, two pages read to the end,
 | Status | Stories |
 |---|---|
 | Done | 91 |
-| AI Review | 11: KPA-108 and KPA-157 to KPA-165, shipped on 1 October, and KPA-167, shipped on 14 October |
-| HIL Review | 0 |
+| AI Review | 10: KPA-108 and KPA-157 to KPA-165, all shipped on 1 October |
+| HIL Review | 2: KPA-166 and KPA-167, each on a question for Shane |
 | In Progress | 1: KPA-103 |
-| To Do | 30, including KPA-166, raised on 14 October |
+| To Do | 29 |
 
 **Read these counts by issue type.** The project holds 167 issues: 133 stories,
 13 epics and 21 subtasks. A count of everything answers a different question, so

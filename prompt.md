@@ -79,6 +79,11 @@ Progress, AI Review, HIL Review, Done. The transition ids now differ by the
 status a story is in, so read `/rest/api/3/issue/<key>/transitions` rather than
 any table. Only a person moves a story out of HIL Review.
 
+**The project manager refuses a move to AI Review or Done without a pull request
+whose checks pass**, read from its status map on 14 October 2026. KPA has none,
+so until Shane answers comment 11788 on KPA-167, park a shipped story in HIL
+Review with that question rather than dispatching a move to AI Review.
+
 A move to AI Review needs a reviewer's
 `Review verdict: PASS (reviewer <agent>, builder <agent>)` comment before the
 story can leave it, and the builder cannot be the reviewer.
@@ -153,18 +158,21 @@ Measured on 14 October 2026 at source: the board paged to the end, 133 stories,
 no branch or pull request is open. The documentation was swept for stale
 references the same day.
 
-**[KPA-167](https://koinon.atlassian.net/browse/KPA-167) shipped on
-14 October 2026** and waits in AI Review.
+**Read Shane's answers first.** Two stories wait in HIL Review with the
+`question` label, both parked on 14 October 2026:
 
-**Claim [KPA-166](https://koinon.atlassian.net/browse/KPA-166) next**, 8 points,
-in To Do: deploy the web tier and the worker to amaterasu behind a Cloudflare
-Tunnel and Access. It opens with a question for Shane, Docker or native Node, so
-measure both, post the `DECISION NEEDED` comment with the `question` label, and
-park it in HIL Review. It later needs his approval to migrate production. It
-blocks KPA-147.
+- [KPA-167](https://koinon.atlassian.net/browse/KPA-167) shipped, green, in
+  commit `71f3a82`. Comment 11788 asks how a KPA story reaches AI Review and Done
+  when the project manager's gate wants a pull request and KPA commits to `main`.
+  The answer may change *Commit straight to `main`* above and in `CLAUDE.md`, so
+  settle it before building anything else.
+- [KPA-166](https://koinon.atlassian.net/browse/KPA-166) asks Docker or Node 22
+  under systemd, in comment 11790. Once answered, write the ADR, then the compose
+  file or the units, then `docs/runbooks/deploy.md`, then deploy. It still needs
+  Shane's separate approval to migrate production. It blocks KPA-147.
 
-**Eleven stories wait on a review, and none needs code.** KPA-108, KPA-157 to
-KPA-165 and KPA-167 sit in AI Review and need a reviewer's verdict from an agent that did
+**Ten stories wait on a review, and none needs code.** KPA-108 and KPA-157 to
+KPA-165 sit in AI Review and need a reviewer's verdict from an agent that did
 not build them.
 
 **Seven more stories have no open blocker. Each waits on Shane for one thing:**

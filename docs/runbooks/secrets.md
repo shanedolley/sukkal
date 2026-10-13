@@ -410,8 +410,10 @@ clone runs before anyone creates one.
 
 ## On amaterasu, under systemd
 
-No unit exists yet, and amaterasu has no Node, npm or cloudflared. Docker is
-present. Read on 14 October 2026. KPA-166 deploys the web tier there, so
+No unit exists yet, and amaterasu has no Node and no npm. Docker is present, and
+a container named `cloudflared` runs the tunnel, though no `cloudflared` binary
+is installed. Read on 14 October 2026. KPA-166 deploys the web tier there, and
+asks Shane whether to run it in Docker or under systemd, so
 **nothing in this section has been run on amaterasu.** It is the pattern to
 follow, not a checked procedure, and whoever writes the first unit should verify
 each command and correct this file.

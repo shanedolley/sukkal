@@ -12,7 +12,7 @@ prose, so nothing here reads an answer out of a sentence.
 the lighter rulings. A decision that meets the three tests in `CLAUDE.md`
 graduates to an ADR, and this register then cites it.
 
-Generated 2026-10-13. 15 questions decided, 0 questions waiting.
+Generated 2026-10-13. 15 questions decided, 2 questions waiting.
 
 ## Decided
 
@@ -36,4 +36,7 @@ Generated 2026-10-13. 15 questions decided, 0 questions waiting.
 
 ## Waiting on a ruling
 
-Nothing waiting.
+| Ticket | The question | Recommended |
+|---|---|---|
+| [KPA-166](https://koinon.atlassian.net/browse/KPA-166) | How should amaterasu run the Sukkal web tier and the worker: in Docker with a compose file, or natively under systemd with Node 22? | Option A. The brief chose bare metal to avoid the cost of containers, and this box already pays that cost. The tunnel already runs as a container, so Option B adds a second way to run things. Docker also exercises the container that other installers will receive. Choose Option B if you want systemd units and journalctl as the only way the box runs things |
+| [KPA-167](https://koinon.atlassian.net/browse/KPA-167) | How does a KPA story reach AI Review and Done, when this project commits straight to main and the project manager's gate needs a pull request? | option B from the next story, and you move the 11 stories by hand once a reviewer posts its PASS verdict on each. CLAUDE.md calls the direct-commit rule temporary, to end once a second reader has something to review. The AI Review step of 3 October is that reader, and option B changes no guard and no plugin |
