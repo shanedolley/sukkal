@@ -151,7 +151,7 @@ is green.
 KPA-165 sit in AI Review and need a reviewer's verdict from an agent that did
 not build them.
 
-**Eight stories have no open blocker. Each waits on Shane for one thing:**
+**Seven stories in To Do have no open blocker. Each waits on Shane for one thing:**
 
 | Story | What it waits on |
 |---|---|
@@ -162,7 +162,6 @@ not build them.
 | [KPA-49](https://koinon.atlassian.net/browse/KPA-49) | A live tracker to poll. Unblocks KPA-124 |
 | [KPA-71](https://koinon.atlassian.net/browse/KPA-71) | Somebody at both ends of the nabium push |
 | [KPA-84](https://koinon.atlassian.net/browse/KPA-84) | Real mailboxes |
-| [KPA-147](https://koinon.atlassian.net/browse/KPA-147) | A deployment of the web tier behind a Cloudflare Tunnel. Comment 11780 names the one DNS record and everything else, and no story deploys the web tier yet |
 
 **Start with KPA-12 or KPA-86 the moment a key lands**, because the two together
 open the retrieval and chat epic, KPA-57, which stands at 0 of 7. Both stories
@@ -170,10 +169,16 @@ carry stale text: KPA-12 names `migrations/004_vector_indexes.sql`, but the HNSW
 indexes are already in `migrations/001_core_schema.sql` and `src/embedding.ts`
 pins the model. It also says 17 facts where the vault holds 19.
 
-**Two jobs need no person, and no story carries either yet.** Teach
-`scripts/decision-register.ts` to fall back to the Keychain for its token. And
-write the deployment story KPA-147 asks for: the web tier and the worker on
-amaterasu, `cloudflared`, and the Access policy. Raise each as a story first.
+**Two stories need no person to start, and both sit in Backlog**, raised on
+14 October 2026 under KPA-145. Ask the project manager to move one to To Do
+before you claim it.
+
+- [KPA-167](https://koinon.atlassian.net/browse/KPA-167), 1 point: let
+  `npm run decisions` read its token from the Keychain. Fully buildable.
+- [KPA-166](https://koinon.atlassian.net/browse/KPA-166), 8 points: deploy the
+  web tier and the worker to amaterasu behind a Cloudflare Tunnel and Access.
+  It starts with a decision, Docker or native Node, and later needs Shane to
+  approve the production migration. It blocks KPA-147.
 
 **KPA-50 waits for the issue sync**, by Shane's ruling of 14 October 2026.
 KPA-124 and KPA-105 block it.

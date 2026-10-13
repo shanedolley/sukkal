@@ -36,7 +36,9 @@ with `linkedIssues("KPA-50","is blocked by")`, which returns both.
 **KPA-147 needs a deployment first.** Shane asked which DNS records it needs,
 and comment 11780 answers: one proxied CNAME, `app.sukkal.app` to the tunnel,
 which Cloudflare writes itself. amaterasu has no Node, no `cloudflared` and no
-Sukkal service, checked on 14 October 2026, and no story deploys the web tier.
+Sukkal service, checked on 14 October 2026. KPA-166, raised that day, deploys
+the web tier and blocks KPA-147. KPA-167 carries the Keychain fallback for
+`npm run decisions`. Both sit in Backlog.
 
 **CI was refused on 13 October 2026 and runs again since 14 October.** GitHub
 would not start a job while the account's billing failed. Shane fixed it, and
@@ -896,7 +898,7 @@ KOINON_JIRA_EMAIL=claude@koinon.com.au KOINON_JIRA_TOKEN="$(security find-generi
 ```
 
 Found on 13 October 2026. The lasting fix is a fallback to the Keychain inside
-`scripts/decision-register.ts`, and no story carries it yet.
+`scripts/decision-register.ts`, which KPA-167 carries.
 
 **A CI run that fails in three seconds tested nothing.** GitHub refuses to start
 a job when the account's billing fails, and the run reads as red like any other.
