@@ -1,7 +1,43 @@
 # Handover
 
-State as at 1 October 2026. `prompt.md` holds the instructions for a new
+State as at 13 October 2026. `prompt.md` holds the instructions for a new
 session. This file holds the facts.
+
+**No story was built between 1 and 13 October.** `git log` shows no commit in
+that span. What moved was the board, the workflow, and two stories closed by a
+read.
+
+**The Jira workflow changed on 3 October 2026.** In Review is gone. A shipped
+story goes to **AI Review**, where a reviewer posts
+`Review verdict: PASS (reviewer <agent>, builder <agent>)`, and then to **HIL
+Review**, which only a person leaves. The `Decision required` status is gone
+too. Every move goes through the `kothar:project-manager` agent, and the
+transitions now differ by status, so no fixed table of ids holds. Read from
+`/rest/api/3/project/KPA/statuses` on 13 October 2026: Backlog, To Do, In
+Progress, AI Review, HIL Review, Done.
+
+**KPA-143 is Done**, accepted by Shane by 13 October 2026.
+
+**KPA-154 passes all seven criteria and waits on Shane in HIL Review.** It was
+rechecked on amaterasu on 13 October 2026 and two lines still named `kpa`: the
+header of `/etc/sudoers.d/sukkal` and a section of `CLAUDE.md`. Both were fixed
+that day. Comments 11777 and 11778 on the ticket carry the evidence.
+
+**Shane approved model spend on KPA-12 and KPA-86 on 13 October 2026**, in a
+comment on each: "I approve the use of AI models for testing and the costs
+associated." `npm run decisions` counts both as rulings. Neither connection
+exists yet, so each story still needs a key typed into the Connections screen.
+
+**KPA-50 waits on a ruling.** Comment 11776 asks whether to build the editor
+against fixtures now, and recommends Option A: build it, and move the live Jira
+round trip into a new story blocked by KPA-105.
+
+**CI cannot run.** GitHub refused to start both jobs on 13 October 2026, run
+38357016519: "recent account payments have failed or your spending limit needs
+to be increased". Until Shane fixes the account's billing, run the checks
+locally and say so on the ticket.
+
+## Shipped on 1 October 2026
 
 **The review queue was emptied and then refilled by two shipped stories.** On
 30 September 2026 Shane walked all 30 stories that sat In Review and accepted
@@ -13,8 +49,8 @@ agents with the integration pass run here. amaterasu is no longer called KPA, an
 the reset link sends through Resend.
 
 **KPA-158 followed on 1 October**, because KPA-143 broke on first contact with a
-real person. All three are In Review, which in this project means shipped and
-waiting only on a read.
+real person. On 13 October 2026 KPA-143 was Done, KPA-154 sat in HIL Review and
+KPA-158 in AI Review.
 
 **Nine stories shipped on 1 October: KPA-157, KPA-159 to KPA-165, and
 KPA-108.** A connection can now be fixed and renamed in place, the worker
@@ -50,11 +86,14 @@ against reality rather than against a stub.
 
 ## Where the work is
 
-**Branch `main`, pushed, the working tree clean and CI green.** This project
-commits straight to `main`; `CLAUDE.md` says why and names the override the
-hook wants. Read the head with `git log --oneline -1` rather than from here: a
-commit hash written into a file is stale the moment the file is committed.
-Read CI with `gh run list --limit 1`.
+**Branch `main`, pushed, the working tree clean, and CI not running.** This
+project commits straight to `main`; `CLAUDE.md` says why and names the override
+the hook wants. Read the head with `git log --oneline -1` rather than from here:
+a commit hash written into a file is stale the moment the file is committed.
+Read CI with `gh run list --limit 1`. The last run that passed was on
+1 October 2026. Every run since 13 October fails in about three seconds on the
+billing refusal above, and reads as a red run that tested nothing. Run
+`gh run view <id>` and read the annotation before treating one as a code fault.
 
 **[KPA-13](https://koinon.atlassian.net/browse/KPA-13),
 [KPA-131](https://koinon.atlassian.net/browse/KPA-131) and
@@ -74,11 +113,12 @@ stands* below says what it found.
 a credential like every other. KPA-157 and KPA-159 to KPA-165 added none,
 because none of them writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
-two. Counted on 1 October 2026.
+two. Both counts read again on 13 October 2026 and unchanged.
 
-The suite runs **692 tests with the vault and 672 without it**, measured on
-1 October 2026 after KPA-108, on a database dropped and recreated before the
-run, and read more than once. One skip is reported in both, and it is meant to.
+The suite runs **692 tests with the vault and 672 without it**, measured again
+on 13 October 2026 against a local `sukkal_dev` dropped and recreated before
+each run: 0 fail, 0 cancelled, 1 skipped in both. One skip is meant to be there.
+The counts first reached these numbers on 1 October, after KPA-108.
 KPA-159 added one test, KPA-162 three, KPA-160 one, KPA-161 four, KPA-157 three,
 KPA-163 four, KPA-165 two and KPA-108 six, which is what moved both counts.
 
@@ -100,27 +140,27 @@ vault, several suites skip and the summary still reports 1.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **131 stories, 89 accepted, which is 68%
-by count.** Counted from Jira on 1 October 2026, paged to the end, after KPA-160
-to KPA-165 were raised and nine stories shipped.
+Project KPA on `koinon.atlassian.net`. **131 stories, 90 Done, which is 69% by
+count.** Counted from Jira on 13 October 2026, two pages read to the end,
+165 issues and every key unique.
 
 | Status | Stories |
 |---|---|
-| Done | 89 |
-| In Review | 12, KPA-143, KPA-154, KPA-157, KPA-158 to KPA-165 and KPA-108, all shipped |
-| In Progress | 1, KPA-103 |
+| Done | 90 |
+| AI Review | 10: KPA-108 and KPA-157 to KPA-165, all shipped on 1 October |
+| HIL Review | 1: KPA-154, which waits on Shane alone |
+| In Progress | 1: KPA-103 |
 | To Do | 29 |
-| Decision required | 0. KPA-108's two questions were ruled on 1 October and it shipped |
 
-**Read these counts by issue type.** The project holds 162 issues: 128 stories,
+**Read these counts by issue type.** The project holds 165 issues: 131 stories,
 13 epics and 21 subtasks. A count of everything answers a different question, so
 every number here names `issuetype = Story`.
 
-**In Review means shipped and waiting on a read.** Every story in that column
-reached `main` with CI green. Shane walked the previous 30 on 30 September 2026
-and accepted every one, so the column holds only what shipped after that date.
-One epic, KPA-149, is In Review too, which is why a count of everything shows
-one more.
+**AI Review and HIL Review both mean shipped.** Every story in either reached
+`main` with its checks green. AI Review waits on a reviewer's `Review verdict:
+PASS` comment from an agent that did not build it. HIL Review waits on a person.
+One epic, KPA-149, sits in AI Review too, which is why a count of everything
+shows one more.
 
 | Epic | Done/All | Title |
 |---|---|---|
@@ -128,14 +168,14 @@ one more.
 | KPA-35 | 8/8 | Build the web interface |
 | KPA-51 | 7/7 | Finish the memory schema |
 | KPA-52 | 16/22 | Join the halves: replace every fixture |
-| KPA-53 | 12/12 | Build the application data schema |
-| KPA-54 | 6/10 | Connect the accounts |
+| KPA-53 | 12/12 | Build the application data schema. The epic itself still reads To Do |
+| KPA-54 | 6/13 | Connect the accounts |
 | KPA-55 | 3/14 | Fill the stores |
 | KPA-56 | 6/7 | The agent and the policy engine |
 | KPA-57 | 0/7 | Retrieval and chat |
-| KPA-75 | 5/6 | Let the installation authenticate its owner |
-| KPA-145 | 2/3 | Harden what the installation exposes |
-| KPA-149 | 2/2 | Become Sukkal. In Review itself |
+| KPA-75 | 6/7 | Let the installation authenticate its owner |
+| KPA-145 | 2/8 | Harden what the installation exposes |
+| KPA-149 | 2/2 | Become Sukkal. In AI Review itself |
 | KPA-152 | 3/4 | Move the machine identifiers off KPA |
 
 **Paging matters.** `/rest/api/3/search/jql` caps a page at 100 issues whatever
@@ -162,8 +202,10 @@ found, kept because it says why the grants mattered.
 Both are tested, and only their tests call them. `src/worker/index.ts` registers
 deliveries, nightly and recheck, and `nightly.ts` imports `sweep` from
 `src/memory/sweep.ts`, which reviews facts and is a different function.
-`sukkal_local` still holds the two stale grants, measured on 1 October 2026:
-they were created on 13 and 19 September and each expired ten minutes later. The
+`sukkal_local` still holds the two stale grants, measured again on
+13 October 2026, because the sweep runs only inside the worker and no worker has
+run on this Mac since 1 October. They were created on 13 and 19 September and
+each expired ten minutes later. The
 two successful grants run on 1 October left nothing behind, because claiming one
 is a `DELETE ... RETURNING`. So the two that remain are abandoned rather than
 ordinary, and each holds a PKCE verifier. An expired session is inert, because a
@@ -360,16 +402,18 @@ independence REQ-033 wants.
 **Production has not been loaded.** The script refuses `sukkal`, and the vault has
 never been written to amaterasu.
 
-**amaterasu answers again, measured on 30 September 2026.** It accepted a
-connection on port 5432 and served a query. The 19 September note that it answers
-only on the internal network no longer holds. That unblocked KPA-154, which has
-since run, and it unblocks the load. To load it: freeze the vault, run
+**amaterasu answers, measured on 13 October 2026** over ssh and on port 5432,
+after a reboot that day. Before deciding it is down, read the trap on the
+terminal app's Local Network permission below: from a session inside Orca the
+box looked dead while it was up. Nothing blocks the load but the decision to run
+it. To load it: freeze the vault, run
 `scripts/verify-migration.sh`, then load `sukkal` with the production guard lifted
 on purpose.
 
 The vault has not moved since the freeze, so that run costs nothing in
 surprises. It is still at `da7afce`, with a clean working tree and no commits
-since, checked on 30 September 2026.
+since, checked on 13 October 2026, even though the launchd jobs that could write
+to it have run since 13 September.
 
 **A citation keeps its words, since KPA-131.** Every `derived_from` edge holds
 its `sources:` entry verbatim in `edges.citation`, added by
@@ -404,12 +448,25 @@ all fifteen ported `check.py` fixtures pass under either reader.
 They survived a reboot on 19 September. The script now fails at its first step
 until the vault is frozen again, which is by design.
 
-## No decision waiting
+## Decisions
+
+**One question waits: [KPA-50](https://koinon.atlassian.net/browse/KPA-50),
+raised on 13 October 2026.** Build the editor, the slash menu and the ADF
+adapter against fixtures now, or wait for the issue sync? The comment carries
+three options and recommends A: build it, estimate it at 8, and move the live
+Jira round trip into a new story blocked by KPA-105. It also asks Shane to
+confirm the TipTap packages. `npm run decisions` reported 14 decided and 1
+waiting on 13 October 2026.
+
+**The story was not moved into a decision status, because none exists.** The
+workflow change on 3 October removed `Decision required`. The autonomous skill
+parks a story needing a person in HIL Review, through `kothar:project-manager`.
+KPA-50 sits in To Do with the question on it. Filter 10047, the old decision
+queue, answers 404 to the agent account, measured on 13 October 2026.
 
 **[KPA-143] was decided and built on 30 September 2026.** How does a self-hosted
 box send the reset link? The answer is Resend over HTTPS, with the API key held
-as a sealed connection. `npm run decisions` reports 10 decided and nothing
-waiting, and filter 10047 is empty.
+as a sealed connection.
 
 **Resend was not among the three options the question offered.** It won on the
 same measurement that had chosen SMTP, because it needs no package at all: the
@@ -630,14 +687,20 @@ KPA-103 is nearly done and is not closed. Five commits built it:
 - Removing a connection tells the provider first and keeps the row when the
   provider refuses.
 
-**Three Google connections in `sukkal_local`, and one works.** Measured by the
-hourly recheck on 19 September 2026:
+**Three Google connections in `sukkal_local`, all re-granted, and only one
+checked since.** Read from `connection_credentials` on 13 October 2026:
 
 | Account | Last check |
 |---|---|
-| `shane@koinon.com.au` | Working. Re-granted by Shane on 19 September |
-| `shanevdolley@gmail.com` | `invalid_grant: Token has been expired or revoked` |
-| `shane.dolley@collibra.com` | `invalid_grant: Token has been expired or revoked` |
+| `shane@koinon.com.au` | Verified OK on 1 October. Re-granted by Shane on 19 September |
+| `shanevdolley@gmail.com` | Reconnected on 1 October. Never checked since, so unknown |
+| `shane.dolley@collibra.com` | Reconnected on 1 October. Never checked since, so unknown |
+
+No recheck has run since 1 October, because the recheck lives in the worker and
+nothing starts the worker on this Mac. Start `npm run worker` against
+`sukkal_local` to learn whether the two reconnected grants survived.
+
+The rest of this section is the record from 19 September to 1 October.
 
 **The seven-day limit was the suspected cause, and it does not explain this.**
 Both dead tokens were issued on 12 September and failed seven days later, which
@@ -705,7 +768,7 @@ npm run decisions             # rebuilds docs/decisions.md from Jira
 ```
 
 In `apps/web`: `npm run lint`, `npm run build`, and `npm run check`, which runs
-twenty-four scripts under plain node.
+twenty-five scripts under plain node, counted on 13 October 2026.
 
 `./scripts/verify-migration.sh` verifies the migration against the frozen vault.
 It needs the vault and local PostgreSQL, and it recreates `sukkal_verify`.
@@ -723,10 +786,10 @@ how the trunk went red on 2 September 2026 and stayed red across two pushes.
 
 | Database | Who writes it |
 |---|---|
-| `sukkal` on amaterasu | The migration. Production. Ten migrations behind |
+| `sukkal` on amaterasu | The migration. Production. Eleven migrations behind |
 | `sukkal_dev` on amaterasu | Every test that points at the env file |
 | `sukkal_dev` on this Mac | Every test that points at loopback, which is what CI does |
-| `sukkal_local` | The running application. No test names it. 31 migrations, and it holds the live Resend card |
+| `sukkal_local` | The running application. No test names it. 32 migrations, all of them, on 13 October 2026, and it holds the live Resend card |
 | `sukkal_verify` | `scripts/verify-migration.sh`, which drops and recreates it on every run |
 
 **Two different databases are called `sukkal_dev`, one per host.** KPA-154 renamed
@@ -760,7 +823,8 @@ cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local"
 ```
 
 **Production `sukkal` holds 21 migrations and stops at `022_issue_cache.sql`.**
-023 through 032 are pending, so production is ten behind. Read from
+023 through 033 are pending, so production is eleven behind. Read again on
+13 October 2026: 21 rows, `001_core_schema.sql` to `022_issue_cache.sql`. First read from
 `schema_migrations` on amaterasu on 30 September 2026, before the rename and again
 after it. There is no `002` in either place, which is why 21 rows reach 022.
 
@@ -794,11 +858,13 @@ a connection. A backup of the file before that sits at
 rewrote the two database URLs, sits at `~/.config/sukkal/env.bak-kpa-154`. Both
 are mode 0600.
 
-Three more secrets exist and this file holds none of them.
-`KOINON_JIRA_SITE`, `KOINON_JIRA_EMAIL` and `KOINON_JIRA_TOKEN` live in
-`~/.config/secrets.env`, which `~/.zshenv` sources, and
-`scripts/decision-register.ts` reads all three. `docs/runbooks/secrets.md` says
-why they sit in a different file.
+`scripts/decision-register.ts` reads three more variables, and this file holds
+none of them. `KOINON_JIRA_SITE` and `KOINON_JIRA_EMAIL` live in
+`~/.config/secrets.env`, which `~/.zshenv` sources. `KOINON_JIRA_TOKEN` no
+longer does: measured on 13 October 2026, the token moved to the Keychain item
+`kothar-jira-agent`, which belongs to the Claude Agent account. So
+`npm run decisions` fails until the token is supplied, and *Traps* says how.
+`docs/runbooks/secrets.md` says why these sit in a different file.
 
 **One OAuth client serves Sukkal and workspace-mcp**, in Google Cloud project
 `personal-assistant-506014`. Google holds exactly two redirect URIs, and both
@@ -810,6 +876,36 @@ http://localhost:3000/oauth2/callback    Sukkal. With the slash
 ```
 
 ## Traps
+
+**A box that answers can look dead from inside the wrong terminal app.** On
+13 October 2026 a session inside Orca got `No route to host` from every LAN
+address except the router, `192.168.20.1`, while amaterasu was up. The same
+commands from a session in cmux reached it at once. macOS grants Local Network
+access to the GUI app at the top of the process chain, so `ssh`, `ping`, `psql`
+and `node` all inherit that app's setting. It cost an hour and a false report
+that the box was down. Before calling amaterasu down, ping another LAN host such
+as `192.168.20.10`: if only the router answers, the cause is the permission.
+
+**`npm run decisions` fails without `KOINON_JIRA_TOKEN`, and the token is no
+longer in the environment.** It answers `KOINON_JIRA_SITE, KOINON_JIRA_EMAIL and
+KOINON_JIRA_TOKEN must be set`. Supply the agent account's token and its email
+together, because the token and the email must name the same account:
+
+```
+KOINON_JIRA_EMAIL=claude@koinon.com.au KOINON_JIRA_TOKEN="$(security find-generic-password -s kothar-jira-agent -w)" npm run decisions
+```
+
+Found on 13 October 2026. The lasting fix is a fallback to the Keychain inside
+`scripts/decision-register.ts`, and no story carries it yet.
+
+**A CI run that fails in three seconds tested nothing.** GitHub refuses to start
+a job when the account's billing fails, and the run reads as red like any other.
+Run `gh run view <id>` and read the annotation. Found on 13 October 2026, run
+38357016519.
+
+**The ticket guard refuses a `kj` path built from a variable.** A loop writing
+`"/rest/api/3/issue/KPA-$k?fields=..."` was denied. Write each path as a
+single-quoted literal, one call per issue. Cost two calls on 13 October 2026.
 
 `CLAUDE.md` carries the traps this repository has paid for more than once:
 `noclobber` on `>`, a test run piped into `tail` reporting the wrong exit code,

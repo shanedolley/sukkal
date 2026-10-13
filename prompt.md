@@ -51,10 +51,14 @@ tool overwrote a tracked one on 13 September 2026 without refusing.
 4. Run both packages' lint, build and tests, and the web tier's `npm run check`.
 5. Update `docs/schema.md` when the schema moved, and `CLAUDE.md` when you
    found a trap that will bite again.
-6. Commit with a message that says what changed and why, ending with the
-   `Claude-Session` line. Push. Watch CI.
+6. Commit with a message that says what changed and why. Push. Watch CI.
 7. Comment on the ticket with what was built, how each criterion is met, and
-   what was proved rather than assumed. Move it to In Review.
+   what was proved rather than assumed. Dispatch `kothar:project-manager` to
+   move it to AI Review.
+
+**While CI cannot run, say so on the ticket.** GitHub has refused every job
+since 13 October 2026 over the account's billing. Run the checks locally, quote
+the counts, and name the refused run.
 
 ## Prove every claim
 
@@ -71,21 +75,21 @@ reporting the story done.
 
 ## Moving a story
 
-Every KPA story takes the same transition ids, read from
-`/rest/api/3/issue/KPA-146/transitions` on 13 September 2026.
+Only `kothar:project-manager` moves a ticket. Dispatch it unnamed, with the
+issue, the target status and the evidence. The guard refuses every other route.
 
-| Id | Moves it to |
-|---|---|
-| 2 | Decision required |
-| 11 | To Do |
-| 21 | In Progress |
-| 31 | In Review |
-| 41 | Done |
+The workflow changed on 3 October 2026. A story runs Backlog, To Do, In
+Progress, AI Review, HIL Review, Done. The transition ids now differ by the
+status a story is in, so read `/rest/api/3/issue/<key>/transitions` rather than
+any table. Only a person moves a story out of HIL Review.
+
+A move to AI Review needs a reviewer's
+`Review verdict: PASS (reviewer <agent>, builder <agent>)` comment before the
+story can leave it, and the builder cannot be the reviewer.
 
 ## When a decision needs a person
 
-Stop the story, move it to the `Decision required` status, and post a Jira
-comment carrying:
+Stop the story and post a Jira comment carrying:
 
 - The question, in a warning panel whose first line is exactly
   `DECISION NEEDED`.
@@ -94,12 +98,16 @@ comment carrying:
 - What happens when Shane answers.
 
 `scripts/decision-register.ts` reads those two strings and nothing else. Run
-`npm run decisions` afterwards and read the count it prints. Filter 10047 is
-the queue Shane works from.
+`npm run decisions` afterwards and read the count it prints. It needs the agent
+token from the Keychain; the *Traps* section of `handover.md` gives the command.
+
+The `Decision required` status no longer exists. Park the story by dispatching
+`kothar:project-manager` to move it to HIL Review, then take the next one.
 
 Measure before recommending, wherever a number is available. Shane answers with
-a Jira decision block, often just "option A". Rewrite that block to carry the
-whole ruling and its reason before acting on it, then run `npm run decisions`.
+a Jira decision block, or a plain comment such as "option A". Rewrite the ruling
+on the ticket to carry the whole ruling and its reason before acting on it, then
+run `npm run decisions`.
 
 ## Architecture decisions
 
@@ -110,14 +118,18 @@ of a real trade-off. Miss one and skip it. Invoke the
 
 ## What not to touch alone
 
-- **KPA-12 and KPA-86** spend metered money.
+- **KPA-12 and KPA-86 spend metered money.** Shane approved the spend for
+  testing on 13 October 2026. The suite must still run offline on recorded
+  answers; only a deliberate live proof spends. Neither has its key yet:
+  `sukkal_local` holds no Voyage and no Claude connection. Shane types each key
+  into the Connections screen, never into a file or a transcript.
 - **KPA-71** needs somebody at both ends of the nabium push.
-- **KPA-22** needs amaterasu, which answered on 1 October 2026 and has often
-  been unreachable from the Mac. Check before you plan around it.
-- **Production `sukkal` on amaterasu.** KPA-154 renamed it from `kpa` on
-  30 September 2026. It holds 21 migrations and stops at `022_issue_cache.sql`
-  deliberately, so it is ten behind the repository's 032. The command names the
-  database before it acts and refuses it without `SUKKAL_ALLOW_PRODUCTION=1`.
+- **amaterasu answers**, measured on 13 October 2026. When it seems not to,
+  read the Local Network trap in `handover.md` before planning around it.
+- **Production `sukkal` on amaterasu.** It holds 21 migrations and stops at
+  `022_issue_cache.sql` deliberately, so it is eleven behind the repository's
+  `033`, measured on 13 October 2026. The command names the database before it
+  acts and refuses it without `SUKKAL_ALLOW_PRODUCTION=1`.
 - **A live OAuth grant.** The consent screen is Shane's to press. Build the
   whole path, prove every part that needs no vendor, and hand him the button.
 - **The Resend key and the sending domain.** Both are configured and working, so
@@ -135,37 +147,37 @@ repeating it as fact.
 
 ## Start here
 
-Measured on 1 October 2026 at source: the board paged to the end, 131 stories,
-and CI read with `gh run list --limit 1`. amaterasu answers. The decision queue
-is empty: `npm run decisions` reports 12 questions decided and 0 waiting.
+Measured on 13 October 2026 at source: the board paged to the end, 131 stories,
+90 Done. Every open story's blockers were read from its links. CI cannot run
+until Shane fixes the GitHub billing.
 
-**The last session shipped nine stories**, KPA-157, KPA-159 to KPA-165, and
-KPA-108. The connection card opens, reconnects, renames and shows its sending
-address; a connection name cannot split a log line; the worker sweeps what has
-expired; the decision register carries every question and pairs every ruling;
-the one flaky test is fixed; and a credential that expires, lapses or fails the
-recheck now reaches the briefing. `handover.md` carries what each proved.
+**Twelve stories wait on a review, and none needs code.** KPA-108 and KPA-157 to
+KPA-165 sit in AI Review and need a reviewer's verdict from an agent that did
+not build them. KPA-154 sits in HIL Review and passes all seven criteria; only
+Shane moves it.
 
-**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) was the epic's
-payoff and it is done.** Shane ruled both of its decisions in conversation on
-1 October and both are recorded on the ticket as decision blocks carrying the
-whole reasoning rather than the words that chose them.
+**Nine stories have no open blocker. Each waits on Shane for one thing:**
 
-**Nothing is left that you can build alone.** Every unblocked story in To Do
-waits on Shane, and twelve stories sit In Review with none read.
+| Story | What it waits on |
+|---|---|
+| [KPA-12](https://koinon.atlassian.net/browse/KPA-12) | A Voyage key in the Connections screen. Spend is approved. Unblocks KPA-87 and KPA-114, the road to retrieval |
+| [KPA-86](https://koinon.atlassian.net/browse/KPA-86) | A Claude key in the Connections screen. Spend is approved. ADR-0016 says build both paths: the CLI for scheduled work, the API for chat. Unblocks KPA-88, KPA-90 and KPA-115 |
+| [KPA-50](https://koinon.atlassian.net/browse/KPA-50) | The ruling in comment 11776. Build at once on Option A |
+| [KPA-103](https://koinon.atlassian.net/browse/KPA-103) | A consent screen. In Progress. Unblocks KPA-106, KPA-111 and KPA-113 |
+| [KPA-105](https://koinon.atlassian.net/browse/KPA-105) | A Jira site to connect, by token or grant |
+| [KPA-49](https://koinon.atlassian.net/browse/KPA-49) | A live tracker to poll. Unblocks KPA-124 |
+| [KPA-71](https://koinon.atlassian.net/browse/KPA-71) | Somebody at both ends of the nabium push |
+| [KPA-84](https://koinon.atlassian.net/browse/KPA-84) | Real mailboxes |
+| [KPA-147](https://koinon.atlassian.net/browse/KPA-147) | An HTTPS address. `sukkal.app` still has no A record, read on 13 October 2026 |
 
-**The nine unblocked stories, and what each waits on:**
+**Start with KPA-12 or KPA-86 the moment a key lands**, because the two together
+open the retrieval and chat epic, KPA-57, which stands at 0 of 7. Both stories
+carry stale text: KPA-12 names `migrations/004_vector_indexes.sql`, but the HNSW
+indexes are already in `migrations/001_core_schema.sql` and `src/embedding.ts`
+pins the model. It also says 17 facts where the vault holds 19.
 
-- **KPA-12** and **KPA-86** spend metered money, on Voyage and on a real model.
-- **KPA-49** and **KPA-105** need a live tracker to poll.
-- **KPA-50** needs a ruling and a live Jira ticket.
-- **KPA-71** needs somebody at both ends of the nabium push.
-- **KPA-84** needs real mailboxes.
-- **KPA-147** has a domain in `sukkal.app` and still has no address, because
-  the root carries no A record.
-
-**KPA-103's last criterion needs a consent screen**, which is Shane's to press.
-It is the one story In Progress.
+**One small job needs no person:** teach `scripts/decision-register.ts` to fall
+back to the Keychain for its token. Raise it as a story first.
 
 **If you arrive and everything is blocked, read across the stories rather than
 within one.** Every defect found on 1 October was found that way: two sweeps
@@ -175,11 +187,8 @@ passed over, and an ISO date in a brand-new string on a screen whose dates had
 just been changed. Each story was honest on its own and the gap sat between
 them.
 
-**The second rule that paid, repeatedly: check what an agent reports before you
-repeat it.** On 1 October a report named a flicker that its own SQL ruled out,
-another carried a miscount forward from a comment that had been wrong for
-weeks, and a third blamed a flake on a file move that predated it by a day. All
-three were settled by running something, and `handover.md` records what.
-
-Thirty stories are open: 29 To Do and one In Progress, KPA-103, against 131
-stories and twelve In Review. Nothing sits in Decision required.
+**Check what an agent reports before you repeat it.** On 1 October a report
+named a flicker that its own SQL ruled out, another carried a miscount forward
+from a comment that had been wrong for weeks, and a third blamed a flake on a
+file move that predated it by a day. All three were settled by running
+something, and `handover.md` records what.
