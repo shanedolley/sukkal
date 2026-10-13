@@ -97,13 +97,18 @@ Stop the story and post a Jira comment carrying:
 `npm run decisions` afterwards and read the count it prints. It needs the agent
 token from the Keychain; the *Traps* section of `handover.md` gives the command.
 
+**Label the ticket `question` in the same step**, with an issue edit:
+`{"update":{"labels":[{"add":"question"}]}}`. Shane asked on 14 October 2026 for
+every ticket that waits on his answer to carry it, whether the question is a
+decision, an approval or anything else. Remove the label once he answers.
+
 The `Decision required` status no longer exists. Park the story by dispatching
 `kothar:project-manager` to move it to HIL Review, then take the next one.
 
 Measure before recommending, wherever a number is available. Shane answers with
 a Jira decision block, or a plain comment such as "option A". Rewrite the ruling
-on the ticket to carry the whole ruling and its reason before acting on it, then
-run `npm run decisions`.
+on the ticket to carry the whole ruling and its reason before acting on it,
+remove the `question` label, then run `npm run decisions`.
 
 ## Architecture decisions
 
