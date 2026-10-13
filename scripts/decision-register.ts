@@ -21,19 +21,11 @@
  */
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { chooseCredentials } from './decision-credentials.ts';
 import { type Comment, type Entry, entriesForIssue } from './decision-entries.ts';
 
-const SITE = process.env['KOINON_JIRA_SITE'];
-const EMAIL = process.env['KOINON_JIRA_EMAIL'];
-const TOKEN = process.env['KOINON_JIRA_TOKEN'];
+const { site: SITE, email: EMAIL, token: TOKEN } = chooseCredentials(process.env);
 const PROJECT = 'KPA';
-
-if (!SITE || !EMAIL || !TOKEN) {
-  throw new Error(
-    'KOINON_JIRA_SITE, KOINON_JIRA_EMAIL and KOINON_JIRA_TOKEN must be set. ' +
-      '~/.zshenv exports all three. See docs/runbooks/secrets.md.',
-  );
-}
 
 interface Issue {
   key: string;

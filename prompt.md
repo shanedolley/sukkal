@@ -94,8 +94,8 @@ Stop the story and post a Jira comment carrying:
 - What happens when Shane answers.
 
 `scripts/decision-register.ts` reads those two strings and nothing else. Run
-`npm run decisions` afterwards and read the count it prints. It needs the agent
-token from the Keychain; the *Traps* section of `handover.md` gives the command.
+`npm run decisions` afterwards and read the count it prints. It reads the agent
+token from the Keychain itself, since KPA-167.
 
 **Label the ticket `question` in the same step**, with an issue edit:
 `{"update":{"labels":[{"add":"question"}]}}`. Shane asked on 14 October 2026 for
@@ -148,45 +148,53 @@ repeating it as fact.
 
 ## Start here
 
-Measured on 13 and 14 October 2026 at source: the board paged to the end,
-131 stories, 91 Done. Every open story's blockers were read from its links. CI
-is green.
+Measured on 14 October 2026 at source: the board paged to the end, 133 stories,
+91 Done. Every open story's blockers were read from its links. CI is green, and
+no branch or pull request is open. The documentation was swept for stale
+references the same day.
 
-**Ten stories wait on a review, and none needs code.** KPA-108 and KPA-157 to
-KPA-165 sit in AI Review and need a reviewer's verdict from an agent that did
+**[KPA-167](https://koinon.atlassian.net/browse/KPA-167) shipped on
+14 October 2026** and waits in AI Review.
+
+**Claim [KPA-166](https://koinon.atlassian.net/browse/KPA-166) next**, 8 points,
+in To Do: deploy the web tier and the worker to amaterasu behind a Cloudflare
+Tunnel and Access. It opens with a question for Shane, Docker or native Node, so
+measure both, post the `DECISION NEEDED` comment with the `question` label, and
+park it in HIL Review. It later needs his approval to migrate production. It
+blocks KPA-147.
+
+**Eleven stories wait on a review, and none needs code.** KPA-108, KPA-157 to
+KPA-165 and KPA-167 sit in AI Review and need a reviewer's verdict from an agent that did
 not build them.
 
-**Seven stories in To Do have no open blocker. Each waits on Shane for one thing:**
+**Seven more stories have no open blocker. Each waits on Shane for one thing:**
 
 | Story | What it waits on |
 |---|---|
 | [KPA-12](https://koinon.atlassian.net/browse/KPA-12) | A Voyage key in the Connections screen. Spend is approved. Unblocks KPA-87 and KPA-114, the road to retrieval |
 | [KPA-86](https://koinon.atlassian.net/browse/KPA-86) | A Claude key in the Connections screen. Spend is approved. ADR-0016 says build both paths: the CLI for scheduled work, the API for chat. Unblocks KPA-88, KPA-90 and KPA-115 |
 | [KPA-103](https://koinon.atlassian.net/browse/KPA-103) | A consent screen. In Progress. Unblocks KPA-106, KPA-111 and KPA-113 |
-| [KPA-105](https://koinon.atlassian.net/browse/KPA-105) | A Jira site to connect, by token or grant |
+| [KPA-105](https://koinon.atlassian.net/browse/KPA-105) | A Jira site to connect, by token or grant. Unblocks KPA-142 and, with KPA-124, KPA-50 |
 | [KPA-49](https://koinon.atlassian.net/browse/KPA-49) | A live tracker to poll. Unblocks KPA-124 |
 | [KPA-71](https://koinon.atlassian.net/browse/KPA-71) | Somebody at both ends of the nabium push |
 | [KPA-84](https://koinon.atlassian.net/browse/KPA-84) | Real mailboxes |
 
-**Start with KPA-12 or KPA-86 the moment a key lands**, because the two together
-open the retrieval and chat epic, KPA-57, which stands at 0 of 7. Both stories
-carry stale text: KPA-12 names `migrations/004_vector_indexes.sql`, but the HNSW
-indexes are already in `migrations/001_core_schema.sql` and `src/embedding.ts`
-pins the model. It also says 17 facts where the vault holds 19.
-
-**Two stories need no person to start, and both sit in Backlog**, raised on
-14 October 2026 under KPA-145. Ask the project manager to move one to To Do
-before you claim it.
-
-- [KPA-167](https://koinon.atlassian.net/browse/KPA-167), 1 point: let
-  `npm run decisions` read its token from the Keychain. Fully buildable.
-- [KPA-166](https://koinon.atlassian.net/browse/KPA-166), 8 points: deploy the
-  web tier and the worker to amaterasu behind a Cloudflare Tunnel and Access.
-  It starts with a decision, Docker or native Node, and later needs Shane to
-  approve the production migration. It blocks KPA-147.
+Neither key had arrived on 14 October 2026: `sukkal_local` held the three Google
+connections and `Sukkal Resend`, nothing else. **Start KPA-12 or KPA-86 the
+moment one lands**, because the two together open the retrieval and chat epic,
+KPA-57, which stands at 0 of 7. Both stories carry stale text: KPA-12 names
+`migrations/004_vector_indexes.sql`, but the HNSW indexes are already in
+`migrations/001_core_schema.sql` and `src/embedding.ts` pins the model. It also
+says 17 facts where the vault holds 19.
 
 **KPA-50 waits for the issue sync**, by Shane's ruling of 14 October 2026.
-KPA-124 and KPA-105 block it.
+KPA-124 and KPA-105 block it. **KPA-147 waits for KPA-166.**
+
+**One subtask is open under a Done story.**
+[KPA-22](https://koinon.atlassian.net/browse/KPA-22), the backup drill under
+KPA-2, sits in To Do. Its one blocker, KPA-5, is Done, read on 14 October 2026.
+The drill proves nothing until the vault is loaded into production `sukkal`, and
+that load needs Shane, as *What not to touch alone* says.
 
 **If you arrive and everything is blocked, read across the stories rather than
 within one.** Every defect found on 1 October was found that way: two sweeps

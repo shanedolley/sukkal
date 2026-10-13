@@ -160,8 +160,11 @@ Values live at `~/.config/sukkal/env`, mode 0600, outside the repository.
 environment variable, refuses a remote host that does not encrypt, and lets a
 loopback host through in the clear.
 
-**amaterasu is often unreachable from the Mac**, and the connection then hangs
-for 75 seconds per suite rather than failing. This Mac runs Homebrew PostgreSQL
+**amaterasu can look unreachable from the Mac when it is up**, and the connection
+then hangs for 75 seconds per suite rather than failing. On 13 October 2026 the
+cause was the macOS Local Network permission of the terminal app (Orca), not the
+box. Ping another LAN host such as `192.168.20.10` before you call it down: if
+only the router answers, the permission is the cause. This Mac runs Homebrew PostgreSQL
 17 with pgvector 0.8.6, the same extension version, so a local database tests
 everything. The loopback rule above is what makes it work without weakening
 anything.

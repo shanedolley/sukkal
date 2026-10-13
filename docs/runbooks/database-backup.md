@@ -12,10 +12,11 @@ both owned by the `sukkal` role.
 when a person runs the commands below, and nothing alerts when one is missed.
 
 That is a deliberate gap, not an oversight. No acceptance criterion in slice one
-asks for a schedule, and `kpa` holds no application data yet: its `public` schema
-contained zero objects when this was written. Add a schedule once KPA-5 loads the
-vault, because that is the first commit that puts something in there worth
-losing.
+asks for a schedule. On 26 August 2026 the `public` schema of `kpa`, now
+`sukkal`, held zero objects. On 14 October 2026 it holds 21 migrations ending at
+`022_issue_cache.sql`, and nobody has loaded the vault into it. Add a schedule
+once the vault load reaches production, because that is the first write that puts
+something in there worth losing.
 
 ## Run the dump on amaterasu, not on the Mac
 
@@ -175,12 +176,13 @@ the query, and the server logged `syntax error at or near "\"` instead of
 answering. The count reached `echo` empty. The quoting is corrected in the
 script as of 26 August 2026, and the drill was not run a second time.
 
-**The comparison was vacuous anyway.** `kpa`'s `public` schema holds zero
-objects today, so both sides of step 4 were zero. The drill proves the dump,
+**The comparison was vacuous anyway.** `kpa`'s `public` schema held zero
+objects that day, so both sides of step 4 were zero. The drill proves the dump,
 create, restore and drop cycle runs end to end on this box. It does not prove
 that data survives a round trip, because there is no data.
 
-**Repeat the drill after KPA-4 creates the schema and KPA-5 loads the vault.**
+**Repeat the drill after the vault is loaded into production.** The schema
+exists since the migrations ran, so only the load is missing.
 That run tests the thing this runbook exists for. Use the `-Fc` commands above
 rather than the wizard's plain SQL, and use the row-count comparison in the
 previous section.

@@ -2,7 +2,8 @@
 
 Written for KPA-109, and checked against a local database on 2 September 2026.
 
-The worker is the second of the three services on amaterasu. It holds
+The worker is the second of the three services planned for amaterasu. None runs
+there on 14 October 2026. It holds
 everything long running: ingestion, agent runs, the nightly sweep, the Jira
 poller. The web tier reads and serves, and nothing long running belongs in a
 request handler.

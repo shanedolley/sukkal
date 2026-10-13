@@ -29,7 +29,7 @@ is for, where it comes from, and what breaks without it.
 `REUI_LICENSE_KEY` belongs to the web tier and sits in `apps/web/.env.example`.
 The last part of this section covers it.
 
-Three more secrets reach a repository command from a different file, and the
+Three more secrets reach a repository command from other places, and the
 section after next covers them: `KOINON_JIRA_SITE`, `KOINON_JIRA_EMAIL` and
 `KOINON_JIRA_TOKEN`.
 
@@ -173,37 +173,55 @@ $ git check-ignore -v apps/web/.env.local
 apps/web/.gitignore:34:.env*	apps/web/.env.local
 ```
 
-### The three Jira secrets come from the shell, not from this file
+### The three Jira secrets come from two places
 
-`scripts/decision-register.ts` reads them at lines 25 to 27, so
-`npm run decisions` throws before it calls Jira when any one is missing.
+`scripts/decision-credentials.ts` picks them for `scripts/decision-register.ts`,
+so `npm run decisions` throws before it calls Jira when it finds no token.
 
-| Variable | For |
-|---|---|
-| `KOINON_JIRA_SITE` | The Koinon site, `https://koinon.atlassian.net` |
-| `KOINON_JIRA_EMAIL` | The account the token belongs to |
-| `KOINON_JIRA_TOKEN` | A live Jira API token |
+| Variable | For | Where it lives |
+|---|---|---|
+| `KOINON_JIRA_SITE` | The Koinon site. It defaults to `https://koinon.atlassian.net` | `~/.config/secrets.env`, optional |
+| `KOINON_JIRA_EMAIL` | The account an environment token belongs to | `~/.config/secrets.env` |
+| `KOINON_JIRA_TOKEN` | A live Jira API token | The macOS Keychain item `kothar-jira-agent`, in no file |
 
-**They live in `~/.config/secrets.env`, mode 0600, not in
+**The site and the email live in `~/.config/secrets.env`, mode 0600, not in
 `~/.config/sukkal/env`**, because they belong to the person running the
 repository rather than to the installation. `~/.zshenv` sources that file at
 line 13, and zsh reads `~/.zshenv` for every shell, interactive or not, so no
 command sources anything first. Nothing the running application reads names any
 of the three.
 
-This reports which file holds them, and never a value. Checked on
-30 September 2026:
+**The token left the shell environment.** The Keychain item `kothar-jira-agent`
+holds it for the Claude Agent account, `claude@koinon.com.au`. The script picks
+the credentials in this order:
+
+1. When `KOINON_JIRA_TOKEN` is set, it uses that token with `KOINON_JIRA_EMAIL`.
+2. Otherwise it reads the Keychain item with `security find-generic-password -s kothar-jira-agent -w`. It pairs the token with `claude@koinon.com.au` and ignores `KOINON_JIRA_EMAIL`, so the token and the email always name one account.
+3. When both fail, it throws and names the variable and the Keychain item. The message never holds a token.
+
+Run it plainly:
+
+```
+npm run decisions
+```
+
+There is no Linux file fallback. The script reads the Keychain on macOS only.
+
+This reports where each variable lives, and never a value. Checked on
+14 October 2026:
 
 ```
 $ grep -c '^export KOINON_JIRA_TOKEN=' ~/.config/secrets.env
-1
+0
 $ grep -c 'KOINON_JIRA_TOKEN' ~/.config/sukkal/env
 0
+$ security find-generic-password -s kothar-jira-agent >/dev/null && echo present
+present
 $ stat -f '%Sp' ~/.config/secrets.env
 -rw-------
 ```
 
-Two files hold secrets for two different owners, and the distinction is worth
+Two files held secrets for two different owners, and the distinction is worth
 keeping. `~/.config/sukkal/env` holds what this installation reads.
 `~/.config/secrets.env` holds what Shane's shell reaches, across every
 repository.
@@ -216,7 +234,8 @@ not there, which is the same gap the check records for
 
 Added on 30 September 2026. KPA-70 set out to document every secret the
 application reads and missed these three, because they reach a script rather
-than the application and arrive from a different file.
+than the application and arrive from a different file. The token moved to the
+Keychain by 13 October 2026.
 
 ### The web tier reads its own environment
 
@@ -391,10 +410,11 @@ clone runs before anyone creates one.
 
 ## On amaterasu, under systemd
 
-No unit exists yet. Slice one ships no service, so **nothing in this section
-has been run on amaterasu.** It is the pattern to follow, not a checked
-procedure, and whoever writes the first unit should verify each command and
-correct this file.
+No unit exists yet, and amaterasu has no Node, npm or cloudflared. Docker is
+present. Read on 14 October 2026. KPA-166 deploys the web tier there, so
+**nothing in this section has been run on amaterasu.** It is the pattern to
+follow, not a checked procedure, and whoever writes the first unit should verify
+each command and correct this file.
 
 When a unit lands, it reads its environment from a file rather than from
 `Environment=` lines, because `systemctl show` prints `Environment=` values to

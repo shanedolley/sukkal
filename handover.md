@@ -37,8 +37,17 @@ with `linkedIssues("KPA-50","is blocked by")`, which returns both.
 and comment 11780 answers: one proxied CNAME, `app.sukkal.app` to the tunnel,
 which Cloudflare writes itself. amaterasu has no Node, no `cloudflared` and no
 Sukkal service, checked on 14 October 2026. KPA-166, raised that day, deploys
-the web tier and blocks KPA-147. KPA-167 carries the Keychain fallback for
-`npm run decisions`. Both sit in Backlog.
+the web tier and blocks KPA-147. It sits in To Do.
+
+**KPA-167 shipped on 14 October 2026.** `npm run decisions` now runs with no
+prefix. `scripts/decision-credentials.ts` uses `KOINON_JIRA_TOKEN` with
+`KOINON_JIRA_EMAIL` when the token is set, and otherwise reads the Keychain item
+`kothar-jira-agent` and pairs it with `claude@koinon.com.au`.
+`docs/runbooks/secrets.md` says the order.
+
+**A sweep on 14 October 2026 corrected stale documents**: `README.md`,
+`docs/project-brief.md`, `CLAUDE.md` and four runbooks. The brief's slice table
+now carries the Jira counts of that day.
 
 **CI was refused on 13 October 2026 and runs again since 14 October.** GitHub
 would not start a job while the account's billing failed. Shane fixed it, and
@@ -119,12 +128,10 @@ because none of them writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
 two. Both counts read again on 13 October 2026 and unchanged.
 
-The suite runs **692 tests with the vault and 672 without it**, measured again
-on 13 October 2026 against a local `sukkal_dev` dropped and recreated before
-each run: 0 fail, 0 cancelled, 1 skipped in both. One skip is meant to be there.
-The counts first reached these numbers on 1 October, after KPA-108.
-KPA-159 added one test, KPA-162 three, KPA-160 one, KPA-161 four, KPA-157 three,
-KPA-163 four, KPA-165 two and KPA-108 six, which is what moved both counts.
+The suite runs **698 tests with the vault and 678 without it**, measured on
+14 October 2026 against a local database dropped and recreated before each run:
+0 fail, 0 cancelled, 1 skipped in both. One skip is meant to be there. KPA-167
+added six tests, in `test/decision-credentials.test.ts`.
 
 **The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -144,19 +151,19 @@ vault, several suites skip and the summary still reports 1.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **131 stories, 91 Done, which is 69% by
-count.** Counted from Jira on 13 October 2026, two pages read to the end,
-165 issues and every key unique. KPA-154 moved to Done on 14 October.
+Project KPA on `koinon.atlassian.net`. **133 stories, 91 Done, which is 68% by
+count.** Counted from Jira on 14 October 2026, two pages read to the end,
+167 issues and every key unique.
 
 | Status | Stories |
 |---|---|
 | Done | 91 |
-| AI Review | 10: KPA-108 and KPA-157 to KPA-165, all shipped on 1 October |
+| AI Review | 11: KPA-108 and KPA-157 to KPA-165, shipped on 1 October, and KPA-167, shipped on 14 October |
 | HIL Review | 0 |
 | In Progress | 1: KPA-103 |
-| To Do | 29 |
+| To Do | 30, including KPA-166, raised on 14 October |
 
-**Read these counts by issue type.** The project holds 165 issues: 131 stories,
+**Read these counts by issue type.** The project holds 167 issues: 133 stories,
 13 epics and 21 subtasks. A count of everything answers a different question, so
 every number here names `issuetype = Story`.
 
@@ -178,7 +185,7 @@ shows one more.
 | KPA-56 | 6/7 | The agent and the policy engine |
 | KPA-57 | 0/7 | Retrieval and chat |
 | KPA-75 | 6/7 | Let the installation authenticate its owner |
-| KPA-145 | 2/8 | Harden what the installation exposes |
+| KPA-145 | 2/10 | Harden what the installation exposes |
 | KPA-149 | 2/2 | Become Sukkal. In AI Review itself |
 | KPA-152 | 4/4 | Move the machine identifiers off KPA |
 
@@ -465,6 +472,10 @@ workflow change on 3 October removed `Decision required`. The autonomous skill
 parks a story needing a person in HIL Review, through `kothar:project-manager`.
 KPA-50 sat in To Do with the question on it. Filter 10047, the old decision
 queue, answers 404 to the agent account, measured on 13 October 2026.
+
+**A ticket waiting on Shane carries the label `question`, since 14 October
+2026.** Shane asked for it in place of the removed status. Find the queue with
+`project = KPA AND labels = question`; it held nothing on 14 October 2026.
 
 **[KPA-143] was decided and built on 30 September 2026.** How does a self-hosted
 box send the reset link? The answer is Resend over HTTPS, with the API key held
@@ -888,17 +899,11 @@ and `node` all inherit that app's setting. It cost an hour and a false report
 that the box was down. Before calling amaterasu down, ping another LAN host such
 as `192.168.20.10`: if only the router answers, the cause is the permission.
 
-**`npm run decisions` fails without `KOINON_JIRA_TOKEN`, and the token is no
-longer in the environment.** It answers `KOINON_JIRA_SITE, KOINON_JIRA_EMAIL and
-KOINON_JIRA_TOKEN must be set`. Supply the agent account's token and its email
-together, because the token and the email must name the same account:
-
-```
-KOINON_JIRA_EMAIL=claude@koinon.com.au KOINON_JIRA_TOKEN="$(security find-generic-password -s kothar-jira-agent -w)" npm run decisions
-```
-
-Found on 13 October 2026. The lasting fix is a fallback to the Keychain inside
-`scripts/decision-register.ts`, which KPA-167 carries.
+**The ticket guard refuses a Bash call that names Jira beside a program it does
+not know.** A `kj` call piped into `sed`, a `git` command beside a `kj` call, and
+a heredoc holding `KOINON_JIRA` were each denied on 14 October 2026, and nothing
+in the call ran. Save the `kj` output to a file in one call and read it in the
+next.
 
 **A CI run that fails in three seconds tested nothing.** GitHub refuses to start
 a job when the account's billing fails, and the run reads as red like any other.

@@ -4,8 +4,9 @@ A hosted web application that acts as Shane Dolley's personal assistant. It
 connects to three Google Workspace accounts, ingests meeting transcripts from
 nabium, and maintains a memory that learns and corrects itself.
 
-It runs on `amaterasu`, a Mac mini running Ubuntu, and is reached through
-Cloudflare Access.
+It is to run on `amaterasu`, a Mac mini running Ubuntu, reached through
+Cloudflare Tunnel and Access. On 14 October 2026 amaterasu held the production
+database and no Sukkal service. KPA-166 deploys the web tier at `app.sukkal.app`.
 
 ## Where things are
 

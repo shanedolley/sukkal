@@ -245,8 +245,10 @@ Two things nearby are open, and neither belongs to provisioning.
 
 **The backup drill proved nothing yet.** It dumped, restored and dropped a
 scratch database, so the mechanics work, but both sides of the row-count
-comparison were zero because `kpa` holds no objects. KPA-22 is reopened and
-blocked by KPA-5. `docs/runbooks/database-backup.md` carries the detail.
+comparison were zero because `kpa`, now `sukkal`, held no objects that day.
+KPA-22 was reopened and blocked by KPA-5. On 14 October 2026 KPA-5 was Done and
+KPA-22 sat in To Do, waiting on the vault load into production.
+`docs/runbooks/database-backup.md` carries the detail.
 
 **Nothing watches the box's own recovery.** These fixes make Postgres come back
 correctly after a reboot; nothing tells anyone when it does not. That gap is

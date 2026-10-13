@@ -3,10 +3,12 @@
 **Status:** draft, in active discovery. Sections marked *Open* hold questions
 not yet answered.
 
-**Jira project:** KPA, `koinon.atlassian.net`. Empty as of 23 August 2026. It
-becomes the source of work once this brief settles.
+**Jira project:** KPA, `koinon.atlassian.net`. The source of work. On
+14 October 2026 it held 133 stories, 91 of them Done.
 
-**Last updated:** 3 September 2026, after an overnight run of four parallel
+**Last updated:** 14 October 2026, when a sweep refreshed the Jira counts, the
+slice table and the production name. The last change to the design was on
+3 September 2026, after an overnight run of four parallel
 rounds and two solo stories: what leaves the browser, the credential store, the
 account row, the workspace and project tree, and one linter across both
 packages
@@ -62,8 +64,8 @@ fills it.
 
 The machine followed, in KPA-153. The databases, the eight environment
 variables, the config folder, the two package names and the repository each
-read `sukkal` now. Production on amaterasu is the one that lags, and KPA-154
-moves it when the box answers.
+read `sukkal` now. KPA-154 renamed production on amaterasu too, so nothing
+carries the old name.
 
 The Jira project key stays `KPA`, because 644 references cite it and every one
 of them is a link. So does the Jira project's own label, `KPA · Personal
@@ -928,24 +930,25 @@ rewritten to match the code.
 
 ### The slices
 
-Seven slices reach a working application. The first two are built. The order
-runs down the page, and each slice states what it unblocks.
+Seven slices reach a working application. Slices two, three and four are built.
+The order runs down the page, and each slice states what it unblocks. Each count
+is Done over all stories in the epic, read from Jira on 14 October 2026.
 
 | Slice | What it delivers | State |
 |---|---|---|
-| 1. Migrate the memory | The memory model, proved on 19 facts | In progress. KPA-1, 16 of 20 |
+| 1. Migrate the memory | The memory model, proved on 19 facts | In progress. KPA-1, 19 of 20 |
 | 2. Draw the interface | Every screen, on fixtures | Done. KPA-35 |
 | 3. Finish the memory schema | The tables and columns the screens need, on top of slice one | Done. KPA-51 |
-| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | In progress. KPA-53, 8 of 12 |
-| 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | In progress. KPA-54, 4 of 10 |
+| 4. Build the application data schema | The account, connections, workspaces, projects, sprints, the issue cache, custom fields | Done. KPA-53, 12 of 12 |
+| 5. Connect the accounts | Credentials held on the server, and a real OAuth grant | In progress. KPA-54, 6 of 13 |
 | 6. Fill the stores | Ingestion into the memory, and a Jira poller into the cache | In progress. KPA-55, 3 of 14 |
-| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-52, 13 of 20 |
+| 7. Join the halves | Replace every fixture with a real read and a real write | In progress. KPA-52, 16 of 22 |
 
 Two capabilities sat outside this order because each is a product in itself.
-Both have started. The agent that acts within policy has its engine and its
-audit trail, KPA-56 at 5 of 7. Retrieval has nothing yet, KPA-57 at 0 of 7. A
+The agent that acts within policy has started, with its engine and its audit
+trail, KPA-56 at 6 of 7. Retrieval has nothing yet, KPA-57 at 0 of 7. A
 third arrived that no slice named: the installation authenticating its own
-owner, KPA-75 at 1 of 5, which ADR-0009 created and ADR-0020 now carries.
+owner, KPA-75 at 6 of 7, which ADR-0009 created and ADR-0020 now carries.
 
 **Slices three and four are separate on purpose.** *Two stores, not one* says
 why. One extends a schema that exists and settles four disagreements with the
