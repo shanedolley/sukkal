@@ -12,13 +12,14 @@ prose, so nothing here reads an answer out of a sentence.
 the lighter rulings. A decision that meets the three tests in `CLAUDE.md`
 graduates to an ADR, and this register then cites it.
 
-Generated 2026-10-13. 14 questions decided, 1 questions waiting.
+Generated 2026-10-13. 15 questions decided, 0 questions waiting.
 
 ## Decided
 
 | On | Ticket | The question | The ruling |
 |---|---|---|---|
 | 2026-10-13 | [KPA-12](https://koinon.atlassian.net/browse/KPA-12) | (the question is not in a warning panel) | I approve the use of AI models for testing and the costs associated. |
+| 2026-10-14 | [KPA-50](https://koinon.atlassian.net/browse/KPA-50) | Build the editor, the slash menu and the ADF adapter now against fixtures, or wait until Sukkal reads and writes real Jira descriptions? Criterion five and the done-when both need a live Jira round trip, and nothing in the app reads or writes a Jira description yet. KPA-105 connects a Jira site and KPA-49 and KPA-124 read from it, and none has started. | Option C: wait for the issue sync |
 | 2026-09-03 | [KPA-80](https://koinon.atlassian.net/browse/KPA-80) | Does KPA read an identity from Cloudflare Access, or authenticate on every installation? | Option A. KPA authenticates on every installation with its own account, and reads no identity from Cloudflare Access on any box under any configuration. KPA no longer requires Access at all: whether a deployment runs it is that deployment's own choice, and where it runs it is a network gate rather than a sign-in. Trusting Cf-Access-Authenticated-User-Email was rejected because a forged header would arrive as the owner. Verifying the signed Cf-Access-Jwt-Assertion was rejected for its cost rather than its correctness, and ADR-0023 records it as available: forty lines on the security boundary, two environment variables dangerous when half set, and a second code path on one box in the world. KPA-77 owns the session lifetime, so a sign-in happens when a session lapses rather than every morning. KPA-128 follows: the sign-in pages stay. |
 | 2026-10-13 | [KPA-86](https://koinon.atlassian.net/browse/KPA-86) | (the question is not in a warning panel) | I approve the use of AI models for testing and the costs associated. |
 | 2026-09-03 | [KPA-96](https://koinon.atlassian.net/browse/KPA-96) | Does the fourth criterion close as met by migration 018, or does a trigger enforce it? | Option A. Close criterion 4 as met a different way. A column default cannot start a label as the project key, because PostgreSQL refuses a default naming another column and a constant default breaks every project matched by a key prefix. Migration 018 requires a match rule at insert instead, and KPA-127 removed the browser-side guess. No trigger, so test/workspaces.test.ts keeps its assertion that a project carrying neither match is refused. |
@@ -35,6 +36,4 @@ Generated 2026-10-13. 14 questions decided, 1 questions waiting.
 
 ## Waiting on a ruling
 
-| Ticket | The question | Recommended |
-|---|---|---|
-| [KPA-50](https://koinon.atlassian.net/browse/KPA-50) | Build the editor, the slash menu and the ADF adapter now against fixtures, or wait until Sukkal reads and writes real Jira descriptions? Criterion five and the done-when both need a live Jira round trip, and nothing in the app reads or writes a Jira description yet. KPA-105 connects a Jira site and KPA-49 and KPA-124 read from it, and none has started. | is Option A, estimated at 8 points. The adapter round trip is the risky part, and check-adf.ts proves it without Jira. The live proof belongs with the first story that writes a description to Jira, so it should be blocked by that story rather than hidden inside this one. 8 rather than 5 because description stops being a string in lib/types.ts, and the fixtures and their check follow |
+Nothing waiting.

@@ -56,10 +56,6 @@ tool overwrote a tracked one on 13 September 2026 without refusing.
    what was proved rather than assumed. Dispatch `kothar:project-manager` to
    move it to AI Review.
 
-**While CI cannot run, say so on the ticket.** GitHub has refused every job
-since 13 October 2026 over the account's billing. Run the checks locally, quote
-the counts, and name the refused run.
-
 ## Prove every claim
 
 Say what you ran and what it answered. A number nobody measured is a guess
@@ -147,28 +143,26 @@ repeating it as fact.
 
 ## Start here
 
-Measured on 13 October 2026 at source: the board paged to the end, 131 stories,
-90 Done. Every open story's blockers were read from its links. CI cannot run
-until Shane fixes the GitHub billing.
+Measured on 13 and 14 October 2026 at source: the board paged to the end,
+131 stories, 91 Done. Every open story's blockers were read from its links. CI
+is green.
 
-**Twelve stories wait on a review, and none needs code.** KPA-108 and KPA-157 to
+**Ten stories wait on a review, and none needs code.** KPA-108 and KPA-157 to
 KPA-165 sit in AI Review and need a reviewer's verdict from an agent that did
-not build them. KPA-154 sits in HIL Review and passes all seven criteria; only
-Shane moves it.
+not build them.
 
-**Nine stories have no open blocker. Each waits on Shane for one thing:**
+**Eight stories have no open blocker. Each waits on Shane for one thing:**
 
 | Story | What it waits on |
 |---|---|
 | [KPA-12](https://koinon.atlassian.net/browse/KPA-12) | A Voyage key in the Connections screen. Spend is approved. Unblocks KPA-87 and KPA-114, the road to retrieval |
 | [KPA-86](https://koinon.atlassian.net/browse/KPA-86) | A Claude key in the Connections screen. Spend is approved. ADR-0016 says build both paths: the CLI for scheduled work, the API for chat. Unblocks KPA-88, KPA-90 and KPA-115 |
-| [KPA-50](https://koinon.atlassian.net/browse/KPA-50) | The ruling in comment 11776. Build at once on Option A |
 | [KPA-103](https://koinon.atlassian.net/browse/KPA-103) | A consent screen. In Progress. Unblocks KPA-106, KPA-111 and KPA-113 |
 | [KPA-105](https://koinon.atlassian.net/browse/KPA-105) | A Jira site to connect, by token or grant |
 | [KPA-49](https://koinon.atlassian.net/browse/KPA-49) | A live tracker to poll. Unblocks KPA-124 |
 | [KPA-71](https://koinon.atlassian.net/browse/KPA-71) | Somebody at both ends of the nabium push |
 | [KPA-84](https://koinon.atlassian.net/browse/KPA-84) | Real mailboxes |
-| [KPA-147](https://koinon.atlassian.net/browse/KPA-147) | An HTTPS address. `sukkal.app` still has no A record, read on 13 October 2026 |
+| [KPA-147](https://koinon.atlassian.net/browse/KPA-147) | A deployment of the web tier behind a Cloudflare Tunnel. Comment 11780 names the one DNS record and everything else, and no story deploys the web tier yet |
 
 **Start with KPA-12 or KPA-86 the moment a key lands**, because the two together
 open the retrieval and chat epic, KPA-57, which stands at 0 of 7. Both stories
@@ -176,8 +170,13 @@ carry stale text: KPA-12 names `migrations/004_vector_indexes.sql`, but the HNSW
 indexes are already in `migrations/001_core_schema.sql` and `src/embedding.ts`
 pins the model. It also says 17 facts where the vault holds 19.
 
-**One small job needs no person:** teach `scripts/decision-register.ts` to fall
-back to the Keychain for its token. Raise it as a story first.
+**Two jobs need no person, and no story carries either yet.** Teach
+`scripts/decision-register.ts` to fall back to the Keychain for its token. And
+write the deployment story KPA-147 asks for: the web tier and the worker on
+amaterasu, `cloudflared`, and the Access policy. Raise each as a story first.
+
+**KPA-50 waits for the issue sync**, by Shane's ruling of 14 October 2026.
+KPA-124 and KPA-105 block it.
 
 **If you arrive and everything is blocked, read across the stories rather than
 within one.** Every defect found on 1 October was found that way: two sweeps

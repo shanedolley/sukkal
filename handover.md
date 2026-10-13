@@ -1,6 +1,6 @@
 # Handover
 
-State as at 13 October 2026. `prompt.md` holds the instructions for a new
+State as at 14 October 2026. `prompt.md` holds the instructions for a new
 session. This file holds the facts.
 
 **No story was built between 1 and 13 October.** `git log` shows no commit in
@@ -18,24 +18,29 @@ Progress, AI Review, HIL Review, Done.
 
 **KPA-143 is Done**, accepted by Shane by 13 October 2026.
 
-**KPA-154 passes all seven criteria and waits on Shane in HIL Review.** It was
-rechecked on amaterasu on 13 October 2026 and two lines still named `kpa`: the
-header of `/etc/sudoers.d/sukkal` and a section of `CLAUDE.md`. Both were fixed
-that day. Comments 11777 and 11778 on the ticket carry the evidence.
+**KPA-154 is Done**, moved by Shane on 14 October 2026. It was rechecked on
+amaterasu on 13 October and two lines still named `kpa`: the header of
+`/etc/sudoers.d/sukkal` and a section of `CLAUDE.md`. Both were fixed that day.
+Comments 11777 and 11778 on the ticket carry the evidence. Epic KPA-152 is now
+4 of 4.
 
 **Shane approved model spend on KPA-12 and KPA-86 on 13 October 2026**, in a
 comment on each: "I approve the use of AI models for testing and the costs
 associated." `npm run decisions` counts both as rulings. Neither connection
 exists yet, so each story still needs a key typed into the Connections screen.
 
-**KPA-50 waits on a ruling.** Comment 11776 asks whether to build the editor
-against fixtures now, and recommends Option A: build it, and move the live Jira
-round trip into a new story blocked by KPA-105.
+**KPA-50 waits for the issue sync, by Shane's ruling of 14 October 2026:**
+"Option C: wait for the issue sync". KPA-124 and KPA-105 now block it, proved
+with `linkedIssues("KPA-50","is blocked by")`, which returns both.
 
-**CI cannot run.** GitHub refused to start both jobs on 13 October 2026, run
-38357016519: "recent account payments have failed or your spending limit needs
-to be increased". Until Shane fixes the account's billing, run the checks
-locally and say so on the ticket.
+**KPA-147 needs a deployment first.** Shane asked which DNS records it needs,
+and comment 11780 answers: one proxied CNAME, `app.sukkal.app` to the tunnel,
+which Cloudflare writes itself. amaterasu has no Node, no `cloudflared` and no
+Sukkal service, checked on 14 October 2026, and no story deploys the web tier.
+
+**CI was refused on 13 October 2026 and runs again since 14 October.** GitHub
+would not start a job while the account's billing failed. Shane fixed it, and
+the rerun of run 38361042663 passed in 1m44s.
 
 ## Shipped on 1 October 2026
 
@@ -86,14 +91,11 @@ against reality rather than against a stub.
 
 ## Where the work is
 
-**Branch `main`, pushed, the working tree clean, and CI not running.** This
-project commits straight to `main`; `CLAUDE.md` says why and names the override
-the hook wants. Read the head with `git log --oneline -1` rather than from here:
-a commit hash written into a file is stale the moment the file is committed.
-Read CI with `gh run list --limit 1`. The last run that passed was on
-1 October 2026. Every run since 13 October fails in about three seconds on the
-billing refusal above, and reads as a red run that tested nothing. Run
-`gh run view <id>` and read the annotation before treating one as a code fault.
+**Branch `main`, pushed, the working tree clean, and CI green.** This project
+commits straight to `main`; `CLAUDE.md` says why and names the override the
+hook wants. Read the head with `git log --oneline -1` rather than from here: a
+commit hash written into a file is stale the moment the file is committed.
+Read CI with `gh run list --limit 1`.
 
 **[KPA-13](https://koinon.atlassian.net/browse/KPA-13),
 [KPA-131](https://koinon.atlassian.net/browse/KPA-131) and
@@ -140,15 +142,15 @@ vault, several suites skip and the summary still reports 1.
 
 ## The board
 
-Project KPA on `koinon.atlassian.net`. **131 stories, 90 Done, which is 69% by
+Project KPA on `koinon.atlassian.net`. **131 stories, 91 Done, which is 69% by
 count.** Counted from Jira on 13 October 2026, two pages read to the end,
-165 issues and every key unique.
+165 issues and every key unique. KPA-154 moved to Done on 14 October.
 
 | Status | Stories |
 |---|---|
-| Done | 90 |
+| Done | 91 |
 | AI Review | 10: KPA-108 and KPA-157 to KPA-165, all shipped on 1 October |
-| HIL Review | 1: KPA-154, which waits on Shane alone |
+| HIL Review | 0 |
 | In Progress | 1: KPA-103 |
 | To Do | 29 |
 
@@ -176,7 +178,7 @@ shows one more.
 | KPA-75 | 6/7 | Let the installation authenticate its owner |
 | KPA-145 | 2/8 | Harden what the installation exposes |
 | KPA-149 | 2/2 | Become Sukkal. In AI Review itself |
-| KPA-152 | 3/4 | Move the machine identifiers off KPA |
+| KPA-152 | 4/4 | Move the machine identifiers off KPA |
 
 **Paging matters.** `/rest/api/3/search/jql` caps a page at 100 issues whatever
 `maxResults` says, and answers with a `nextPageToken` rather than an error. An
@@ -450,18 +452,16 @@ until the vault is frozen again, which is by design.
 
 ## Decisions
 
-**One question waits: [KPA-50](https://koinon.atlassian.net/browse/KPA-50),
-raised on 13 October 2026.** Build the editor, the slash menu and the ADF
-adapter against fixtures now, or wait for the issue sync? The comment carries
-three options and recommends A: build it, estimate it at 8, and move the live
-Jira round trip into a new story blocked by KPA-105. It also asks Shane to
-confirm the TipTap packages. `npm run decisions` reported 14 decided and 1
-waiting on 13 October 2026.
+**No question waits.** `npm run decisions` reported 15 decided and 0 waiting on
+14 October 2026. The last was
+[KPA-50](https://koinon.atlassian.net/browse/KPA-50): asked on 13 October
+whether to build the editor against fixtures now, Shane ruled on 14 October to
+wait for the issue sync. The recommendation had been to build now.
 
 **The story was not moved into a decision status, because none exists.** The
 workflow change on 3 October removed `Decision required`. The autonomous skill
 parks a story needing a person in HIL Review, through `kothar:project-manager`.
-KPA-50 sits in To Do with the question on it. Filter 10047, the old decision
+KPA-50 sat in To Do with the question on it. Filter 10047, the old decision
 queue, answers 404 to the agent account, measured on 13 October 2026.
 
 **[KPA-143] was decided and built on 30 September 2026.** How does a self-hosted
