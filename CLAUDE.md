@@ -106,18 +106,16 @@ writes no output. Import a local module by its real name, `./connect.ts`, not
 
 ## Reaching the database
 
-Two databases on amaterasu at `192.168.20.110`, both owned by the `kpa` role.
+Two databases on amaterasu at `192.168.20.110`, both owned by the `sukkal` role.
 
 | Variable | Database | Written by |
 |---|---|---|
-| `DATABASE_URL` | `kpa` | The migration. It holds the facts |
+| `DATABASE_URL` | `sukkal` | The migration. It holds the facts |
 | `DATABASE_URL_TEST` | `sukkal_dev` | Every test and every rehearsal |
 
-**Production still answers to `kpa`, and it is the last thing that does.**
-KPA-153 moved every local name to Sukkal on 13 September 2026 and could not
-reach amaterasu, so the database and the role there keep the old name until
-KPA-154 runs. Both names therefore mean production, and `PRODUCTION` in
-`src/db/connect.ts` holds both.
+**Production was called `kpa` until 30 September 2026**, when KPA-154 renamed
+the database and the role. A record older than that names `kpa`, and means
+`sukkal`. `PRODUCTION` in `src/db/connect.ts` holds `sukkal` alone.
 
 **Never point the running application at `sukkal_dev`.** The suite ends on
 `down()`, which drops every table, so a test run destroys whatever the app put
