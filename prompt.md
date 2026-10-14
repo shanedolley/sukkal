@@ -54,7 +54,7 @@ tool overwrote a tracked one on 13 September 2026 without refusing.
 6. Commit with a message that says what changed and why. Push. Watch CI.
 7. Comment on the ticket with what was built, how each criterion is met, and
    what was proved rather than assumed. Dispatch `kothar:project-manager` to
-   move it to AI Review.
+   move it on, as *Moving a story* says.
 
 ## Prove every claim
 
@@ -130,11 +130,11 @@ of a real trade-off. Miss one and skip it. Invoke the
   `sukkal_local` holds no Voyage and no Claude connection. Shane types each key
   into the Connections screen, never into a file or a transcript.
 - **KPA-71** needs somebody at both ends of the nabium push.
-- **amaterasu answers**, measured on 13 October 2026. When it seems not to,
+- **amaterasu answers**, measured on 14 October 2026. When it seems not to,
   read the Local Network trap in `handover.md` before planning around it.
 - **Production `sukkal` on amaterasu.** It holds 21 migrations and stops at
   `022_issue_cache.sql` deliberately, so it is eleven behind the repository's
-  `033`, measured on 13 October 2026. The command names the database before it
+  `033`, measured on 14 October 2026. The command names the database before it
   acts and refuses it without `SUKKAL_ALLOW_PRODUCTION=1`.
 - **A live OAuth grant.** The consent screen is Shane's to press. Build the
   whole path, prove every part that needs no vendor, and hand him the button.
@@ -184,7 +184,7 @@ not build them.
 | [KPA-103](https://koinon.atlassian.net/browse/KPA-103) | A consent screen. In Progress. Unblocks KPA-106, KPA-111 and KPA-113 |
 | [KPA-105](https://koinon.atlassian.net/browse/KPA-105) | A Jira site to connect, by token or grant. Unblocks KPA-142 and, with KPA-124, KPA-50 |
 | [KPA-49](https://koinon.atlassian.net/browse/KPA-49) | A live tracker to poll. Unblocks KPA-124 |
-| [KPA-71](https://koinon.atlassian.net/browse/KPA-71) | Somebody at both ends of the nabium push |
+| [KPA-71](https://koinon.atlassian.net/browse/KPA-71) | Somebody at both ends of the nabium push. Unblocks KPA-72 and KPA-110 |
 | [KPA-84](https://koinon.atlassian.net/browse/KPA-84) | Real mailboxes |
 
 Neither key had arrived on 14 October 2026: `sukkal_local` held the three Google

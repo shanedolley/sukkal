@@ -111,3 +111,6 @@ amaterasu answers.
 KPA-13, and that restarts three jobs, so it is Shane's step. KPA-131 and KPA-74
 have shipped too, so no story left compares against the frozen report. Once the
 vault moves, this script fails at its first step by design.
+Shane's step is done: `scripts/vault-freeze.sh restore` ran on 13 September 2026
+and the three jobs are loaded again. The vault is unfrozen, and the script
+fails at its first step until it is frozen again.

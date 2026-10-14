@@ -431,7 +431,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Memory store | PostgreSQL with typed edges and pgvector | The data is a graph, but the queries are neighbourhood queries rather than open traversal. Postgres does those in milliseconds at this scale, and row-level security enforces the Collibra and Koinon separation in the database rather than in application code. Neo4j Community has no role-based access control, so that boundary would live in application code where one missed filter leaks employer customer material. |
 | Inference | Claude subscription through the headless CLI, with OpenRouter as the metered path | Reuses the pattern the launchd jobs already prove. No marginal cost on the scheduled work. |
 | Local models | None | Rejected 23 August 2026. The hardware holds 7.6 GB of RAM and has no CUDA device, which caps local generation at a 3B model at roughly 10 tokens per second. |
-| Deployment | Bare metal on Ubuntu, systemd units, on Shane's box | Matches how the existing services on the box run, and spends no RAM on container overhead where RAM is the binding constraint. That reasoning is about `amaterasu` and does not travel: anybody else gets a container. |
+| Deployment | Open. Docker or systemd units on Shane's box, asked on KPA-166 | The first plan was bare metal under systemd, to match the existing services and spend no RAM on container overhead. Measured on 14 October 2026, `amaterasu` runs Docker 29.8.0 and the tunnel as a container, so the plan no longer matches the box. The first reasoning is about `amaterasu` and does not travel: anybody else gets a container. |
 | Runtime | Node | Stated requirement. Framework choice is open. |
 | Distribution | A container, and a first boot that asks who you are | The install has to work on a machine that holds nothing but Docker. Everything the assistant needs beyond that is asked for on screen rather than assumed from the environment. ADR-0009. |
 | Autonomy | Autonomous within policy | Acts inside rules Shane sets, logs everything, audited after. |
@@ -497,8 +497,8 @@ values in one place for that reason.
 | GPU | Intel UHD 630. No CUDA. |
 | Disk | 931 GB NVMe, 762 GB free |
 | Network | 192.168.20.110 on the LAN |
-| Installed | Docker 29.6.1, Compose v5.3.1, ffmpeg 6.1.1, Python 3.12.3, git |
-| Absent | Node, PostgreSQL, Claude CLI, Tailscale, a reverse proxy |
+| Installed | Docker 29.8.0, Compose v5.5.1, PostgreSQL 18.6 with pgvector 0.8.6, Claude Code 2.1.261 (in `~/.local/bin`, not on a non-interactive PATH), ffmpeg 6.1.1, Python 3.12.3, git. Measured 14 October 2026 |
+| Absent | Node, Tailscale, a reverse proxy. Measured 14 October 2026 |
 
 **It already works for a living.** It serves NFS, runs NZBGet, and runs a
 transcode monitor. Transcoding takes all 12 threads when it fires, and the
@@ -525,7 +525,7 @@ flowchart TB
     nab --> nabpg
   end
 
-  subgraph ama["amaterasu · Ubuntu 24.04 · systemd"]
+  subgraph ama["amaterasu · Ubuntu 24.04 · runtime open, KPA-166"]
     cfd["cloudflared"]
     web["sukkal-web<br/>Next.js :3000"]
     worker["kpa-worker<br/>ingest · agents · schedules<br/>pg-boss"]
@@ -556,7 +556,11 @@ flowchart TB
   web --> voy
 ```
 
-Three services under systemd on amaterasu, one Postgres, no containers. The
+Three services on amaterasu and one Postgres. Whether the web tier and the worker
+run under Docker or systemd is open on KPA-166. Measured on 14 October 2026, the
+tunnel runs today as a container named `cloudflared` (image
+`cloudflare/cloudflared:latest`), the box has no `cloudflared` binary and no Node,
+and nothing of Sukkal runs there yet. The
 worker holds every long-running thing: ingestion, agent runs, the nightly review,
 the staleness sweep. The web tier reads and serves.
 
@@ -1022,7 +1026,7 @@ vault retires, which is an argument for building it now.
 
 Sukkal replaces `journal/` along with the rest of the markdown system, and
 `journal.py` renders that journal from Claude Code's transcripts in
-`~/.claude/projects/`. Those live on Shane's Mac. Sukkal runs on amaterasu.
+`~/.claude/projects/`. Those live on Shane's Mac. Sukkal is to run on amaterasu, and does not yet.
 
 So the journal needs the same treatment as nabium: something on the Mac ships the
 transcripts across. The cheapest version reuses the pattern already chosen, a

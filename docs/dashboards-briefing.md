@@ -16,6 +16,12 @@ rest of the application.
 
 ### 1.1 No backend answers yet
 
+**Dated 14 October 2026:** this section describes the build when slice two
+finished. Since then Needs you, Meetings, the review queue, the audit log,
+connections, the account, the project tree and the custom fields read and write
+Postgres (KPA-117 to KPA-122, KPA-126, KPA-127). The sprint views, the issue
+screens and chat still read fixtures (KPA-123 to KPA-125, KPA-129 are open).
+
 Every screen reads fixtures from `apps/web/lib/fixtures.ts`. No worker, no
 database, no external service. Production replaces that one file and keeps the
 shapes in `apps/web/lib/types.ts`.
@@ -44,7 +50,7 @@ Warning: `useForcedStatus` calls `useSearchParams`. Wrap the component in
 
 ### 1.3 The space filter narrows everything
 
-Three spaces exist: Collibra, Koinon, and Personal. The workspace switcher at
+Four spaces exist: Collibra, Koinon, Personal and Shared. The workspace switcher at
 the top of the sidebar sets one, or sets "All spaces".
 
 Every count and every row obeys it:
@@ -191,7 +197,7 @@ Sydney Water 1" says where the morning will go.
 glyph, key, status glyph, title, context pills, assignee, and date. It groups
 on any field, to two levels, and the reader picks the fields.
 
-`lib/issue-grouping.ts` holds the grouping alone. `groupIssues(rows, field,
+`lib/issue-view.ts` holds the grouping. `groupIssues(nodes, field,
 sprintNames)` returns labelled groups in the right order. It is a pure
 function, so a new list can group without touching the component.
 
@@ -328,12 +334,12 @@ data grid carry lint errors that predate this work. New code must add none.
 Name these rather than working around them in silence.
 
 1. **No Jira connection.** The sprint views read fixtures. The credentials
-   exist as `KOINON_JIRA_SITE`, `KOINON_JIRA_EMAIL`, and `KOINON_JIRA_TOKEN`
-   in `~/.zshenv`, but no code calls the API.
+   live in the macOS Keychain item `kothar-jira-agent`, and no application code
+   calls the API.
 2. **No bar chart.** `AreaChart` is the only chart component, and the sprint
    dashboards will want bars.
-3. **Issue rows open nothing.** A row in `IssueList` is not a link and does
-   not open the detail panel.
+3. **Issue rows open the detail panel** since this was written. `IssueBoard` opens
+   `IssueDetail` on a row, and the row is still not a link.
 4. **Projects added in the sidebar hold in memory only.** A reload drops them.
    The `ponytail:` comment in `nav-projects.tsx` marks it.
-5. **The data grid is unproven.** It is installed and nothing renders it.
+5. **The data grid is proven** since this was written. The audit page renders it.

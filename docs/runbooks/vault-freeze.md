@@ -82,3 +82,8 @@ launchctl print gui/$(id -u)/com.koinon.daily-memory-review | head -3
 **The vault retires in a later slice, not this one.** KPA-13 needs both systems
 alive, so restore the jobs rather than leaving them off. Turning them off for
 good is a decision that belongs to the story that retires the vault.
+
+**State on 14 October 2026: unfrozen.** `restore` ran on 13 September 2026 and
+the three jobs are loaded. The vault's `HEAD` is still `da7afce`, the commit in
+`docs/vault-freeze.txt`, but the jobs may now write to it. Run `freeze` again
+before any verification.

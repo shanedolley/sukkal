@@ -3,9 +3,10 @@
 State as at 14 October 2026. `prompt.md` holds the instructions for a new
 session. This file holds the facts.
 
-**No story was built between 1 and 13 October.** `git log` shows no commit in
-that span. What moved was the board, the workflow, and two stories closed by a
-read.
+**No story was built between 1 and 13 October.** `git log` shows no commit from
+2 to 12 October, and the commits of 13 October are documents. What moved was the
+board, the workflow, and two stories closed by a read. KPA-167 was built on
+14 October.
 
 **The Jira workflow changed on 3 October 2026.** In Review is gone. A shipped
 story goes to **AI Review**, where a reviewer posts
@@ -36,12 +37,14 @@ with `linkedIssues("KPA-50","is blocked by")`, which returns both.
 **KPA-147 needs a deployment first.** Shane asked which DNS records it needs,
 and comment 11780 answers: one proxied CNAME, `app.sukkal.app` to the tunnel,
 which Cloudflare writes itself. KPA-166, raised that day, deploys the web tier
-and blocks KPA-147.
+and blocks KPA-147. Both links were read from Jira on 14 October 2026.
 
 **amaterasu already runs a tunnel, in Docker.** On 14 October 2026 it had no
 Node, no `cloudflared` binary and no Sukkal service, but `docker ps` showed a
 container named `cloudflared`, image `cloudflare/cloudflared:latest`, up for 17
-hours. `free -m` read 6.9 GB available. The brief's *Deployment* row says bare
+hours. `free -m` read 6.9 GB available. Read again later on 14 October: still no
+`node` or `cloudflared` on the PATH, no Sukkal service, and the container up 18
+hours. The brief's *Deployment* row says bare
 metal and no containers, and it is out of date on the second. Which hostnames
 that tunnel serves is unknown here; KPA-166 comment 11790 asks Shane.
 
@@ -62,8 +65,9 @@ decisions` now runs with no prefix. `scripts/decision-credentials.ts` uses
 otherwise reads the Keychain item `kothar-jira-agent` and pairs it with
 `claude@koinon.com.au`. `docs/runbooks/secrets.md` says the order.
 
-**The project manager moves no KPA story to AI Review, because KPA has no pull
-requests.** Its status map wants a pull request with passing checks for AI
+**The project manager moves no KPA story to AI Review, because KPA has had no
+pull request since 1 September.** `gh pr list --state all` shows four, all merged
+by then. Its status map wants a pull request with passing checks for AI
 Review, and again for Done. KPA commits straight to `main`, so it refused
 KPA-167 on 14 October 2026 although commit `71f3a82` was on `origin/main` and CI
 was green. The same gate holds the 10 stories already in AI Review: none can
@@ -151,14 +155,14 @@ stands* below says what it found.
 a credential like every other. KPA-157 and KPA-159 to KPA-165 added none,
 because none of them writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
-two. Both counts read again on 13 October 2026 and unchanged.
+two. Both counts read again on 14 October 2026 and unchanged.
 
 The suite runs **698 tests with the vault and 678 without it**, measured on
 14 October 2026 against a local database dropped and recreated before each run:
 0 fail, 0 cancelled, 1 skipped in both. One skip is meant to be there. KPA-167
 added six tests, in `test/decision-credentials.test.ts`.
 
-**The skip is in `test/migrate.test.ts:68`, not `test/connect.test.ts`**, which
+**The skip is in `test/migrate.test.ts:69`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
 `a connection to a remote host is encrypted`, and it skips on the hostname rather
 than on a flag: `LOOPBACK` decides, so it skips against a local database and runs
@@ -239,7 +243,7 @@ Both are tested, and only their tests call them. `src/worker/index.ts` registers
 deliveries, nightly and recheck, and `nightly.ts` imports `sweep` from
 `src/memory/sweep.ts`, which reviews facts and is a different function.
 `sukkal_local` still holds the two stale grants, measured again on
-13 October 2026, because the sweep runs only inside the worker and no worker has
+14 October 2026, because the sweep runs only inside the worker and no worker has
 run on this Mac since 1 October. They were created on 13 and 19 September and
 each expired ten minutes later. The
 two successful grants run on 1 October left nothing behind, because claiming one
@@ -341,7 +345,7 @@ five of the six identifiers move. The variables, the config folder, the package
 names, the repository and the local databases all read `sukkal` now. KPA-152 is
 the epic and KPA-154 carries what is left.
 
-**The Jira project key stays `KPA`**, with its 644 references, and so does the
+**The Jira project key stays `KPA`**, with its many references, and so does the
 project's own label `KPA · Personal Assistant`, which is keyed to it and seeded
 by `migrations/018`.
 
@@ -438,8 +442,8 @@ independence REQ-033 wants.
 **Production has not been loaded.** The script refuses `sukkal`, and the vault has
 never been written to amaterasu.
 
-**amaterasu answers, measured on 13 October 2026** over ssh and on port 5432,
-after a reboot that day. Before deciding it is down, read the trap on the
+**amaterasu answers, measured on 13 and 14 October 2026** over ssh and on port
+5432, after a reboot on 13 October. Before deciding it is down, read the trap on the
 terminal app's Local Network permission below: from a session inside Orca the
 box looked dead while it was up. Nothing blocks the load but the decision to run
 it. To load it: freeze the vault, run
@@ -448,7 +452,7 @@ on purpose.
 
 The vault has not moved since the freeze, so that run costs nothing in
 surprises. It is still at `da7afce`, with a clean working tree and no commits
-since, checked on 13 October 2026, even though the launchd jobs that could write
+since, checked on 14 October 2026, even though the launchd jobs that could write
 to it have run since 13 September.
 
 **A citation keeps its words, since KPA-131.** Every `derived_from` edge holds
@@ -486,11 +490,12 @@ until the vault is frozen again, which is by design.
 
 ## Decisions
 
-**No question waits.** `npm run decisions` reported 15 decided and 0 waiting on
-14 October 2026. The last was
-[KPA-50](https://koinon.atlassian.net/browse/KPA-50): asked on 13 October
-whether to build the editor against fixtures now, Shane ruled on 14 October to
-wait for the issue sync. The recommendation had been to build now.
+**Two questions wait, both on Shane.** `docs/decisions.md`, generated on the
+morning of 14 October 2026 and stamped in UTC as the 13th, reads 15 questions decided and 2 waiting: KPA-166 (Docker or
+systemd) and KPA-167 (how a KPA story reaches AI Review and Done). The last one
+decided was [KPA-50](https://koinon.atlassian.net/browse/KPA-50): asked on
+13 October whether to build the editor against fixtures now, Shane ruled on
+14 October to wait for the issue sync. The recommendation had been to build now.
 
 **The story was not moved into a decision status, because none exists.** The
 workflow change on 3 October removed `Decision required`. The autonomous skill
@@ -500,7 +505,7 @@ queue, answers 404 to the agent account, measured on 13 October 2026.
 
 **A ticket waiting on Shane carries the label `question`, since 14 October
 2026.** Shane asked for it in place of the removed status. Find the queue with
-`project = KPA AND labels = question`; it held nothing on 14 October 2026.
+`project = KPA AND labels = question`; on 14 October 2026 it held KPA-166 and KPA-167.
 
 **[KPA-143] was decided and built on 30 September 2026.** How does a self-hosted
 box send the reset link? The answer is Resend over HTTPS, with the API key held
@@ -806,7 +811,8 @@ npm run decisions             # rebuilds docs/decisions.md from Jira
 ```
 
 In `apps/web`: `npm run lint`, `npm run build`, and `npm run check`, which runs
-twenty-five scripts under plain node, counted on 13 October 2026.
+twenty-five scripts under plain node, counted from `apps/web/package.json` on
+14 October 2026.
 
 `./scripts/verify-migration.sh` verifies the migration against the frozen vault.
 It needs the vault and local PostgreSQL, and it recreates `sukkal_verify`.
@@ -827,7 +833,7 @@ how the trunk went red on 2 September 2026 and stayed red across two pushes.
 | `sukkal` on amaterasu | The migration. Production. Eleven migrations behind |
 | `sukkal_dev` on amaterasu | Every test that points at the env file |
 | `sukkal_dev` on this Mac | Every test that points at loopback, which is what CI does |
-| `sukkal_local` | The running application. No test names it. 32 migrations, all of them, on 13 October 2026, and it holds the live Resend card |
+| `sukkal_local` | The running application. No test names it. 32 migrations, all of them, on 14 October 2026, and it holds the live Resend card |
 | `sukkal_verify` | `scripts/verify-migration.sh`, which drops and recreates it on every run |
 
 **Two different databases are called `sukkal_dev`, one per host.** KPA-154 renamed
@@ -862,7 +868,7 @@ cd apps/web && DATABASE_URL="postgresql://$(whoami)@localhost:5432/sukkal_local"
 
 **Production `sukkal` holds 21 migrations and stops at `022_issue_cache.sql`.**
 023 through 033 are pending, so production is eleven behind. Read again on
-13 October 2026: 21 rows, `001_core_schema.sql` to `022_issue_cache.sql`. First read from
+14 October 2026: 21 rows, `001_core_schema.sql` to `022_issue_cache.sql`. First read from
 `schema_migrations` on amaterasu on 30 September 2026, before the rename and again
 after it. There is no `002` in either place, which is why 21 rows reach 022.
 
@@ -898,11 +904,11 @@ are mode 0600.
 
 `scripts/decision-register.ts` reads three more variables, and this file holds
 none of them. `KOINON_JIRA_SITE` and `KOINON_JIRA_EMAIL` live in
-`~/.config/secrets.env`, which `~/.zshenv` sources. `KOINON_JIRA_TOKEN` no
-longer does: measured on 13 October 2026, the token moved to the Keychain item
-`kothar-jira-agent`, which belongs to the Claude Agent account. So
-`npm run decisions` fails until the token is supplied, and *Traps* says how.
-`docs/runbooks/secrets.md` says why these sit in a different file.
+`~/.config/secrets.env`, which `~/.zshenv` sources. `KOINON_JIRA_TOKEN` does not:
+it sits in the Keychain item `kothar-jira-agent`, which belongs to the Claude
+Agent account, and KPA-167 made `npm run decisions` read it from there. The item
+exists, checked on 14 October 2026. `docs/runbooks/secrets.md` says why these
+sit in a different file.
 
 **One OAuth client serves Sukkal and workspace-mcp**, in Google Cloud project
 `personal-assistant-506014`. Google holds exactly two redirect URIs, and both
@@ -923,6 +929,12 @@ access to the GUI app at the top of the process chain, so `ssh`, `ping`, `psql`
 and `node` all inherit that app's setting. It cost an hour and a false report
 that the box was down. Before calling amaterasu down, ping another LAN host such
 as `192.168.20.10`: if only the router answers, the cause is the permission.
+
+**`docs/decisions.md` stamps its date in UTC.** `scripts/decision-register.ts`
+takes `new Date().toISOString().slice(0, 10)`, so a run before 10 am in Sydney
+reads the day before: the runs of the morning of 14 October 2026 read
+"Generated 2026-10-13". The counts are current; only the stamp is a day west.
+Found on 14 October 2026; no story carries the fix yet.
 
 **The ticket guard refuses a Bash call that names Jira beside a program it does
 not know.** A `kj` call piped into `sed`, a `git` command beside a `kj` call, and
@@ -1280,4 +1292,3 @@ record: an unpublished Zoom app installs only on the developer's own account,
 and a free account holds no cloud recording to read.
 
 [KPA-143]: https://koinon.atlassian.net/browse/KPA-143
-[KPA-157]: https://koinon.atlassian.net/browse/KPA-157

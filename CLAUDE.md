@@ -184,6 +184,7 @@ src/connections/  Sealing a provider's credential, and reading it back
 src/db/         The connection module and the migration runner
 src/memory/     The four gates, the inference seam, the state rule and the sweep
 src/migrate/    The vault reader, the load into Postgres, and the verification
+src/policy/     The policy engine, and the one path an outbound action takes
 src/checks/     check.py ported: six problems that fail, four advisories that do not
 src/webhooks/   What an inbound delivery is authenticated and stored by
 src/worker/     The worker process, and the jobs pg-boss runs in it
@@ -216,7 +217,8 @@ the 18th from Sydney. `oxlint` is pinned at exactly `1.80.0` in both for that
 reason rather than at a caret range, and `apps/web/lib/db.ts` still calls
 `keepDatesAsText` on its own registry as insurance against the second copy.
 The plugin lists differ on purpose: `src/` and `test/` hold no JSX, so the
-root runs three plugins and the web tier runs seven.
+root runs four plugins and the web tier runs seven: the same four, plus `react`,
+`nextjs` and `jsx-a11y`.
 
 **A shared package holding `src/db` was weighed and rejected.** The web tier
 imports twelve modules under `src/`, not one: `auth/password.ts`,

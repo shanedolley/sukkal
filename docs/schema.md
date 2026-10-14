@@ -1005,7 +1005,8 @@ and it is why `ok` reads true rather than false on that path.
 `ORDER BY (c.provider <> 'resend'), c.created_at, c.id`. Ranking by
 `created_at` alone would let a box holding both pick the Gmail card, which
 cannot send: a Gmail or Graph send needs the OAuth mail scopes KPA-103 and
-KPA-105 carry and neither has landed. Revisit the ranking when a second sender
+KPA-105 carry. On 14 October 2026 KPA-103 is In Progress and KPA-105 is To Do,
+so neither has shipped. Revisit the ranking when a second sender
 can actually send.
 
 **The mail carries the link and nothing else.** No address, no name, no token in

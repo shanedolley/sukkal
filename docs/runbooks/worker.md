@@ -229,6 +229,8 @@ expired.sweep: sessions sweep failed: error: relation "sessions" does not exist
 
 The unit belongs beside the web tier's on amaterasu. Nothing installs it yet.
 
+This draft is unverified, and its `EnvironmentFile` conflicts with `secrets.md`, which names `/etc/sukkal/env`. Which path holds, and whether the worker runs under systemd or Docker at all, is open on KPA-166, which writes the deploy runbook. Read on 14 October 2026.
+
 ```ini
 [Unit]
 Description=Sukkal worker
