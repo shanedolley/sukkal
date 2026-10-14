@@ -176,13 +176,13 @@ references the same day, twice, and the ten stories in AI Review were reviewed.
   file or the units, then `docs/runbooks/deploy.md`, then deploy. It still needs
   Shane's separate approval to migrate production. It blocks KPA-147.
 
-**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) is the next story to
-build, and it needs no person.** It failed review on 14 October 2026 and is In
-Progress, held by the main tree on `main` in comment 11817, so the next session
-finishes it rather than claiming another. Change the close statement at
-`src/connections/needs-you.ts:45` to `verified_ok IS NOT FALSE`, and add a test
-that renews through `setCredential` on a metered and an unprobed provider. Ship
-it by the route KPA-167's answer sets, then dispatch a fresh reviewer.
+**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) is fixed on `main`
+and waits for a fresh reviewer.** It failed review on 14 October 2026, and the
+fix shipped the same day: the close statement at
+`src/connections/needs-you.ts:48` reads `verified_ok IS NOT FALSE`, with two
+renewal tests beside it. Its ticket comment names the commit and the builder.
+Once a reviewer that did not build it posts a verdict, it waits on KPA-167's
+answer like the nine below.
 
 **Nine stories hold a PASS verdict and wait on KPA-167.** KPA-157 to KPA-165 sit
 in AI Review. The project manager refuses HIL Review without a question and Done

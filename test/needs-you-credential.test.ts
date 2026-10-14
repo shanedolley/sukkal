@@ -161,6 +161,28 @@ describe('the credential needs-you item', { skip: url ? false : 'DATABASE_URL_TE
     assert.notEqual(closed.rows[0]?.closed_at, null, 'the row is still open after verifying OK');
   });
 
+  for (const provider of ['voyage', 'atlassian']) {
+    // voyage is metered and atlassian has no probe, so recheck() never writes
+    // verified_ok for either: a renewal leaves it null for good.
+    test(`renewing the ${provider} credential closes its open row though no check ever answers`, async () => {
+      const id = await addConnection(client, { provider, name: `${provider} key`, method: 'token' });
+      await setCredential(client, id, 'old-secret');
+      await client.query(
+        "UPDATE connection_credentials SET verified_on = CURRENT_DATE, verdict = 'failed', verified_ok = false, verified_at = now() WHERE connection = $1",
+        [id],
+      );
+      await recheck(client, new Date('2026-10-01T09:00:00Z'), noop);
+      assert.equal((await openItems()).filter((r) => r.closed_at === null).length, 1, 'setup: no item raised');
+
+      await setCredential(client, id, 'new-secret');
+      await recheck(client, new Date('2026-10-01T10:00:00Z'), noop);
+
+      const rows = await openItems();
+      assert.equal(rows.length, 1);
+      assert.notEqual(rows[0]?.closed_at, null, 'the renewed credential still holds an open row');
+    });
+  }
+
   test('a dead OAuth grant that recheck() itself finds raises a credential item in the same run', async () => {
     const id = await addConnection(client, { provider: 'google', name: 'dead@example.com', method: 'oauth' });
     await setCredential(client, id, 'refresh-dead');

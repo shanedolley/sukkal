@@ -96,16 +96,16 @@ Each posted a `Review verdict:` comment, read back from Jira afterwards:
 | KPA-165 | PASS | 11800 |
 | KPA-108 | FAIL, criterion 3 | 11798 |
 
-**KPA-108's defect is real, confirmed against the source.** The close statement
-at `src/connections/needs-you.ts:45` requires `verified_ok IS TRUE`.
+**KPA-108's defect was real, and it is fixed on 14 October 2026.** The close
+statement at `src/connections/needs-you.ts:48` required `verified_ok IS TRUE`.
 `setCredential` resets `verified_ok` to NULL on a renewal, and the recheck skips
-a metered or unprobed provider at `src/connections/recheck.ts:105`. So a renewed
-Voyage or Atlassian credential never closes its item. The reviewer proved it with
-three rechecks after a renewal: open for `voyage` and `atlassian`, closed for
-`resend`. The fix is `verified_ok IS NOT FALSE`, which matches `docs/schema.md`
-(null reads as unknown, not broken), plus a test that renews through
-`setCredential`. The story's own close test passed only because it set
-`verified_ok` true by hand. Comment 11817 holds the plan.
+a metered or unprobed provider at `src/connections/recheck.ts:105`, so a renewed
+Voyage or Atlassian credential never closed its item. The statement now reads
+`verified_ok IS NOT FALSE`, which matches `docs/schema.md`: null reads as
+unknown, not broken. Two new tests in `test/needs-you-credential.test.ts` renew
+a `voyage` and an `atlassian` credential through the real `setCredential` and
+run `recheck()`. On the old line both fail, 6 pass and 2 fail; on the new line
+8 pass. The fix waits for a fresh reviewer's verdict.
 
 **Every verdict reads `builder unknown`**, because no ship comment of 1 October
 named the agent that built it.
@@ -142,8 +142,8 @@ sweeps what has expired, the decision register carries every question and pairs
 every ruling, the one flaky test is fixed, and a credential that expires,
 lapses or fails the recheck reaches the briefing.
 
-**KPA-108 failed its review on 14 October 2026** and is In Progress for the fix.
-The top of this file says what failed.
+**KPA-108 failed its review on 14 October 2026 and was fixed the same day.**
+The top of this file says what failed and what changed.
 
 **KPA-108 was the epic's payoff and Shane ruled both of its decisions on
 1 October**, in conversation, recorded on the ticket as decision blocks
@@ -199,10 +199,11 @@ because none of them writes a column.
 Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
 two. Both counts read again on 14 October 2026 and unchanged.
 
-The suite runs **698 tests with the vault and 678 without it**, measured on
-14 October 2026 against a local database dropped and recreated before each run:
-0 fail, 0 cancelled, 1 skipped in both. One skip is meant to be there. KPA-167
-added six tests, in `test/decision-credentials.test.ts`.
+The suite runs **700 tests with the vault and 680 without it**, measured on
+14 October 2026 against a local database created fresh for each run: 0 fail,
+0 cancelled, 1 skipped in both. One skip is meant to be there. KPA-167 added six
+tests, in `test/decision-credentials.test.ts`, and the KPA-108 fix added two, in
+`test/needs-you-credential.test.ts`.
 
 **The skip is in `test/migrate.test.ts:69`, not `test/connect.test.ts`**, which
 this file named until 30 September and which holds no `skip` at all. The test is
@@ -1072,10 +1073,11 @@ running `reconcileCredentialItems` three times against a connection with
 `verified_ok` true and an expiry ten days out: the item stayed open on all
 three. Do not re-investigate this.
 
-**That same rule is KPA-108's defect, found on 14 October 2026.** Requiring
-`verified_ok IS TRUE` keeps the item open for good when the recheck never
-verifies the credential, which is every metered or unprobed provider after a
-renewal. The flicker stays ruled out; the close is what changes.
+**That same rule was KPA-108's defect, found and fixed on 14 October 2026.**
+Requiring `verified_ok IS TRUE` kept the item open for good when the recheck
+never verifies the credential, which is every metered or unprobed provider after
+a renewal. The close now reads `verified_ok IS NOT FALSE`. The flicker stays
+ruled out, because a near expiry still keeps the item open.
 
 **`schedules the nightly review at 03:30 Sydney` was flaky and KPA-164 fixed it
 on 1 October 2026. The cause is worth knowing, because the shape repeats.** The
