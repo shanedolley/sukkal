@@ -105,7 +105,10 @@ Voyage or Atlassian credential never closed its item. The statement now reads
 unknown, not broken. Two new tests in `test/needs-you-credential.test.ts` renew
 a `voyage` and an `atlassian` credential through the real `setCredential` and
 run `recheck()`. On the old line both fail, 6 pass and 2 fail; on the new line
-8 pass. The fix waits for a fresh reviewer's verdict.
+8 pass. Commit `c652090`, CI green. A fresh `kothar:code-reviewer` passed it in
+comment 11820, and four mutations each failed the file. Comment 11821 parks it
+in HIL Review on KPA-167's question, because no pull request exists for the
+project manager's gate to read.
 
 **Every verdict reads `builder unknown`**, because no ship comment of 1 October
 named the agent that built it.
@@ -225,14 +228,15 @@ vault, several suites skip and the summary still reports 1.
 
 Project KPA on `koinon.atlassian.net`. **133 stories, 91 Done, which is 68% by
 count.** Counted from Jira on 14 October 2026: 42 open stories and 91 Done, each
-query one page with `isLast` true. KPA-108 moved to In Progress the same day.
+query one page with `isLast` true. Read again after KPA-108 moved to HIL Review
+that day: 42 open on one page, so still 91 Done.
 
 | Status | Stories |
 |---|---|
 | Done | 91 |
 | AI Review | 9: KPA-157 to KPA-165, each with a PASS verdict, held by the pull request gate |
-| HIL Review | 2: KPA-166 and KPA-167, each on a question for Shane |
-| In Progress | 2: KPA-103, and KPA-108 after its FAIL verdict |
+| HIL Review | 3: KPA-166 and KPA-167, each on a question for Shane, and KPA-108, fixed with a PASS verdict and held by KPA-167's question |
+| In Progress | 1: KPA-103 |
 | To Do | 29 |
 
 **Read these counts by issue type.** The project holds 167 issues: 133 stories,
@@ -555,7 +559,7 @@ until the vault is frozen again, which is by design.
 
 ## Decisions
 
-**Two questions wait, both on Shane.** `docs/decisions.md`, regenerated at about
+**Two decisions wait, both on Shane.** `docs/decisions.md`, regenerated at about
 11 am on 14 October 2026 and stamped that day, reads 15 questions decided and 2 waiting: KPA-166 (Docker or
 systemd) and KPA-167 (how a KPA story reaches AI Review and Done). The last one
 decided was [KPA-50](https://koinon.atlassian.net/browse/KPA-50): asked on
@@ -570,7 +574,7 @@ queue, answers 404 to the agent account, measured on 13 October 2026.
 
 **A ticket waiting on Shane carries the label `question`, since 14 October
 2026.** Shane asked for it in place of the removed status. Find the queue with
-`project = KPA AND labels = question`; on 14 October 2026 it held KPA-166 and KPA-167.
+`project = KPA AND labels = question`; on 14 October 2026 it held KPA-108, KPA-166 and KPA-167.
 
 **[KPA-143] was decided and built on 30 September 2026.** How does a self-hosted
 box send the reset link? The answer is Resend over HTTPS, with the API key held

@@ -163,8 +163,8 @@ Measured on 14 October 2026 at source: the board paged to the end, 133 stories,
 no branch or pull request is open. The documentation was swept for stale
 references the same day, twice, and the ten stories in AI Review were reviewed.
 
-**Read Shane's answers first.** Two stories wait in HIL Review with the
-`question` label, both parked on 14 October 2026:
+**Read Shane's answers first.** Three stories wait in HIL Review with the
+`question` label, all parked on 14 October 2026. Two carry a decision:
 
 - [KPA-167](https://koinon.atlassian.net/browse/KPA-167) shipped, green, in
   commit `71f3a82`. Comment 11788 asks how a KPA story reaches AI Review and Done
@@ -176,13 +176,10 @@ references the same day, twice, and the ten stories in AI Review were reviewed.
   file or the units, then `docs/runbooks/deploy.md`, then deploy. It still needs
   Shane's separate approval to migrate production. It blocks KPA-147.
 
-**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) is fixed on `main`
-and waits for a fresh reviewer.** It failed review on 14 October 2026, and the
-fix shipped the same day: the close statement at
-`src/connections/needs-you.ts:48` reads `verified_ok IS NOT FALSE`, with two
-renewal tests beside it. Its ticket comment names the commit and the builder.
-Once a reviewer that did not build it posts a verdict, it waits on KPA-167's
-answer like the nine below.
+**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) is fixed and passed
+its second review on 14 October 2026.** Commit `c652090`, CI green, verdict in
+comment 11820. It sits in HIL Review with the `question` label, held by
+KPA-167's question like the nine below. Comment 11821 says so.
 
 **Nine stories hold a PASS verdict and wait on KPA-167.** KPA-157 to KPA-165 sit
 in AI Review. The project manager refuses HIL Review without a question and Done
