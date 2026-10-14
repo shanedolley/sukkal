@@ -9,8 +9,9 @@
  * This process imports nothing from `apps/web`, and `apps/web` imports
  * nothing from here. The two meet at the database and nowhere else.
  *
- * Two jobs run today: the backlog over `inbound_deliveries`, every minute,
- * and the nightly review in `./nightly.ts`. Every other scheduled job in the
+ * Four jobs run today: the backlog over `inbound_deliveries`, every minute,
+ * the nightly review in `./nightly.ts`, the hourly credential recheck in
+ * `./recheck.ts`, and the daily expiry sweep in `./sweep.ts`. Every other scheduled job in the
  * project waits on this file for somewhere to run, and each belongs to the
  * epic whose work it does rather than to this one.
  */

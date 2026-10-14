@@ -78,6 +78,45 @@ to resolve it, and recommends a branch and a pull request per story from now on.
 `docs/project-brief.md`, `CLAUDE.md` and four runbooks. The brief's slice table
 now carries the Jira counts of that day.
 
+**The ten stories in AI Review were reviewed on 14 October 2026: nine pass and
+KPA-108 fails.** Three `kothar:code-reviewer` agents, none a builder, ran each
+story's own tests on a private database and mutated the code on a scratch copy.
+Each posted a `Review verdict:` comment, read back from Jira afterwards:
+
+| Story | Verdict | Comment |
+|---|---|---|
+| KPA-157 | PASS | 11797 |
+| KPA-158 | PASS | 11801 |
+| KPA-159 | PASS | 11803 |
+| KPA-160 | PASS | 11804 |
+| KPA-161 | PASS | 11805 |
+| KPA-162 | PASS | 11806 |
+| KPA-163 | PASS | 11799 |
+| KPA-164 | PASS | 11802 |
+| KPA-165 | PASS | 11800 |
+| KPA-108 | FAIL, criterion 3 | 11798 |
+
+**KPA-108's defect is real, confirmed against the source.** The close statement
+at `src/connections/needs-you.ts:45` requires `verified_ok IS TRUE`.
+`setCredential` resets `verified_ok` to NULL on a renewal, and the recheck skips
+a metered or unprobed provider at `src/connections/recheck.ts:105`. So a renewed
+Voyage or Atlassian credential never closes its item. The reviewer proved it with
+three rechecks after a renewal: open for `voyage` and `atlassian`, closed for
+`resend`. The fix is `verified_ok IS NOT FALSE`, which matches `docs/schema.md`
+(null reads as unknown, not broken), plus a test that renews through
+`setCredential`. The story's own close test passed only because it set
+`verified_ok` true by hand. Comment 11817 holds the plan.
+
+**Every verdict reads `builder unknown`**, because no ship comment of 1 October
+named the agent that built it.
+
+**The nine PASS stories stay in AI Review, and the project manager says why.**
+On 14 October 2026 it refused all nine moves to HIL Review, because HIL Review
+needs a comment asking a person a question, and a PASS verdict asks none. Done
+needs a passing pull request, which is KPA-167's question again. Its refusal
+comments are 11808 to 11816. It also refused KPA-108 to To Do: a FAIL verdict
+sends a story to In Progress, and To Do needs a released claim.
+
 **CI was refused on 13 October 2026 and runs again since 14 October.** GitHub
 would not start a job while the account's billing failed. Shane fixed it, and
 the rerun of run 38361042663 passed in 1m44s.
@@ -102,6 +141,9 @@ KPA-108.** A connection can now be fixed and renamed in place, the worker
 sweeps what has expired, the decision register carries every question and pairs
 every ruling, the one flaky test is fixed, and a credential that expires,
 lapses or fails the recheck reaches the briefing.
+
+**KPA-108 failed its review on 14 October 2026** and is In Progress for the fix.
+The top of this file says what failed.
 
 **KPA-108 was the epic's payoff and Shane ruled both of its decisions on
 1 October**, in conversation, recorded on the ticket as decision blocks
@@ -181,15 +223,15 @@ vault, several suites skip and the summary still reports 1.
 ## The board
 
 Project KPA on `koinon.atlassian.net`. **133 stories, 91 Done, which is 68% by
-count.** Counted from Jira on 14 October 2026, two pages read to the end,
-167 issues and every key unique.
+count.** Counted from Jira on 14 October 2026: 42 open stories and 91 Done, each
+query one page with `isLast` true. KPA-108 moved to In Progress the same day.
 
 | Status | Stories |
 |---|---|
 | Done | 91 |
-| AI Review | 10: KPA-108 and KPA-157 to KPA-165, all shipped on 1 October |
+| AI Review | 9: KPA-157 to KPA-165, each with a PASS verdict, held by the pull request gate |
 | HIL Review | 2: KPA-166 and KPA-167, each on a question for Shane |
-| In Progress | 1: KPA-103 |
+| In Progress | 2: KPA-103, and KPA-108 after its FAIL verdict |
 | To Do | 29 |
 
 **Read these counts by issue type.** The project holds 167 issues: 133 stories,
@@ -276,6 +318,28 @@ ordinary cost of a comment naming a number.
 line numbers. The claims that held were names, constraints, formulas and the
 reasons behind a decision. A comment that says why has outlived every comment
 here that said how many.
+
+## Review advisories, 14 October 2026
+
+The reviewers of 14 October passed nine stories and named these as advisory. No
+ticket carries any of them yet. Each sits on the named story's verdict comment.
+
+- **A connection name reaches two places raw.** `src/worker/recheck.ts:28` logs
+  it and `src/connections/recheck.ts:98` stores it in a verdict. A person types
+  that name since KPA-162, so it is the class KPA-161 closed for the reset log.
+  `forLog` is private to `src/auth/reset.ts`. KPA-161, comment 11805.
+- **PATCH accepts a secret on a grant card.** `{secret: 'garbage'}` on a Google
+  card answered 200 and replaced the refresh token. Owner only, and Reconnect
+  repairs it. KPA-159, comment 11803.
+- **An impossible date answers 503, not 400.** `2026-13-45` passes the shape
+  check and the database refuses it. KPA-159.
+- **U+0085 passes `isEmail` and the table check.** It cannot inject a header,
+  because CR and LF are refused at both layers. KPA-158, comment 11801.
+- **Nothing tests the worker's start-up sweep.** Deleting the start-up
+  `boss.send` in `src/worker/sweep.ts` leaves every test green. KPA-157,
+  comment 11797.
+- **One branch of the register has no test.** Widening the later-recommendation
+  guard to guess leaves all six tests green. KPA-163, comment 11799.
 
 ## The assistant is Sukkal
 
@@ -490,8 +554,8 @@ until the vault is frozen again, which is by design.
 
 ## Decisions
 
-**Two questions wait, both on Shane.** `docs/decisions.md`, generated on the
-morning of 14 October 2026 and stamped in UTC as the 13th, reads 15 questions decided and 2 waiting: KPA-166 (Docker or
+**Two questions wait, both on Shane.** `docs/decisions.md`, regenerated at about
+11 am on 14 October 2026 and stamped that day, reads 15 questions decided and 2 waiting: KPA-166 (Docker or
 systemd) and KPA-167 (how a KPA story reaches AI Review and Done). The last one
 decided was [KPA-50](https://koinon.atlassian.net/browse/KPA-50): asked on
 13 October whether to build the editor against fixtures now, Shane ruled on
@@ -930,6 +994,13 @@ and `node` all inherit that app's setting. It cost an hour and a false report
 that the box was down. Before calling amaterasu down, ping another LAN host such
 as `192.168.20.10`: if only the router answers, the cause is the permission.
 
+**The project manager reads each status's evidence literally.** On 14 October
+2026 it refused nine moves to HIL Review because a PASS verdict asks a person no
+question, and it refused KPA-108 to To Do because a FAIL verdict sends a story to
+In Progress. Each refusal cost one dispatch and left a comment on the ticket.
+Offer the evidence its status map names, and read its refusal for the route it
+does allow.
+
 **`docs/decisions.md` stamps its date in UTC.** `scripts/decision-register.ts`
 takes `new Date().toISOString().slice(0, 10)`, so a run before 10 am in Sydney
 reads the day before: the runs of the morning of 14 October 2026 read
@@ -1000,6 +1071,11 @@ connection with a near expiry is never closed. Proved on 1 October 2026 by
 running `reconcileCredentialItems` three times against a connection with
 `verified_ok` true and an expiry ten days out: the item stayed open on all
 three. Do not re-investigate this.
+
+**That same rule is KPA-108's defect, found on 14 October 2026.** Requiring
+`verified_ok IS TRUE` keeps the item open for good when the recheck never
+verifies the credential, which is every metered or unprobed provider after a
+renewal. The flicker stays ruled out; the close is what changes.
 
 **`schedules the nightly review at 03:30 Sydney` was flaky and KPA-164 fixed it
 on 1 October 2026. The cause is worth knowing, because the shape repeats.** The

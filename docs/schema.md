@@ -364,8 +364,8 @@ together or leaves both null. `setCredential` clears both with the verdict,
 because a new secret has not been checked.
 
 `apps/web/app/(app)/api/connections/route.ts` is the only route over these two
-tables, and it imports `addConnection`, `listConnections`, `removeConnection`
-and `setCredential`. It does not import `secretFor`, and
+tables. It imports its store functions from `src/connections/store.ts` and
+`revokeConnection` from `src/connections/oauth.ts`. It does not import `secretFor`, and
 `test/connections-read.test.ts` reads every file under
 `apps/web/app/(app)/api/` to hold that. A secret travels one way: the dialog
 posts it, `setCredential` seals it, and no read carries it back.

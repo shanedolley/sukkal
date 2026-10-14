@@ -53,8 +53,9 @@ tool overwrote a tracked one on 13 September 2026 without refusing.
    found a trap that will bite again.
 6. Commit with a message that says what changed and why. Push. Watch CI.
 7. Comment on the ticket with what was built, how each criterion is met, and
-   what was proved rather than assumed. Dispatch `kothar:project-manager` to
-   move it on, as *Moving a story* says.
+   what was proved rather than assumed. Put `Builder: <agent>` on a line of
+   its own: the ten verdicts of 14 October 2026 all read `builder unknown`.
+   Dispatch `kothar:project-manager` to move it on, as *Moving a story* says.
 
 ## Prove every claim
 
@@ -87,6 +88,10 @@ Review with that question rather than dispatching a move to AI Review.
 A move to AI Review needs a reviewer's
 `Review verdict: PASS (reviewer <agent>, builder <agent>)` comment before the
 story can leave it, and the builder cannot be the reviewer.
+
+**A PASS verdict does not reach HIL Review.** The project manager moves a story
+to HIL Review only on a comment asking a person a question. It sends a FAIL
+verdict to In Progress, never to To Do. Both read on 14 October 2026.
 
 ## When a decision needs a person
 
@@ -156,7 +161,7 @@ repeating it as fact.
 Measured on 14 October 2026 at source: the board paged to the end, 133 stories,
 91 Done. Every open story's blockers were read from its links. CI is green, and
 no branch or pull request is open. The documentation was swept for stale
-references the same day.
+references the same day, twice, and the ten stories in AI Review were reviewed.
 
 **Read Shane's answers first.** Two stories wait in HIL Review with the
 `question` label, both parked on 14 October 2026:
@@ -171,9 +176,21 @@ references the same day.
   file or the units, then `docs/runbooks/deploy.md`, then deploy. It still needs
   Shane's separate approval to migrate production. It blocks KPA-147.
 
-**Ten stories wait on a review, and none needs code.** KPA-108 and KPA-157 to
-KPA-165 sit in AI Review and need a reviewer's verdict from an agent that did
-not build them.
+**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) is the next story to
+build, and it needs no person.** It failed review on 14 October 2026 and is In
+Progress, held by the main tree on `main` in comment 11817, so the next session
+finishes it rather than claiming another. Change the close statement at
+`src/connections/needs-you.ts:45` to `verified_ok IS NOT FALSE`, and add a test
+that renews through `setCredential` on a metered and an unprobed provider. Ship
+it by the route KPA-167's answer sets, then dispatch a fresh reviewer.
+
+**Nine stories hold a PASS verdict and wait on KPA-167.** KPA-157 to KPA-165 sit
+in AI Review. The project manager refuses HIL Review without a question and Done
+without a pull request, so none moves until Shane answers comment 11788.
+
+**Six review advisories have no ticket yet.** `handover.md` lists them under
+*Review advisories*. The first, a connection name written raw to a log and a
+stored verdict, is the one worth a story.
 
 **Seven more stories have no open blocker. Each waits on Shane for one thing:**
 

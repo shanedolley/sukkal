@@ -29,6 +29,8 @@ earlier lets a job write between two runs of the comparison.
 | `com.koinon.weekly-vault-review` | `personal-assistant/scripts/weekly-vault-review.sh` |
 
 They are user agents in `~/Library/LaunchAgents`, so none of this needs `sudo`.
+The scripts live in the older repository at
+`~/Development/personal/personal-assistant`, not in this one.
 
 ## Freeze
 

@@ -12,7 +12,7 @@ prose, so nothing here reads an answer out of a sentence.
 the lighter rulings. A decision that meets the three tests in `CLAUDE.md`
 graduates to an ADR, and this register then cites it.
 
-Generated 2026-10-13. 15 questions decided, 2 questions waiting.
+Generated 2026-10-14. 15 questions decided, 2 questions waiting.
 
 ## Decided
 
