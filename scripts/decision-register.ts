@@ -69,10 +69,10 @@ async function search(token: string | null): Promise<Page> {
 /**
  * Every question and every ruling in the project, oldest ticket first.
  *
- * A `Decision required` status with no entry at all cannot happen: an issue
- * with no question and no ruling contributes nothing, and `entriesForIssue`
- * is where that filter lives. Filter 10047 reads the `Decision required`
- * status, which is the queue Shane works from.
+ * The search reads every issue in the project, and an issue with no question
+ * and no ruling contributes nothing: `entriesForIssue` is where that filter
+ * lives. The `Decision required` status and filter 10047 went on 3 October
+ * 2026. A ticket waiting on Shane carries the label `question` now.
  */
 async function read(): Promise<Entry[]> {
   const entries: Entry[] = [];
