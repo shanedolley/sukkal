@@ -55,6 +55,35 @@ services:
     <<: *app
     working_dir: /app
 
+  # The public site at web.sukkal.app: static files and nothing else. It shares
+  # no code, no session and no route with the web tier. Docker publishes the port
+  # on loopback only, so the tunnel reaches it and the LAN does not. Port 3000
+  # belongs to the web tier.
+  site:
+    image: caddy:2.11.7-alpine
+    user: "65534:65534"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    # The caddy binary carries a file capability for low ports. Without this one
+    # capability in the bounding set the kernel refuses to exec it. Port 3001 is
+    # not low, and the process never uses the capability.
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp, "/data:uid=65534,gid=65534", "/config:uid=65534,gid=65534"]
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - ./site:/srv:ro
+      - ./site.Caddyfile:/etc/caddy/Caddyfile:ro
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:3001/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
   # Sukkal's own tunnel. The other cloudflared container on the box serves
   # another domain and shares nothing with this one.
   cloudflared:

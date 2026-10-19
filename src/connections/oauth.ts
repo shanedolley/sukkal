@@ -96,36 +96,24 @@ export const GRANTS: Record<string, Grant> = {
     authorize: 'https://accounts.google.com/o/oauth2/v2/auth',
     token: 'https://oauth2.googleapis.com/token',
     revoke: 'https://oauth2.googleapis.com/revoke',
+    // These five must match the Data Access list in the Google console,
+    // because that list is what Google reviews. A sixth scope here fails
+    // `test/oauth.test.ts`.
     baseScopes: [
       'openid',
       'https://www.googleapis.com/auth/userinfo.email',
-      'https://www.googleapis.com/auth/userinfo.profile',
     ],
     // The keys are the service ids on the Google card in
     // `apps/web/lib/providers.ts`. Every one appears, and
     // `apps/web/scripts/check-connections.ts` fails when a card gains a
     // service this map does not answer for.
     scopesByService: {
-      gmail: [
-        'https://www.googleapis.com/auth/gmail.readonly',
-        'https://www.googleapis.com/auth/gmail.modify',
-        'https://www.googleapis.com/auth/gmail.labels',
-        'https://www.googleapis.com/auth/gmail.compose',
-        'https://www.googleapis.com/auth/gmail.send',
-      ],
-      calendar: [
-        'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/calendar.events',
-        'https://www.googleapis.com/auth/calendar.readonly',
-      ],
+      gmail: ['https://www.googleapis.com/auth/gmail.modify'],
+      calendar: ['https://www.googleapis.com/auth/calendar.events'],
       // A Meet recording is reached through the event that held it, so this
-      // adds the calendar read and no scope of its own.
-      meet: ['https://www.googleapis.com/auth/calendar.readonly'],
-      drive: [
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/drive.file',
-        'https://www.googleapis.com/auth/drive.readonly',
-      ],
+      // adds the calendar events scope and no scope of its own.
+      meet: ['https://www.googleapis.com/auth/calendar.events'],
+      drive: ['https://www.googleapis.com/auth/drive'],
       // Deliberately empty. The Keep API needs `keep.readonly`, which Google
       // restricts to Workspace Enterprise, and `workspace-mcp` holds no such
       // scope on any of the three accounts. Choosing Keep therefore grants

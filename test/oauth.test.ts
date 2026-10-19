@@ -91,18 +91,24 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
 
   describe('the provider record', () => {
     test('every service asks the whole grant asked, and no more', () => {
-      // The fourteen `workspace-mcp` holds. Every one is reachable, so a
-      // person who chooses everything sees the consent screen they saw before.
-      const whole = scopesFor(grantFor('google'), ALL);
-      assert.equal(whole.length, 14);
-      for (const needed of [
-        'https://www.googleapis.com/auth/gmail.readonly',
-        'https://www.googleapis.com/auth/gmail.send',
-        'https://www.googleapis.com/auth/calendar',
+      // The five in the Data Access list of the Google console. Every one is
+      // reachable, and no sixth exists in the record at all.
+      const FIVE = [
+        'https://www.googleapis.com/auth/calendar.events',
         'https://www.googleapis.com/auth/drive',
-      ]) {
-        assert.ok(whole.includes(needed), `${needed} is unreachable`);
-      }
+        'https://www.googleapis.com/auth/gmail.modify',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'openid',
+      ].sort();
+      const whole = scopesFor(grantFor('google'), ALL);
+      assert.deepEqual(whole, FIVE);
+
+      const record = grantFor('google');
+      const everything = new Set([
+        ...record.baseScopes,
+        ...Object.values(record.scopesByService).flat(),
+      ]);
+      assert.deepEqual([...everything].sort(), FIVE, 'the record can ask for a sixth scope');
     });
 
     test('the address is asked for on every grant, whatever was chosen', () => {
@@ -116,7 +122,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
 
     test('mail alone asks for mail alone', () => {
       const mail = scopesFor(grantFor('google'), ['gmail']);
-      assert.equal(mail.length, 8, 'three base scopes and five for mail');
+      assert.equal(mail.length, 3, 'two base scopes and one for mail');
       assert.equal(
         mail.some((scope) => scope.includes('/drive')),
         false,
@@ -131,7 +137,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
 
     test('two services sharing a scope ask for it once', () => {
       // Meet is reached through the event that held it, so it and Calendar
-      // both name the calendar read.
+      // both name the calendar events scope.
       const both = scopesFor(grantFor('google'), ['calendar', 'meet']);
       assert.equal(new Set(both).size, both.length, 'a scope was asked for twice');
       assert.deepEqual(both, [...both].sort(), 'the list is unsorted, so two equal asks differ');
@@ -244,7 +250,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
       const started = await begin(client, 'google', REDIRECT, ['gmail'], NOW);
       const scope = new URL(started.url).searchParams.get('scope') ?? '';
       assert.equal(scope.includes('/auth/drive'), false, 'a mail grant asked for Drive');
-      assert.ok(scope.includes('/auth/gmail.send'));
+      assert.ok(scope.includes('/auth/gmail.modify'));
     });
 
     test('carries no client secret to the browser', async () => {
@@ -372,7 +378,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
       access_token: 'an-access-token',
       refresh_token: 'a-refresh-token',
       expires_in: 3599,
-      scope: 'https://www.googleapis.com/auth/gmail.readonly openid',
+      scope: 'https://www.googleapis.com/auth/gmail.modify openid',
       token_type: 'Bearer',
     };
 
@@ -393,7 +399,7 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
       assert.equal(tokens.accessToken, 'an-access-token');
       assert.equal(tokens.refreshToken, 'a-refresh-token');
       assert.deepEqual(tokens.scopes, [
-        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/gmail.modify',
         'openid',
       ]);
     });

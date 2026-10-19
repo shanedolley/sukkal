@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy - Sukkal</title>
+<meta name="description" content="What Google user data Sukkal reads, why, where it is stored, who receives it, and how to revoke access.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <a class="brand" href="index.html"><img src="logo.svg" alt="" width="32" height="32">Sukkal</a>
+  <nav aria-label="Main">
+    <ul>
+      <li><a href="privacy.html" aria-current="page">Privacy policy</a></li>
+      <li><a href="terms.html">Terms of service</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="prose">
+  <h1>Privacy policy</h1>
+  <p class="meta">Effective 19 October 2026</p>
+
+  <div class="statement">
+    <p>Sukkal's use and transfer of information received from Google APIs to any other app will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+  </div>
+
+  <h2>Who runs Sukkal</h2>
+  <p>Shane Dolley operates Sukkal as an individual, in Queensland, Australia. Contact: <a href="mailto:shane@koinon.com.au">shane@koinon.com.au</a>.</p>
+  <p>Sukkal is a personal assistant with one owner per installation. This policy covers the installation at <code>app.sukkal.app</code> and this website. Somebody who runs their own copy of Sukkal is the operator of that copy, and this policy does not cover it.</p>
+
+  <h2>Google user data</h2>
+  <p>The owner connects a Google account on the Connections screen and chooses which services to allow: Gmail, Calendar, Meet or Drive. Sukkal asks Google for the permissions of the chosen services and no others. Sukkal reads this data from the connected account:</p>
+  <ul>
+    <li>The email address of the account, so that several connected accounts can be told apart.</li>
+    <li>Mail messages and threads in Gmail, and the labels on them.</li>
+    <li>Events in Google Calendar, including the events that held a Meet call.</li>
+    <li>Documents and files in Google Drive.</li>
+  </ul>
+  <p>Sukkal uses this data for one purpose: to serve the owner who connected the account. It builds the owner's daily briefing, labels mail, drafts replies, links meetings to projects, keeps a memory of the people, decisions and commitments in the material, and answers the owner's questions from that memory. Sukkal shows the data only to the signed-in owner.</p>
+
+  <h2>Permissions requested</h2>
+  <p>Google calls these permissions scopes. Sukkal asks for five and no others. It always asks for the first two. It asks for each of the others only when the owner allows the matching service.</p>
+
+  <h3>Identity, always</h3>
+  <ul class="scopes">
+    <li><code>openid</code><span>Sign in with Google, so Sukkal knows which account consented.</span></li>
+    <li><code>https://www.googleapis.com/auth/<wbr>userinfo.email</code><span>Read the address of the account, to name the connection and tell accounts apart. Sukkal keeps the address and nothing else from the answer.</span></li>
+  </ul>
+
+  <h3>Gmail</h3>
+  <ul class="scopes">
+    <li><code>https://www.googleapis.com/auth/<wbr>gmail.modify</code><span>Read mail, apply labels, and create reply drafts for the owner to edit and send. Sukkal never sends mail unprompted, and it does not use this scope to delete mail.</span></li>
+  </ul>
+
+  <h3>Calendar and Meet</h3>
+  <ul class="scopes">
+    <li><code>https://www.googleapis.com/auth/<wbr>calendar.events</code><span>Read and edit events, and answer invitations for the owner. Meet needs no scope of its own, because Sukkal reaches a Meet recording through the calendar event that held it.</span></li>
+  </ul>
+
+  <h3>Drive</h3>
+  <ul class="scopes">
+    <li><code>https://www.googleapis.com/auth/<wbr>drive</code><span>Read, create, edit and reorganise documents when the owner directs. Sukkal never deletes a file.</span></li>
+  </ul>
+
+  <h2>Where data is stored</h2>
+  <p>Sukkal stores data in a PostgreSQL database on a server that Shane Dolley owns, in Queensland, Australia. It uses no cloud database.</p>
+  <p>The tokens that let Sukkal reach a Google account are sealed with AES-256-GCM before they are stored. The key is kept outside the database, in a file with restricted permissions on the server. A copy of the database alone does not open them.</p>
+  <p>The owner signs in with a password, which Sukkal stores only as a salted scrypt hash. Cloudflare Access also asks for the owner's identity before a request reaches the server.</p>
+
+  <h2>Who receives data</h2>
+  <p>Sukkal sends data to a provider below only when the owner has connected that provider. Sukkal does not sell data to anyone.</p>
+  <ul>
+    <li><strong>Anthropic</strong> runs the Claude model. It receives excerpts of mail, events and documents when Sukkal classifies mail, drafts a reply, extracts facts or answers a question. It receives them through the owner's Claude subscription or API key.</li>
+    <li><strong>Voyage AI</strong> turns text into embeddings, so that search finds meaning and not only exact words. It receives chunks of the owner's mail, documents and facts.</li>
+    <li><strong>Resend</strong> sends Sukkal's own system mail, which today is the password reset link. It receives the owner's sign-in address and the link. It receives no Google user data.</li>
+    <li><strong>Cloudflare</strong> carries traffic between a browser and the server through a tunnel, for the application and for this website. The owner's pages and the data on them cross Cloudflare's network while in transit.</li>
+  </ul>
+  <p>These providers may process data outside Australia. Sukkal sends each of them only what the task needs. Each provider keeps data under its own terms, which Sukkal does not control.</p>
+  <p>Sukkal does not train models. It sends text to a model provider to get one answer for the owner. Sukkal does not use Google user data for advertising, and it runs no analytics or advertising tools.</p>
+  <p>Sukkal has one owner and no other users, support staff or reviewers. The operator can reach the database, and on this installation the operator is the owner.</p>
+
+  <h2>Retention and deletion</h2>
+  <p>Sukkal keeps a connection's tokens until the owner removes the connection. It then deletes the stored tokens.</p>
+  <p>Sukkal's memory keeps what it learned from mail, events and documents until somebody deletes it. It retires a fact that is no longer true and keeps the record, so the history stays. Removing a connection stops all new reading. It does not by itself delete what Sukkal stored earlier.</p>
+  <p>To have stored data deleted, write to <a href="mailto:shane@koinon.com.au">shane@koinon.com.au</a>. The operator deletes it from the database. A backup copy of the database holds the data as it stood when the copy was taken.</p>
+
+  <h2>Revoking access</h2>
+  <p>Use either route. Neither needs the other.</p>
+  <ol>
+    <li>In Google: open <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>, choose Sukkal, and select Remove access.</li>
+    <li>In Sukkal: open the Connections screen and remove the connection. Sukkal tells Google to revoke the token first. If Google does not confirm, Sukkal keeps the connection, says why, and lets the owner try again. Once Google confirms, Sukkal deletes the stored tokens.</li>
+  </ol>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the effective date at the top changes with it. Questions go to <a href="mailto:shane@koinon.com.au">shane@koinon.com.au</a>.</p>
+</main>
+
+<footer class="foot">
+  <div class="bar">
+    <p>Sukkal is operated by Shane Dolley, Queensland, Australia.</p>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="privacy.html">Privacy policy</a></li>
+      <li><a href="terms.html">Terms of service</a></li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>
