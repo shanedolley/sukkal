@@ -1,0 +1,363 @@
+/* Tokens copied from apps/web/app/globals.css, so the site reads as the same
+   product. Neutrals lean toward the green hue; no pure black or white. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/inter-latin.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: light dark;
+  --bg: oklch(0.99 0.004 150);
+  --surface: oklch(0.965 0.009 150);
+  --fg: oklch(0.22 0.01 150);
+  --muted: oklch(0.47 0.012 150);
+  --border: oklch(0.91 0.008 150);
+  --primary: oklch(0.527 0.154 150.069);
+  --primary-fg: oklch(0.982 0.018 155.826);
+  --link: oklch(0.47 0.15 150);
+  --radius: 0.625rem;
+  --gutter: max(1rem, 5vw);
+  --measure: 40rem;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(0.17 0.006 150);
+    --surface: oklch(0.215 0.009 150);
+    --fg: oklch(0.95 0.006 150);
+    --muted: oklch(0.73 0.012 150);
+    --border: oklch(1 0 0 / 12%);
+    --link: oklch(0.78 0.16 150);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font: 1rem/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.skip {
+  position: absolute;
+  left: var(--gutter);
+  top: -4rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--primary);
+  color: var(--primary-fg);
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+.skip:focus {
+  top: 0.75rem;
+}
+
+/* Header and footer */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1.25rem var(--gutter);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--fg);
+  font-weight: 650;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.brand img {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+}
+
+nav ul,
+.foot ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+nav a,
+.foot a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9375rem;
+}
+
+nav a:hover,
+.foot a:hover,
+nav a[aria-current="page"] {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+.foot {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+}
+
+.foot .bar {
+  padding-block: 1.5rem;
+  align-items: flex-start;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.foot p {
+  margin: 0;
+}
+
+/* Page body */
+
+main {
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 2rem var(--gutter) 5rem;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(2.25rem, 1.4rem + 3.6vw, 3.75rem);
+}
+
+h2 {
+  margin: 3.25rem 0 0.75rem;
+  font-size: 1.5rem;
+}
+
+h3 {
+  margin: 2rem 0 0.4rem;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+
+p,
+ul,
+ol,
+dl {
+  margin: 0 0 1rem;
+}
+
+/* The page frame is as wide as the header; the text keeps a readable line. */
+.prose > * {
+  max-width: var(--measure);
+}
+
+.prose li {
+  margin-bottom: 0.4rem;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+code {
+  font: 0.85em/1.4 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+/* Homepage */
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  align-items: center;
+  padding-block: 1.5rem 1rem;
+}
+
+.hero img {
+  width: 7.5rem;
+  height: 7.5rem;
+  border-radius: 1.75rem;
+  order: -1;
+}
+
+.lede {
+  max-width: 34rem;
+  margin-bottom: 0;
+  font-size: clamp(1.125rem, 1rem + 0.6vw, 1.375rem);
+  line-height: 1.5;
+}
+
+@media (min-width: 48rem) {
+  .hero {
+    grid-template-columns: 1fr auto;
+    gap: 4rem;
+    padding-block: 3rem 2rem;
+  }
+
+  .hero img {
+    order: 0;
+    width: 11rem;
+    height: 11rem;
+    border-radius: 2.5rem;
+  }
+}
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.button {
+  display: inline-block;
+  padding: 0.6rem 1.1rem;
+  background: var(--primary);
+  color: var(--primary-fg);
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+.button:hover {
+  filter: brightness(1.1);
+  text-decoration: none;
+}
+
+/* A label column beside the answer, in place of a grid of cards. */
+.rows {
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+
+.rows > div {
+  display: grid;
+  gap: 0.35rem 3rem;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.rows dt {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.rows dd {
+  margin: 0;
+  max-width: var(--measure);
+}
+
+.rows dd p:last-child {
+  margin-bottom: 0;
+}
+
+@media (min-width: 48rem) {
+  .rows > div {
+    grid-template-columns: 12rem 1fr;
+  }
+}
+
+/* Scopes on the privacy page */
+
+.scopes {
+  max-width: var(--measure);
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.scopes li {
+  margin: 0;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.scopes code {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--fg);
+}
+
+.scopes span {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.statement {
+  max-width: var(--measure);
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.statement p:last-child {
+  margin-bottom: 0;
+}
+
+@media print {
+  .skip,
+  nav {
+    display: none;
+  }
+}

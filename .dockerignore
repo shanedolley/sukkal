@@ -23,6 +23,8 @@
 .serena
 .playwright-mcp
 docs
+site
+site.Caddyfile
 test
 scratch
 *.log

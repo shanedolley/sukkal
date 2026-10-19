@@ -7,12 +7,13 @@ box when it was written. Every command in *Build*, *Prove it locally* and *Logs*
 ran on the Mac against a local database. The steps under *Ship*, *First start* and
 *Roll back* are the pattern. Whoever runs them first corrects this file.
 
-Three containers run from `compose.yaml`:
+Four containers run from `compose.yaml`:
 
 | Service | Runs | Reads |
 |---|---|---|
 | `web` | `next start`, bound to `127.0.0.1:3000` | `/etc/sukkal/env` |
 | `worker` | `src/worker/index.ts` and its pg-boss queue | `/etc/sukkal/env` |
+| `site` | Caddy serving `site/`, bound to `127.0.0.1:3001` | `site/` and `site.Caddyfile`, read-only |
 | `cloudflared` | Sukkal's own tunnel | `/etc/sukkal/tunnel-token` |
 
 `web` and `worker` use one image, `sukkal:<tag>`. The existing `cloudflared`
@@ -115,8 +116,14 @@ The image holds no secret, so no registry is needed. Stream it over ssh:
 ```
 docker save sukkal:$TAG | gzip | ssh amaterasu 'gunzip | docker load'
 ssh amaterasu 'install -d /opt/sukkal'
-scp compose.yaml amaterasu:/opt/sukkal/compose.yaml
+scp compose.yaml site.Caddyfile amaterasu:/opt/sukkal/
+rsync -a --delete site/ amaterasu:/opt/sukkal/site/
 ```
+
+The `site` service mounts `site/` and `site.Caddyfile` from `/opt/sukkal`. Copy both
+again after any change to the public pages. Caddy reads the files on each request,
+so the pages need no restart. A change to `site.Caddyfile` needs
+`docker compose restart site`.
 
 ## First start
 
@@ -132,7 +139,7 @@ scp compose.yaml amaterasu:/opt/sukkal/compose.yaml
 
    The runner names the database before it acts. Expect 21 rows before and 32 after,
    because no `002` exists.
-2. Start all three:
+2. Start all four:
 
    ```
    ssh amaterasu 'cd /opt/sukkal && docker compose up -d'
@@ -150,6 +157,47 @@ scp compose.yaml amaterasu:/opt/sukkal/compose.yaml
 
 The `.env` file in `/opt/sukkal` holds the tag and nothing secret. Compose reads
 it for `${SUKKAL_TAG}`.
+
+## The public site
+
+`web.sukkal.app` serves the homepage, privacy policy and terms that Google's OAuth
+verification needs. The `site` service holds nothing but static files. It shares no
+code, session or route with the web tier, so `web.sukkal.app` reaches no app page.
+
+Do these in order. Only Shane can.
+
+1. **Add the public hostname.** In the Cloudflare dashboard, open the `sukkal`
+   tunnel. Route `web.sukkal.app` to the service `http://localhost:3001`.
+2. **Leave Access off it.** Create no Access application for `web.sukkal.app`. The
+   page must stay public, or Google cannot read it. The Access application covers
+   `app.sukkal.app` only. Check that no wildcard application, such as
+   `*.sukkal.app`, covers the new name.
+3. **Check it from outside.** Open `https://web.sukkal.app/` on a phone off the home
+   network. The page must load with no Access prompt.
+
+Then the Google steps. Use the Google Cloud project `personal-assistant-506014`.
+
+1. **Verify the domain.** Open Google Search Console and add a Domain property for
+   `sukkal.app`. Google shows a TXT record. Add it in Cloudflare DNS, then select
+   Verify. Use the Google account that owns the Cloud project.
+2. **Authorise the domain.** In Google Auth Platform, open Branding. Under
+   Authorized domains, add `sukkal.app`.
+3. **Fill the Branding page.** Set the app name to `Sukkal`, the same name the pages
+   use. Upload `site/logo.png`, which is 120 by 120 pixels. Set the homepage to
+   `https://web.sukkal.app/`, the privacy policy to
+   `https://web.sukkal.app/privacy.html`, and the terms to
+   `https://web.sukkal.app/terms.html`. Set the support email.
+
+The pages name every scope in `src/connections/oauth.ts`. Change the pages in the
+same commit as any change to those scopes.
+
+Prove the service on the Mac with only that one service. Port 3000 stays free:
+
+```
+SUKKAL_TAG=x docker compose -p sukkalsiteproof up -d site
+curl -si http://127.0.0.1:3001/privacy.html | head -20
+SUKKAL_TAG=x docker compose -p sukkalsiteproof down
+```
 
 ## Deploy a new commit
 
