@@ -2,8 +2,8 @@
 
 Written for KPA-109, and checked against a local database on 2 September 2026.
 
-The worker is the second of the three services planned for amaterasu. None runs
-there on 14 October 2026. It holds
+The worker is the second of the three containers planned for amaterasu. None
+runs there on 19 October 2026. It holds
 everything long running: ingestion, agent runs, the nightly sweep, the Jira
 poller. The web tier reads and serves, and nothing long running belongs in a
 request handler.
@@ -15,7 +15,7 @@ this process. They meet at the database and nowhere else.
 |---|---|
 | Entry point | `src/worker/index.ts` |
 | Command | `npm run worker` |
-| Reads | `DATABASE_URL`, from `~/.config/sukkal/env` |
+| Reads | `DATABASE_URL`, from `~/.config/sukkal/env` on the Mac and `/etc/sukkal/env` on amaterasu |
 | Queue | pg-boss, in the `pgboss` schema of the same database |
 | Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, `nightly.review` at 03:30 Sydney, `connections.recheck` at five past every hour, and `expired.sweep` at quarter past four |
 
@@ -225,33 +225,16 @@ expired.sweep: sessions failed, grants 1
 expired.sweep: sessions sweep failed: error: relation "sessions" does not exist
 ```
 
-## Under systemd
+## Under Docker
 
-The unit belongs beside the web tier's on amaterasu. Nothing installs it yet.
+On amaterasu the worker runs as the `worker` service of `compose.yaml`, from the
+same image as the web tier, and reads `/etc/sukkal/env`. `docs/runbooks/deploy.md`
+says how to start it, read its logs and roll it back. ADR-0026 records the choice.
 
-This draft is unverified, and its `EnvironmentFile` conflicts with `secrets.md`, which names `/etc/sukkal/env`. Which path holds, and whether the worker runs under systemd or Docker at all, is open on KPA-166, which writes the deploy runbook. Read on 14 October 2026.
-
-```ini
-[Unit]
-Description=Sukkal worker
-After=network-online.target postgresql.service
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=sukkal
-WorkingDirectory=/opt/sukkal
-EnvironmentFile=/home/sukkal/.config/sukkal/env
-ExecStart=/usr/bin/node src/worker/index.ts
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-`Restart=on-failure` is safe. A job survives a restart because pg-boss holds it
-in Postgres, so the worker comes back and takes what it left.
+`restart: unless-stopped` is safe. A job survives a restart because pg-boss holds
+it in Postgres, so the worker comes back and takes what it left. The container
+gets a stop signal and `init: true` passes it on, so the worker still lets a
+running job finish and closes both connections.
 
 ## Reading the queue
 

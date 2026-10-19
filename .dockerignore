@@ -1,0 +1,35 @@
+# What the image never holds. Secrets first.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+**/.config
+*.pem
+*.key
+
+# Built on the host, rebuilt in the image.
+**/node_modules
+**/.next
+**/*.tsbuildinfo
+**/dist
+**/build
+
+# Not part of either process.
+.git
+.github
+.claude
+.serena
+.playwright-mcp
+docs
+test
+scratch
+*.log
+.DS_Store
+handover.md
+prompt.md
+README.md
+
+# The vault lives on the Mac and nowhere else.
+**/obsidian_vaults
