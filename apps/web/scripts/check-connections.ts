@@ -421,13 +421,31 @@ assert.match(
   "the detail dialog does not show the send-from address"
 );
 
+// 10e. Claude's subscription takes a setup token and opens nothing. KPA-86.
+//      The old method opened claude.ai/login and captured nothing, so a card
+//      that went back to a link would look connected and store no credential.
+const subscription = PROVIDERS.find((entry) => entry.id === "claude")?.methods.find(
+  (method) => method.id === "subscription"
+);
+assert.ok(subscription, "Claude offers no subscription method");
+assert.equal(subscription.signIn, undefined, "the subscription method opens a page again");
+assert.ok(
+  (subscription.fields ?? []).some((field) => field.kind === "secret"),
+  "the subscription method takes no setup token"
+);
+assert.ok(
+  (subscription.fields ?? []).some((field) => field.kind === "date"),
+  "the setup token is undated"
+);
+
 console.log(
   "connections OK: ten providers each with a mark, only web addresses open, a key opens nothing, " +
     `Voyage names ${EMBEDDING.model} at ${EMBEDDING.dimension}, the Jira token is dated, ` +
     "the Resend probe costs nothing, Resend alone asks for a Send from address, " +
     "a card reconnects in place rather than deleting and rebuilding, a card whose " +
     "method takes a key may be renamed while a grant method's card says the provider " +
-    "names it, and the detail dialog reads the sending address back"
+    "names it, the detail dialog reads the sending address back, and Claude's subscription " +
+    "takes a dated setup token and opens no page"
 );
 
 // ══ The same claims, against the rows ═══════════════════════════════════════

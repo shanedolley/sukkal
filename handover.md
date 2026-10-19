@@ -10,6 +10,14 @@ and the tunnel token stays as it is. The existing `cloudflared` container serves
 another domain, so Sukkal gets a second tunnel in its own compose file. The
 commit that recorded this is the last one made straight to `main`.
 
+**The Claude subscription path is built, and waits on a setup token.** Shane
+ruled on 19 October 2026 that Sukkal uses his subscription for everything, with
+the API key as the fallback. ADR-0027 records it and supersedes ADR-0016. The
+ruling is not yet on KPA-86, because project management is on hold. Shane runs
+`claude setup-token` on his own machine and pastes the token into the Claude
+card's Subscription method. Nothing calls `live()` in
+`src/memory/inference-live.ts` yet.
+
 **No story was built between 1 and 13 October.** `git log` shows no commit from
 2 to 12 October, and the commits of 13 October are documents. What moved was the
 board, the workflow, and two stories closed by a read. KPA-167 was built on

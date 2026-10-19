@@ -2,10 +2,10 @@
  * The one seam in front of every model call.
  *
  * Two reasons, both load bearing. The Claude subscription is a coding tool
- * rather than a service backend, so switching to the API has to cost an
- * afternoon. And gates 1 and 2 call the model on every candidate, so an
- * unmocked test suite would cost money, flake, and meet the rate limit the
- * brief warns about.
+ * rather than a service backend, so a call that meets its limit has to move to
+ * the API without a change at the call site. And gates 1 and 2 call the model
+ * on every candidate, so an unmocked test suite would cost money, flake, and
+ * meet the rate limit the brief warns about.
  */
 export interface Inference {
   /**
@@ -22,8 +22,9 @@ export interface Inference {
  * An unrecorded prompt throws, which rejects the candidate. Silence would let
  * a missing fixture read as a pass.
  *
- * ponytail: no live implementation yet. Nothing calls a model outside a test
- * until the slice that ingests, and this interface is where it plugs in.
+ * The live implementation is `live` in `./inference-live.ts` (ADR-0027). Nothing
+ * calls a model outside a test until the slice that ingests, and this interface
+ * is where it plugs in.
  */
 export function recorded(answers: Readonly<Record<string, string>>): Inference {
   return {

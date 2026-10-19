@@ -19,7 +19,10 @@
  * it. Deciding what to do about a dead credential is a person's job.
  *
  * **It never spends money.** A probe `verify.ts` marks `metered` is skipped,
- * so a Voyage key stays unchecked here rather than billed once an hour.
+ * so a Voyage key stays unchecked here rather than billed once an hour. A
+ * Claude subscription token is checked every run: the call costs plan allowance
+ * and not money, and the token is the first path every model call tries
+ * (ADR-0027).
  *
  * **A second run inside the window does nothing.** A credential checked less
  * than `WINDOW_MINUTES` ago is left alone, so two runs close together, or a
@@ -31,10 +34,11 @@
  */
 import type { ClientBase } from 'pg';
 
+import type { Runner } from '../memory/inference-live.ts';
 import { reconcileCredentialItems } from './needs-you.ts';
 import { GRANTS, renew, whoami } from './oauth.ts';
 import { recordVerification, secretFor, setCredential } from './store.ts';
-import { probeFor, verify } from './verify.ts';
+import { probeFor, verify, verifySubscription } from './verify.ts';
 
 /** How recently a check counts as current. Under the hourly schedule, so the
  *  next run always checks again. */
@@ -68,6 +72,7 @@ export async function checkOne(
   connection: Due,
   now: Date,
   fetcher: typeof fetch,
+  run?: Runner,
 ): Promise<{ ok: boolean; verdict: string } | null> {
   let secret: string | null;
   try {
@@ -101,6 +106,12 @@ export async function checkOne(
     }
   }
 
+  // The subscription token is proved by the CLI and by nothing else. `probeFor`
+  // would post it to api.anthropic.com as an API key.
+  if (connection.provider === 'claude' && connection.method === 'subscription') {
+    return verifySubscription(secret, run);
+  }
+
   const probe = probeFor(connection.provider, secret);
   if (probe === null || probe.cost === 'metered') {
     return null;
@@ -119,7 +130,12 @@ export async function checkOne(
  * its expiry window between runs, and reconciling only the due rows would
  * miss that.
  */
-export async function recheck(client: ClientBase, now: Date, fetcher: typeof fetch): Promise<Checked[]> {
+export async function recheck(
+  client: ClientBase,
+  now: Date,
+  fetcher: typeof fetch,
+  run?: Runner,
+): Promise<Checked[]> {
   const due = await client.query<Due>(
     `SELECT c.id, c.provider, c.name, c.method
        FROM connections c
@@ -132,7 +148,7 @@ export async function recheck(client: ClientBase, now: Date, fetcher: typeof fet
 
   const found: Checked[] = [];
   for (const connection of due.rows) {
-    const answer = await checkOne(client, connection, now, fetcher);
+    const answer = await checkOne(client, connection, now, fetcher, run);
     if (answer === null) {
       continue;
     }

@@ -23,6 +23,7 @@
  * re-verification can skip what it would pay for. KPA-107 is where that
  * schedule lands.
  */
+import { InferenceError, viaCli, type Runner } from '../memory/inference-live.ts';
 
 /** What a verification would send. It holds a secret and is never logged. */
 export interface Probe {
@@ -76,10 +77,13 @@ const VOYAGE_PROBE_MODEL = 'voyage-4';
 /**
  * The call that proves a key for `provider`, or null when nothing can.
  *
- * A method holding no secret is one of the nulls: Claude's subscription signs
- * in through a browser and stores no key, so there is nothing to authenticate
- * with and nothing to verify. The caller records that rather than treating it
- * as a failure.
+ * A method holding no secret is one of the nulls, and the caller records that
+ * rather than treating it as a failure.
+ *
+ * NEVER CALL THIS WITH A CLAUDE SUBSCRIPTION TOKEN. The `claude` case below
+ * sends its secret to api.anthropic.com as an API key, and Anthropic permits a
+ * subscription token only inside its own tools. `verifySubscription` is the
+ * check for that token, and `recheck.ts` picks between the two by method.
  */
 export function probeFor(provider: string, secret: string): Probe | null {
   if (secret.trim() === '') return null;
@@ -239,5 +243,32 @@ export async function verify(
     // carries the key in a header.
     const why = cause instanceof Error ? cause.message : String(cause);
     return { ok: false, verdict: `${new URL(probe.url).host} could not be reached: ${why}` };
+  }
+}
+
+/** The smallest question that proves a token: one word, from the cheapest model. */
+const SUBSCRIPTION_PROBE = 'Reply with the single word: ok';
+
+/**
+ * Proves a Claude subscription token with one small call through the CLI.
+ *
+ * It is not a `Probe`, because a probe is an HTTP request and the token never
+ * travels over HTTP from this code (ADR-0027). It costs plan allowance rather
+ * than money, so unlike Voyage the hourly recheck runs it.
+ *
+ * Like `verify`, it never throws: a refused token, a rate limit and a missing
+ * binary are all answers worth storing. The verdict names the CLI and never the
+ * token.
+ */
+export async function verifySubscription(token: string, run?: Runner): Promise<Verdict> {
+  try {
+    await viaCli(token, SUBSCRIPTION_PROBE, { run, model: 'haiku' });
+    return { ok: true, verdict: 'Claude Code accepted the setup token' };
+  } catch (cause) {
+    const kind = cause instanceof InferenceError ? cause.kind : 'other';
+    if (kind === 'auth') return { ok: false, verdict: 'Claude Code refused the setup token' };
+    if (kind === 'rate_limit') return { ok: false, verdict: 'Claude Code is rate limiting' };
+    const why = cause instanceof Error ? cause.message : String(cause);
+    return { ok: false, verdict: `Claude Code could not check the token: ${why}` };
   }
 }
