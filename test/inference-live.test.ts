@@ -26,6 +26,7 @@ import {
   type Path,
   type Runner,
   InferenceError,
+  kindOf,
   live,
   preference,
   spawnChild,
@@ -193,6 +194,42 @@ describe('the subscription path', () => {
       assert.equal(cause.kind, 'other');
       return true;
     });
+  });
+});
+
+describe('classifying a failure by its text', () => {
+  test('a disk or crash message that contains "log in" is not an auth failure', () => {
+    for (const said of [
+      'Error: ENOSPC writing to the backlog index',
+      'could not write the catalog in /tmp',
+    ]) {
+      assert.equal(kindOf(null, said), 'other', said);
+    }
+  });
+
+  test('a refused credential is an auth failure', () => {
+    for (const said of [
+      'Not logged in',
+      'Please run /login',
+      'Invalid API key',
+      'OAuth access token is invalid',
+      'Failed to authenticate. API Error: 401 OAuth token has expired',
+      'Unauthorized',
+      'OAuth token revoked',
+    ]) {
+      assert.equal(kindOf(null, said), 'auth', said);
+    }
+  });
+
+  test('a rate limit is a rate_limit failure', () => {
+    for (const said of ['API Error: Rate limit reached', 'Claude AI usage limit reached|1760900000', 'Overloaded', 'rate-limited']) {
+      assert.equal(kindOf(null, said), 'rate_limit', said);
+    }
+  });
+
+  test('the status wins over the text', () => {
+    assert.equal(kindOf(429, 'Not logged in'), 'rate_limit');
+    assert.equal(kindOf(401, 'disk full'), 'auth');
   });
 });
 
