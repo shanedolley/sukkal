@@ -1,7 +1,14 @@
 # Handover
 
-State as at 14 October 2026. `prompt.md` holds the instructions for a new
-session. This file holds the facts.
+State as at 14 October 2026, with the rulings of 19 October 2026 below.
+`prompt.md` holds the instructions for a new session. This file holds the facts.
+
+**Shane ruled on KPA-167 and KPA-166 on 19 October 2026.** Comment 11950: every
+story from now on gets a branch and a pull request, and he moves the stories
+already on `main` to Done by hand. Comment 11951: Docker with a compose file,
+and the tunnel token stays as it is. The existing `cloudflared` container serves
+another domain, so Sukkal gets a second tunnel in its own compose file. The
+commit that recorded this is the last one made straight to `main`.
 
 **No story was built between 1 and 13 October.** `git log` shows no commit from
 2 to 12 October, and the commits of 13 October are documents. What moved was the

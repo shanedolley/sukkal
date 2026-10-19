@@ -33,31 +33,21 @@ links number four.
 the source of it. One was told three cross-space links, ran `check.py` three
 times, reported four, and was correct.
 
-## Committing: push straight to main
+## Committing: a branch and a pull request per story
 
-**This project accepts direct commits to `main`.** Shane decided this on
-24 August 2026. Do not cut a branch, and do not open a pull request, unless he
-asks for one.
+**Every story gets a branch and a pull request.** Shane ruled this on
+19 October 2026, on KPA-167, and it ends the direct commits to `main` he allowed
+on 24 August 2026. The global rule in `~/.claude/CLAUDE.md` now holds here as
+written: cut the branch, push, open the pull request, run `pr-review`, watch CI,
+merge.
 
-This overrides the global rule in `~/.claude/CLAUDE.md`, which requires a branch
-and a pull request. That rule still applies to every other project.
+Put `Refs KPA-<n>` in the pull request and the commits, and `Builder: <agent>`
+on a line of the pull request body. The project manager's gate reads the pull
+request's checks and its `Review verdict: PASS` before it moves a story to AI
+Review or Done.
 
-**It is temporary.** The repository holds documents, runbooks and setup scripts,
-and one person writes all of them. Review by pull request costs more than it
-returns while that stays true. Expect this section to be withdrawn once the
-application code lands and a second reader has something to review.
-
-`hooks/guard-commit-on-main.py` still denies a commit on `main`, because it
-reads no project file. Prefix each command with the override the guard itself
-names:
-
-```
-KOTHAR_ALLOW_MAIN=1 git commit -m "..."
-KOTHAR_ALLOW_MAIN=1 git push
-```
-
-That prefix records the decision at the moment it is used, which is the point of
-it. Do not disable the hook: it protects every other repository on this machine.
+The stories that reached `main` before 19 October have no pull request. Shane
+moves those to Done by hand.
 
 Every other rule in the global `CLAUDE.md` still holds. Absolute paths for every
 delete. No destructive git without `KOTHAR_ALLOW_DESTRUCTIVE=1`. Commits credit
@@ -415,6 +405,6 @@ it.
 
 ## Committing
 
-The rules are in *Committing: push straight to main* above. Nothing else.
+The rules are in *Committing: a branch and a pull request per story* above.
 
 One commit per story. Stage the files by name, and never `git add -A`.

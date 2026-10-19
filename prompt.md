@@ -17,9 +17,9 @@ Do not rediscover what those record.
 
 ## How to work
 
-**Commit straight to `main`.** No branches, no pull requests, unless asked.
-`CLAUDE.md` names the override the hook wants. One commit per story, files
-staged by name, never `git add -A`.
+**Give every story a branch and a pull request.** Shane ruled this on
+19 October 2026, on KPA-167. `CLAUDE.md` says what the pull request carries.
+Stage files by name, never `git add -A`.
 
 **Verify in both directions, which is this project's golden rule.** A finding
 is unverified until you have run something that proves it, whoever produced it.
@@ -51,7 +51,10 @@ tool overwrote a tracked one on 13 September 2026 without refusing.
 4. Run both packages' lint, build and tests, and the web tier's `npm run check`.
 5. Update `docs/schema.md` when the schema moved, and `CLAUDE.md` when you
    found a trap that will bite again.
-6. Commit with a message that says what changed and why. Push. Watch CI.
+6. Commit on the story's branch with a message that says what changed and why.
+   Push, open the pull request, and run `pr-review <n> --mode interactive`.
+   Watch CI, and merge once CI is green and the PASS verdict is newer than the
+   last commit.
 7. Comment on the ticket with what was built, how each criterion is met, and
    what was proved rather than assumed. Put `Builder: <agent>` on a line of
    its own: the ten verdicts of 14 October 2026 all read `builder unknown`.
@@ -81,9 +84,8 @@ status a story is in, so read `/rest/api/3/issue/<key>/transitions` rather than
 any table. Only a person moves a story out of HIL Review.
 
 **The project manager refuses a move to AI Review or Done without a pull request
-whose checks pass**, read from its status map on 14 October 2026. KPA has none,
-so until Shane answers comment 11788 on KPA-167, park a shipped story in HIL
-Review with that question rather than dispatching a move to AI Review.
+whose checks pass**, read from its status map on 14 October 2026. Give it the
+pull request number with the evidence.
 
 A move to AI Review needs a reviewer's
 `Review verdict: PASS (reviewer <agent>, builder <agent>)` comment before the
@@ -163,27 +165,22 @@ Measured on 14 October 2026 at source: the board paged to the end, 133 stories,
 no branch or pull request is open. The documentation was swept for stale
 references the same day, twice, and the ten stories in AI Review were reviewed.
 
-**Read Shane's answers first.** Three stories wait in HIL Review with the
-`question` label, all parked on 14 October 2026. Two carry a decision:
+**Shane answered both questions on 19 October 2026.** Comments 11950 and 11951
+carry the rulings, and no KPA ticket carries the `question` label.
 
-- [KPA-167](https://koinon.atlassian.net/browse/KPA-167) shipped, green, in
-  commit `71f3a82`. Comment 11788 asks how a KPA story reaches AI Review and Done
-  when the project manager's gate wants a pull request and KPA commits to `main`.
-  The answer may change *Commit straight to `main`* above and in `CLAUDE.md`, so
-  settle it before building anything else.
-- [KPA-166](https://koinon.atlassian.net/browse/KPA-166) asks Docker or Node 22
-  under systemd, in comment 11790. Once answered, write the ADR, then the compose
-  file or the units, then `docs/runbooks/deploy.md`, then deploy. It still needs
-  Shane's separate approval to migrate production. It blocks KPA-147.
+- [KPA-167](https://koinon.atlassian.net/browse/KPA-167): option B. Every story
+  from now on gets a branch and a pull request.
+- [KPA-166](https://koinon.atlassian.net/browse/KPA-166): Docker with a compose
+  file. Sukkal gets a second Cloudflare tunnel, with its own `cloudflared`
+  container in its own compose file, because the existing tunnel serves another
+  domain. Write the ADR, then the compose file, then `docs/runbooks/deploy.md`,
+  then deploy. It still needs Shane's separate approval to migrate production. It
+  blocks KPA-147.
 
-**[KPA-108](https://koinon.atlassian.net/browse/KPA-108) is fixed and passed
-its second review on 14 October 2026.** Commit `c652090`, CI green, verdict in
-comment 11820. It sits in HIL Review with the `question` label, held by
-KPA-167's question like the nine below. Comment 11821 says so.
-
-**Nine stories hold a PASS verdict and wait on KPA-167.** KPA-157 to KPA-165 sit
-in AI Review. The project manager refuses HIL Review without a question and Done
-without a pull request, so none moves until Shane answers comment 11788.
+**Shane moves the stories already on `main` to Done by hand**, because none has
+a pull request for the project manager's gate. KPA-157 to KPA-165 sit in AI
+Review and KPA-108 in HIL Review, each with a PASS verdict. KPA-167 sits in HIL
+Review and needs a verdict first.
 
 **Six review advisories have no ticket yet.** `handover.md` lists them under
 *Review advisories*. The first, a connection name written raw to a log and a
