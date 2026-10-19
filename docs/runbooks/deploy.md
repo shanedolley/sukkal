@@ -70,6 +70,7 @@ the box reads it.
 | `GOOGLE_OAUTH_CLIENT_ID` | The same client as the Mac |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | The same client as the Mac |
 | `NABIUM_WEBHOOK_SECRET` | The secret nabium signs with. See *Known limits* |
+| `SUKKAL_INFERENCE` | Optional. `subscription` (the default) or `api`, the order the two Claude credentials are tried in |
 
 Leave out `DATABASE_URL_TEST` and `VAULT_PATH`. No test runs on the box and no
 vault reaches it.
@@ -97,6 +98,9 @@ commit as the tag:
 TAG=$(git rev-parse --short HEAD)
 docker buildx build --platform linux/amd64 -t sukkal:$TAG --load .
 ```
+
+The build installs the Claude Code CLI at one pinned version from the npm registry
+(ADR-0027), so it needs the network, and the image grows by about 270 MB.
 
 Build from a clean checkout of the commit you mean to ship. `.dockerignore`
 keeps `.env*`, host `node_modules`, `.next`, the vault and `docs` out of the

@@ -136,15 +136,17 @@ function apiKey(placeholder: string, hint: string, extra: Field[] = []): Method 
     fields: [
       ...extra,
       { id: "key", label: "API key", placeholder, kind: "secret" },
-      {
-        id: "expires",
-        label: "Review by",
-        placeholder: "YYYY-MM-DD",
-        kind: "date",
-      },
+      REVIEW_BY,
     ],
   };
 }
+
+const REVIEW_BY: Field = {
+  id: "expires",
+  label: "Review by",
+  placeholder: "YYYY-MM-DD",
+  kind: "date",
+};
 
 /**
  * The address a sending connection's mail comes from.
@@ -296,14 +298,25 @@ export const PROVIDERS: Provider[] = [
   {
     id: "claude",
     name: "Claude",
-    blurb: "Anthropic models, by subscription or by the token.",
+    blurb: "Anthropic models, on your subscription first and an API key if it fails.",
     services: [],
     methods: [
+      // A setup token, because signing in at claude.ai grants Sukkal nothing to
+      // keep. The server runs the Claude Code CLI with the token, and never
+      // sends it to Anthropic itself. ADR-0027.
       {
         id: "subscription",
         label: "Subscription",
-        hint: "The button opens Claude, and the plan you pay for covers the usage.",
-        signIn: "https://claude.ai/login",
+        hint: "Run claude setup-token in a terminal on your own computer and paste the token it prints. Your plan covers the usage, and an API key connection is the fallback.",
+        fields: [
+          {
+            id: "key",
+            label: "Setup token",
+            placeholder: "sk-ant-oat01-...",
+            kind: "secret",
+          },
+          REVIEW_BY,
+        ],
       },
       apiKey(
         "sk-ant-...",

@@ -138,6 +138,31 @@ export async function connectionNamed(
 }
 
 /**
+ * The id of the oldest connection on `provider` by `method` that holds a
+ * credential, or null.
+ *
+ * `src/memory/inference-live.ts` calls it to find the Claude subscription token
+ * and the Claude API key. It returns the id and never the secret, so the
+ * plaintext still comes out of `secretFor` alone. A connection with no
+ * credential is skipped: a card added and never filled in is no way to reach
+ * the provider.
+ */
+export async function connectionWithSecret(
+  client: ClientBase,
+  provider: string,
+  method: string,
+): Promise<string | null> {
+  const found = await client.query<{ id: string }>(
+    `SELECT c.id FROM connections c
+       JOIN connection_credentials k ON k.connection = c.id
+      WHERE c.provider = $1 AND c.method = $2
+      ORDER BY c.created_at, c.id LIMIT 1`,
+    [provider, method],
+  );
+  return found.rows[0]?.id ?? null;
+}
+
+/**
  * Which provider a connection is on, or null when no such row exists.
  *
  * The removal path calls it. Revoking a token needs the record that names the

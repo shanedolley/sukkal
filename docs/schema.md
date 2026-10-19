@@ -425,14 +425,18 @@ OAuth grant. `verified_on` and `verdict` are null together, and a check
 constraint enforces the pair: a verdict with no date says nothing about now.
 Retyping a secret clears both, because a new secret has never been tried.
 
-**A connection may hold no credential, and migration 023 says so.** Claude by
-subscription reaches Anthropic through the headless CLI, and every OAuth grant
-reaches its provider without a key, so both write a `connections` row with no
-matching row here at all. That absence is the statement: a row holding a null
-secret is refused by the `NOT NULL` on `ciphertext`, and an empty one by the
-length check. Read `hasSecret` rather than reading the absence as a fault. The
-comment exists because a reader meeting `LEFT JOIN connection_credentials` has
-no other way to tell a design from an oversight.
+**A connection may hold no credential, and migration 023 says so.** Every OAuth
+grant reaches its provider without a key, and a card added before its key is
+pasted holds none yet, so each writes a `connections` row with no matching row
+here at all. That absence is the statement: a row holding a null secret is
+refused by the `NOT NULL` on `ciphertext`, and an empty one by the length check.
+Read `hasSecret` rather than reading the absence as a fault. The comment exists
+because a reader meeting `LEFT JOIN connection_credentials` has no other way to
+tell a design from an oversight. Claude by subscription used to be the example,
+and since ADR-0027 it holds a credential: the setup token that `claude
+setup-token` prints, stored under method `subscription`. Migration 023's own
+comment still names the subscription as holding none. The comment is history and
+no migration rewrites it.
 
 **`src/connections/verify.ts` is what fills `verified_on` and `verdict`.** It
 names one authenticated call per provider, builds it as data, and takes its

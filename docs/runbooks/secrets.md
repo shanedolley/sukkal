@@ -24,6 +24,7 @@ is for, where it comes from, and what breaks without it.
 | `GOOGLE_OAUTH_CLIENT_ID` | `src/connections/oauth.ts` | The Google grant cannot start |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | `src/connections/oauth.ts` | The callback cannot exchange a code |
 | `SUKKAL_URL` | `src/connections/oauth.ts` | The grant redirects to `http://localhost:3000` |
+| `SUKKAL_INFERENCE` | `src/memory/inference-live.ts` | The subscription is tried first, then the API key. Set `api` to reverse the order |
 | `VAULT_PATH` | `src/vault-mapping.ts` | Nothing. The reader falls back to a path under `$HOME` |
 
 `REUI_LICENSE_KEY` belongs to the web tier and sits in `apps/web/.env.example`.
@@ -100,6 +101,14 @@ and the brief requires both of every credential.
 So Voyage, OpenRouter, Claude and Linear are added on the connections screen
 and appear nowhere in `~/.config/sukkal/env`. `SUKKAL_SECRET_KEY` is what protects
 them all, which is why rotating it costs every one.
+
+**The Claude subscription is a setup token.** On your own computer run
+`claude setup-token`, sign in, and paste the token it prints into the
+Subscription method on the Claude card. It is sealed like every other
+credential. The worker passes it to the Claude Code CLI as
+`CLAUDE_CODE_OAUTH_TOKEN` in the child's environment and nowhere else. Do not run
+the command on the server or paste the token anywhere but the card. A Claude API
+key on the same card is the fallback. ADR-0027.
 
 **Voyage is metered, and verifying it costs a little.** It publishes no
 endpoint that names a key, so the cheapest authenticated call

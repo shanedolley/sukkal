@@ -19,6 +19,14 @@ RUN npm run build --workspace sukkal-web \
 FROM node:22.23-slim
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+
+# The Claude Code CLI, at one exact version, for the subscription path in
+# src/memory/inference-live.ts (ADR-0027). The root filesystem is read only at
+# run time, so the CLI keeps its config on the /tmp tmpfs, and its updater is off
+# because the version is part of the release.
+RUN npm install -g @anthropic-ai/claude-code@2.1.303 && npm cache clean --force
+ENV CLAUDE_CONFIG_DIR=/tmp/claude DISABLE_AUTOUPDATER=1
+
 COPY --from=build --chown=node:node /app ./
 USER node
 CMD ["node", "--env-file=/run/sukkal/env", "src/worker/index.ts"]

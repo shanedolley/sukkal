@@ -54,6 +54,9 @@ const SEEN = [
 
 const SECRET = 'ATATT3xFfGF0-a-token-shaped-string';
 
+/** A Claude setup token, as `claude setup-token` prints one. KPA-86. */
+const SETUP_TOKEN = 'sk-ant-oat01-a-setup-token-that-must-never-reach-a-browser';
+
 /** The code, with every comment taken out. The rule below is about what a
  *  route runs, and the connections route explains in prose why it calls
  *  neither of these. */
@@ -85,6 +88,25 @@ describe('what a route may return about a connection', () => {
         !/\bciphertext\b/.test(source),
         `${named} names the ciphertext`,
       );
+    }
+  });
+});
+
+describe('what the web tier may know about the Claude subscription', () => {
+  test('no source under apps/web names the token variable or the live inference', () => {
+    // The CLI runs in the worker, which is the one process that opens the
+    // token. A page, a route or a component that named either would be a
+    // second place for the token to travel. ADR-0027.
+    const web = path.join(import.meta.dirname, '..', 'apps', 'web');
+    const files = ['app', 'lib', 'components'].flatMap((dir) => routeFiles(path.join(web, dir)));
+    const sources = files.filter((file) => /\.tsx?$/.test(file));
+    assert.ok(sources.length > 0, 'the web tier holds no sources');
+
+    for (const file of sources) {
+      const source = code(readFileSync(file, 'utf8'));
+      const named = file.slice(file.indexOf('apps/web'));
+      assert.ok(!/CLAUDE_CODE_OAUTH_TOKEN/.test(source), `${named} names the subscription token variable`);
+      assert.ok(!/inference-live/.test(source), `${named} reaches the live inference`);
     }
   });
 });
@@ -162,6 +184,25 @@ describe(
       const id = list[0]?.id;
       assert.ok(id, 'the connection did not come back');
       assert.equal(await secretFor(client, id), SECRET);
+    });
+
+    test('a stored Claude setup token comes back as hasSecret and nothing more', async () => {
+      const id = await addConnection(client, {
+        provider: 'claude',
+        name: 'Claude by subscription',
+        method: 'subscription',
+      });
+      await setCredential(client, id, SETUP_TOKEN, { expiresOn: '2027-10-01' });
+
+      const list = await listConnections(client);
+      const found = list.find((one) => one.id === id);
+      assert.ok(found, 'the subscription connection did not come back');
+      assert.deepEqual(Object.keys(found).sort(), SEEN);
+      assert.equal(found.hasSecret, true);
+      assert.ok(!JSON.stringify(list).includes(SETUP_TOKEN), 'the read carried the setup token');
+
+      // The worker, and only the worker, opens it.
+      assert.equal(await secretFor(client, id), SETUP_TOKEN);
     });
   },
 );

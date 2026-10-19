@@ -701,7 +701,7 @@ function RenameConnection({ connection, sends }: { connection: Connection; sends
 
 /** What a card opens into: the connection as it stands, and the one way this
  *  method offers to fix a dead credential. A method that neither grants nor
- *  takes a key, such as a subscription, shows the facts and offers neither. */
+ *  takes a key shows the facts and offers neither. */
 function ConnectionDetail({
   connection,
   entry,

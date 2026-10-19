@@ -1,5 +1,7 @@
 # Scheduled work uses the subscription, chat uses the API
 
+**Status: superseded by ADR-0027.**
+
 Two implementations sit behind `src/memory/inference.ts`, and the workload
 picks between them. The scheduled jobs call the Claude subscription through the
 headless CLI. Interactive chat calls the metered API. Decided 2 September 2026.
