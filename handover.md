@@ -61,10 +61,12 @@ measuring agent read it into its own transcript on 14 October 2026. Comment
 11790 asks Shane to rotate it. Never run `docker inspect` on that container in a
 session.
 
-**KPA-166 waits in HIL Review on its runtime question**, comment 11790: Docker
-with a compose file, or Node 22 under systemd. The recommendation is Docker,
-because the box already pays the daemon's cost and the tunnel already runs as a
-container. Memory does not decide it: the two differ by under 30 MB.
+**KPA-166 is built up to the deploy, on branch `kpa-166-docker-deploy`.**
+Shane chose Docker on 19 October 2026. ADR-0026, `Dockerfile`, `compose.yaml`
+and `docs/runbooks/deploy.md` landed on 19 October, proved on the Mac against a
+scratch database. Nothing ran on amaterasu. The deploy waits on Shane: the second
+tunnel and its Access application, the production migration, and a choice for
+how nabium reaches a web tier bound to 127.0.0.1. `deploy.md` lists each one.
 
 **KPA-167 shipped on 14 October 2026 and waits in HIL Review.** `npm run
 decisions` now runs with no prefix. `scripts/decision-credentials.ts` uses
@@ -206,8 +208,8 @@ stands* below says what it found.
 `032_connection_send_from.sql`, and KPA-143 added none, because the Resend key is
 a credential like every other. KPA-157 and KPA-159 to KPA-165 added none,
 because none of them writes a column.
-Twenty-seven ADR files, numbered to `0025`, because `0007` and `0008` each hold
-two. Both counts read again on 14 October 2026 and unchanged.
+Twenty-eight ADR files, numbered to `0026`, because `0007` and `0008` each hold
+two. KPA-166 added `0026` on 19 October 2026.
 
 The suite runs **700 tests with the vault and 680 without it**, measured on
 14 October 2026 against a local database created fresh for each run: 0 fail,

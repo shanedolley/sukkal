@@ -245,7 +245,7 @@ does not reach the web tier.
 
 `NABIUM_WEBHOOK_SECRET` is the one variable a route handler reads, so it has to
 reach the web tier itself: an exported variable in the shell that starts it, or
-the unit's `EnvironmentFile` on amaterasu. Next.js also loads
+the env file that the `web` container reads on amaterasu. Next.js also loads
 `apps/web/.env.local` on its own, and **nobody has run that path here**, so
 prefer an exported variable until somebody proves it and corrects this
 sentence.
@@ -408,49 +408,42 @@ change appears not to take.
 **`--env-file-if-exists` never fails on a missing file**, which is why a clean
 clone runs before anyone creates one.
 
-## On amaterasu, under systemd
+## On amaterasu, under Docker
 
-No unit exists yet, and amaterasu has no Node and no npm. Docker is present, and
-a container named `cloudflared` runs the tunnel, though no `cloudflared` binary
-is installed. Read on 14 October 2026. KPA-166 deploys the web tier there, and
-asks Shane whether to run it in Docker or under systemd, so
-**nothing in this section has been run on amaterasu.** It is the pattern to
-follow, not a checked procedure, and whoever writes the first unit should verify
-each command and correct this file.
+KPA-166 and ADR-0026 chose Docker. `docs/runbooks/deploy.md` says how to run it.
+**Nothing in this section has run on amaterasu.** The Mac could not reach the box
+when it was written, so whoever sets the file up first should correct it.
 
-When a unit lands, it reads its environment from a file rather than from
-`Environment=` lines, because `systemctl show` prints `Environment=` values to
-any user who asks.
+One file holds every value, `/etc/sukkal/env`, for the `web` and the `worker`
+container alike. The home directory path that `worker.md` once named is gone. The
+tunnel token sits in its own file, `/etc/sukkal/tunnel-token`.
 
-```ini
-[Service]
-EnvironmentFile=/etc/sukkal/env
-ExecStart=/usr/bin/node /opt/sukkal/src/worker.ts
-User=sukkal
-```
+Compose never puts a secret in `environment:` or `env_file:`. `docker inspect`
+prints both to any member of the `docker` group, and it prints a command line
+too. So the compose file mounts the env file read-only and Node reads it
+with `--env-file`. `cloudflared` reads its token with `--token-file`, for the same
+reason. Checked on the Mac on 19 October 2026: `docker inspect` of both
+containers listed no `SUKKAL_SECRET_KEY` and no connection string.
 
-The file is root's, and the service user never writes it:
+The files belong to the user inside each container, not to root:
 
 ```
 sudo install -d -m 0755 /etc/sukkal
-sudo install -m 0600 -o root -g root /dev/null /etc/sukkal/env
+sudo install -m 0600 -o 1000 -g 1000 /dev/null /etc/sukkal/env
 sudo -e /etc/sukkal/env
 ```
 
+Uid 1000 is the `node` user in the Sukkal image. Uid 65532 owns the token file,
+because it is the user of the `cloudflared` image. Mode 0600 keeps every other
+account on the box out.
+
 ```
-$ sudo stat -c '%A %U:%G %n' /etc/sukkal/env
--rw------- root:root /etc/sukkal/env
+$ sudo stat -c '%A %u:%g %n' /etc/sukkal/env /etc/sukkal/tunnel-token
+-rw------- 1000:1000 /etc/sukkal/env
+-rw------- 65532:65532 /etc/sukkal/tunnel-token
 ```
 
-Systemd reads the file as root before it drops to `User=`, so mode `0600` and
-root ownership work. A service that can read its own secrets file is a service
-that can leak them if it is compromised.
-
-The web tier needs its own unit and its own `EnvironmentFile`, because it reads
-`NABIUM_WEBHOOK_SECRET` and the worker does not.
-
-Never put a secret in the unit file. `/etc/systemd/system/` is world readable,
-and the unit is committed to git in most setups.
+Never put a secret in `compose.yaml`. It is committed to git.
 
 ## Proving it
 
@@ -516,8 +509,8 @@ Rotate first, scrub second. A key in a pushed history is compromised from the
 moment it is pushed, and rewriting history does not un-push it.
 
 1. Change the credential at its source. The table below says where.
-2. Update `~/.config/sukkal/env`, and the web tier's own file when the key is the
-   nabium secret.
+2. Update `~/.config/sukkal/env` on the Mac and `/etc/sukkal/env` on amaterasu,
+   then recreate the containers.
 3. Rewrite the history with `git filter-repo`, then force push.
 4. Run `./scripts/scan-history.sh` and confirm it passes.
 

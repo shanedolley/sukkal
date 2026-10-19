@@ -431,7 +431,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Memory store | PostgreSQL with typed edges and pgvector | The data is a graph, but the queries are neighbourhood queries rather than open traversal. Postgres does those in milliseconds at this scale, and row-level security enforces the Collibra and Koinon separation in the database rather than in application code. Neo4j Community has no role-based access control, so that boundary would live in application code where one missed filter leaks employer customer material. |
 | Inference | Claude subscription through the headless CLI, with OpenRouter as the metered path | Reuses the pattern the launchd jobs already prove. No marginal cost on the scheduled work. |
 | Local models | None | Rejected 23 August 2026. The hardware holds 7.6 GB of RAM and has no CUDA device, which caps local generation at a 3B model at roughly 10 tokens per second. |
-| Deployment | Open. Docker or systemd units on Shane's box, asked on KPA-166 | The first plan was bare metal under systemd, to match the existing services and spend no RAM on container overhead. Measured on 14 October 2026, `amaterasu` runs Docker 29.8.0 and the tunnel as a container, so the plan no longer matches the box. The first reasoning is about `amaterasu` and does not travel: anybody else gets a container. |
+| Deployment | Docker with a compose file on `amaterasu`, and a second Cloudflare Tunnel of Sukkal's own | One image runs the web tier and the worker, beside a `cloudflared` container that serves only Sukkal. Shane ruled it on 19 October 2026 on KPA-166. The first plan, bare metal under systemd, no longer fits the box: `amaterasu` runs Docker 29.8.0 and has no Node. The existing tunnel serves another domain and is left alone. Supersedes the first Deployment decision. ADR-0026, `docs/runbooks/deploy.md`. |
 | Runtime | Node | Stated requirement. Framework choice is open. |
 | Distribution | A container, and a first boot that asks who you are | The install has to work on a machine that holds nothing but Docker. Everything the assistant needs beyond that is asked for on screen rather than assumed from the environment. ADR-0009. |
 | Autonomy | Autonomous within policy | Acts inside rules Shane sets, logs everything, audited after. |
@@ -556,11 +556,9 @@ flowchart TB
   web --> voy
 ```
 
-Three services on amaterasu and one Postgres. Whether the web tier and the worker
-run under Docker or systemd is open on KPA-166. Measured on 14 October 2026, the
-tunnel runs today as a container named `cloudflared` (image
-`cloudflare/cloudflared:latest`), the box has no `cloudflared` binary and no Node,
-and nothing of Sukkal runs there yet. The
+Three services on amaterasu and one Postgres. The web tier and the worker run
+under Docker from one image, and Sukkal's own `cloudflared` container is the
+third (ADR-0026). Nothing of Sukkal runs there yet. The
 worker holds every long-running thing: ingestion, agent runs, the nightly review,
 the staleness sweep. The web tier reads and serves.
 
