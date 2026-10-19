@@ -91,24 +91,26 @@ describe('an OAuth grant', { skip: url ? false : 'DATABASE_URL_TEST is unset' },
 
   describe('the provider record', () => {
     test('every service asks the whole grant asked, and no more', () => {
-      // The five in the Data Access list of the Google console. Every one is
-      // reachable, and no sixth exists in the record at all.
-      const FIVE = [
+      // The seven in the Data Access list of the Google console. Every one is
+      // reachable, and no eighth exists in the record at all.
+      const SEVEN = [
+        'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
         'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/calendar.events.freebusy',
         'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/gmail.modify',
         'https://www.googleapis.com/auth/userinfo.email',
         'openid',
       ].sort();
       const whole = scopesFor(grantFor('google'), ALL);
-      assert.deepEqual(whole, FIVE);
+      assert.deepEqual(whole, SEVEN);
 
       const record = grantFor('google');
       const everything = new Set([
         ...record.baseScopes,
         ...Object.values(record.scopesByService).flat(),
       ]);
-      assert.deepEqual([...everything].sort(), FIVE, 'the record can ask for a sixth scope');
+      assert.deepEqual([...everything].sort(), SEVEN, 'the record can ask for an eighth scope');
     });
 
     test('the address is asked for on every grant, whatever was chosen', () => {
