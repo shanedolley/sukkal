@@ -191,7 +191,7 @@ stored verdict, is the one worth a story.
 | Story | What it waits on |
 |---|---|
 | [KPA-12](https://koinon.atlassian.net/browse/KPA-12) | A Voyage key in the Connections screen. Spend is approved. Unblocks KPA-87 and KPA-114, the road to retrieval |
-| [KPA-86](https://koinon.atlassian.net/browse/KPA-86) | A Claude key in the Connections screen. Spend is approved. ADR-0016 says build both paths: the CLI for scheduled work, the API for chat. Unblocks KPA-88, KPA-90 and KPA-115 |
+| [KPA-86](https://koinon.atlassian.net/browse/KPA-86) | A Claude subscription token in the Connections screen. ADR-0027 sends every workload through the CLI on the subscription, with the API key as the fallback. PR #8 built it. It waits on Shane to run `claude setup-token` and paste the token. Spend is approved for a live proof. Unblocks KPA-88, KPA-90 and KPA-115 |
 | [KPA-103](https://koinon.atlassian.net/browse/KPA-103) | A consent screen. In Progress. Unblocks KPA-106, KPA-111 and KPA-113 |
 | [KPA-105](https://koinon.atlassian.net/browse/KPA-105) | A Jira site to connect, by token or grant. Unblocks KPA-142 and, with KPA-124, KPA-50 |
 | [KPA-49](https://koinon.atlassian.net/browse/KPA-49) | A live tracker to poll. Unblocks KPA-124 |

@@ -252,7 +252,7 @@ depend on one of them.
 | Zoom | OAuth | Meetings, recordings, transcripts | In the catalogue |
 | Jira | OAuth 3LO, or a site with an email and an API token | Issues, sprints and boards, one site per connection | In the catalogue. Two sites |
 | Linear | OAuth, or an API key | Issues and cycles | In the catalogue. No screen reads it yet |
-| OpenRouter | API key | The metered inference path | In the catalogue |
+| OpenRouter | API key | A metered model broker | In the catalogue. ADR-0027 makes the Anthropic API key the fallback, so nothing calls it |
 | Claude | Subscription, or an API key | The subscription inference path | In the catalogue |
 | Salesforce | OAuth | Contract dates, a project search, and Certinia PSA | Missing. Two screens depend on it |
 | Voyage AI | API key | Embeddings, `voyage-4` at 1024 | Missing. The decisions name it and the screen does not offer it |
@@ -429,7 +429,7 @@ Each of these is recorded as an ADR in `docs/adr/`.
 | Decision | Choice | Why |
 |---|---|---|
 | Memory store | PostgreSQL with typed edges and pgvector | The data is a graph, but the queries are neighbourhood queries rather than open traversal. Postgres does those in milliseconds at this scale, and row-level security enforces the Collibra and Koinon separation in the database rather than in application code. Neo4j Community has no role-based access control, so that boundary would live in application code where one missed filter leaks employer customer material. |
-| Inference | Claude subscription through the headless CLI, with OpenRouter as the metered path | Reuses the pattern the launchd jobs already prove. No marginal cost on the scheduled work. |
+| Inference | Claude subscription through the headless CLI for every workload, with the Anthropic API key as the fallback | Reuses the pattern the launchd jobs already prove. No marginal cost while the subscription answers. ADR-0027 supersedes ADR-0016. |
 | Local models | None | Rejected 23 August 2026. The hardware holds 7.6 GB of RAM and has no CUDA device, which caps local generation at a 3B model at roughly 10 tokens per second. |
 | Deployment | Docker with a compose file on `amaterasu`, and a second Cloudflare Tunnel of Sukkal's own | One image runs the web tier and the worker, beside a `cloudflared` container that serves only Sukkal. Shane ruled it on 19 October 2026 on KPA-166. The first plan, bare metal under systemd, no longer fits the box: `amaterasu` runs Docker 29.8.0 and has no Node. The existing tunnel serves another domain and is left alone. Supersedes the first Deployment decision. ADR-0026, `docs/runbooks/deploy.md`. |
 | Runtime | Node | Stated requirement. Framework choice is open. |
@@ -538,7 +538,7 @@ flowchart TB
   subgraph ext["External"]
     goog["Google Workspace ×3<br/>Gmail · Calendar · Drive"]
     voy["Voyage AI<br/>embeddings"]
-    llm["Claude CLI (subscription)<br/>OpenRouter (metered)"]
+    llm["Claude CLI (subscription)<br/>Anthropic API (fallback)"]
     jira["Jira ×2<br/>koinon · engineering-collibra"]
   end
 

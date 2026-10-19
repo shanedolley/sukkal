@@ -60,13 +60,14 @@ export class InferenceError extends Error {
   }
 }
 
-function kindOf(status: number | null, said: string): Kind {
+/** Exported for its test. The patterns open on a word boundary: `backlog index` is not a login. */
+export function kindOf(status: number | null, said: string): Kind {
   if (status === 401 || status === 403) return 'auth';
   if (status === 429 || status === 529) return 'rate_limit';
-  if (/authenticat|oauth|log ?in|unauthori[sz]ed|invalid api key|revoked/i.test(said)) {
+  if (/\b(?:un|re)?authenticat|\boauth|\blog(?:ged)? ?in\b|\bunauthori[sz]ed|\binvalid api key|\brevoked/i.test(said)) {
     return 'auth';
   }
-  if (/rate.?limit|usage limit|limit reached|too many requests|overloaded|limiting requests/i.test(said)) {
+  if (/\brate.?limit|\busage limit|\blimit reached|\btoo many requests|\boverloaded|\blimiting requests/i.test(said)) {
     return 'rate_limit';
   }
   return 'other';
