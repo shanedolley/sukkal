@@ -187,6 +187,15 @@ Then the Google steps. Use the Google Cloud project `personal-assistant-506014`.
    `https://web.sukkal.app/`, the privacy policy to
    `https://web.sukkal.app/privacy.html`, and the terms to
    `https://web.sukkal.app/terms.html`. Set the support email.
+4. **Fill the Data Access page.** Add these seven scopes and no others. They match
+   `src/connections/oauth.ts` and the privacy policy:
+   - `openid`
+   - `https://www.googleapis.com/auth/userinfo.email`
+   - `https://www.googleapis.com/auth/gmail.modify`
+   - `https://www.googleapis.com/auth/calendar.events`
+   - `https://www.googleapis.com/auth/calendar.calendarlist.readonly`
+   - `https://www.googleapis.com/auth/calendar.events.freebusy`
+   - `https://www.googleapis.com/auth/drive`
 
 The pages name every scope in `src/connections/oauth.ts`. Change the pages in the
 same commit as any change to those scopes.

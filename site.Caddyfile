@@ -5,18 +5,28 @@
   auto_https off
   persist_config off
 }
-:3001 {
-  root * /srv
-  encode zstd gzip
-  try_files {path} {path}.html
-  file_server
+# Both the file route and the error route import this, because the header
+# directive does not run on an error response.
+(hardening) {
   header {
     Content-Security-Policy "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
     X-Content-Type-Options nosniff
     X-Frame-Options DENY
     Referrer-Policy no-referrer
     Permissions-Policy "camera=(), microphone=(), geolocation=()"
-    Cache-Control "public, max-age=3600"
     -Server
+  }
+}
+:3001 {
+  root * /srv
+  encode zstd gzip
+  try_files {path} {path}.html
+  import hardening
+  header Cache-Control "public, max-age=3600"
+  file_server
+  handle_errors {
+    import hardening
+    header Cache-Control "no-store"
+    respond "{err.status_code} {err.status_text}"
   }
 }

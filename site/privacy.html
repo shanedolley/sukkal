@@ -46,22 +46,24 @@
   <p>Sukkal uses this data for one purpose: to serve the owner who connected the account. It builds the owner's daily briefing, labels mail, drafts replies, links meetings to projects, keeps a memory of the people, decisions and commitments in the material, and answers the owner's questions from that memory. Sukkal shows the data only to the signed-in owner.</p>
 
   <h2>Permissions requested</h2>
-  <p>Google calls these permissions scopes. Sukkal asks for five and no others. It always asks for the first two. It asks for each of the others only when the owner allows the matching service.</p>
+  <p>Google calls these permissions scopes. Sukkal asks for seven and no others. It always asks for the first two. It asks for each of the others only when the owner allows the matching service.</p>
 
   <h3>Identity, always</h3>
   <ul class="scopes">
-    <li><code>openid</code><span>Sign in with Google, so Sukkal knows which account consented.</span></li>
+    <li><code>openid</code><span>Identify the Google account that consented. Sukkal signs the owner in with a password, not with Google.</span></li>
     <li><code>https://www.googleapis.com/auth/<wbr>userinfo.email</code><span>Read the address of the account, to name the connection and tell accounts apart. Sukkal keeps the address and nothing else from the answer.</span></li>
   </ul>
 
   <h3>Gmail</h3>
   <ul class="scopes">
-    <li><code>https://www.googleapis.com/auth/<wbr>gmail.modify</code><span>Read mail, apply labels, and create reply drafts for the owner to edit and send. Sukkal never sends mail unprompted, and it does not use this scope to delete mail.</span></li>
+    <li><code>https://www.googleapis.com/auth/<wbr>gmail.modify</code><span>Read mail, apply labels, and create reply drafts for the owner to edit and approve. Sukkal never sends mail unprompted. It sends a message only after the owner approves it. It does not use this scope to delete mail.</span></li>
   </ul>
 
   <h3>Calendar and Meet</h3>
   <ul class="scopes">
-    <li><code>https://www.googleapis.com/auth/<wbr>calendar.events</code><span>Read and edit events, and answer invitations for the owner. Meet needs no scope of its own, because Sukkal reaches a Meet recording through the calendar event that held it.</span></li>
+    <li><code>https://www.googleapis.com/auth/<wbr>calendar.events</code><span>Read and edit events, and answer invitations for the owner. Meet needs no scope of its own. Sukkal finds a Meet recording through the calendar event that held it, and it reads the recording itself only when the owner also connects Drive.</span></li>
+    <li><code>https://www.googleapis.com/auth/<wbr>calendar.calendarlist.readonly</code><span>List the owner's calendars. It reads no event details.</span></li>
+    <li><code>https://www.googleapis.com/auth/<wbr>calendar.events.freebusy</code><span>Find busy times across those calendars, to spot conflicts. It reads no event details.</span></li>
   </ul>
 
   <h3>Drive</h3>
