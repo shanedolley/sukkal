@@ -153,6 +153,13 @@ async function main(): Promise<void> {
   // this is correct and serial. Give it a pool when a job needs two queries
   // running at once.
   const client = connect('DATABASE_URL');
+  // Nothing in the worker survives this client, and the queue holds every job in
+  // Postgres. So a lost connection ends the process, and the supervisor restarts
+  // it. Without a listener the same error ends it with no word of why.
+  client.on('error', (error) => {
+    console.error('kpa-worker: database connection lost:', error.message);
+    process.exit(1);
+  });
   await client.connect();
 
   const boss = queue('DATABASE_URL');

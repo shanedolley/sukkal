@@ -92,6 +92,8 @@ export function voyage(
         throw new EmbedError(
           `voyage returned ${data.length} vectors for ${texts.length} texts, or a width other than ${EMBEDDING.dimension}`,
           false,
+          undefined,
+          true, // fatal: a provider that miscounts or mis-sizes does so for every text
         );
       }
       return data.map((row) => row.embedding);

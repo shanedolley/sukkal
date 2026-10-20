@@ -32,11 +32,14 @@
  * own text the provider refuses: a non-retryable failure that the split of a
  * batch has narrowed to that one row. That failure adds its call to
  * `embed_attempts`. A provider fault is not the row's fault, so it charges
- * nothing, and it stops the run. Two kinds: a rejected key (401, 403), and a
+ * nothing, and it stops the run. Four kinds: a rejected key (401, 403), a
  * retryable failure that uses up its tries (429, 5xx, a timeout, a network
- * error, an unreadable answer). The provider is down for every later batch as
- * well, so the run halts, keeps what it has written, skips the facts after a
- * halt in the chunks, and reports why in `halted`. The next tick tries again.
+ * error, an unreadable answer), a reply of the wrong count or width, and a
+ * refusal that the split of a batch finds every row meeting (a 400, 402, 404 or
+ * 422 for each text, such as a renamed model). The provider fails every later
+ * batch as well, so the run halts, keeps what it has written, skips the facts
+ * after a halt in the chunks, and reports why in `halted`. The next tick tries
+ * again.
  * A count that charged these would give up on every row within a few ticks of
  * the queue, during any outage of the provider, and leave them skipped after it
  * ended; a run that went on would spend `TRIES_PER_RUN` calls on every batch of
@@ -102,6 +105,14 @@ export const BATCH = 64;
 export interface Options {
   /** Replaced in tests so a retry waits for nothing. */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * The time the run may spend before it picks another batch. A batch already
+   * begun runs to its end, so the run can pass this by one batch. Unset means no
+   * limit.
+   */
+  budgetMs?: number;
+  /** The clock `budgetMs` is read against. Replaced in tests. */
+  now?: () => number;
 }
 
 /** A source whose chunks were not written. Its transaction rolled back and the run went on. */
@@ -125,6 +136,8 @@ export interface Embedded {
   superseded: number;
   /** Why the run stopped early, or null. A rejected key or a provider that stays down stops it, and no row is charged an attempt. */
   halted: string | null;
+  /** True when the run stopped because `budgetMs` was spent. The next run continues. */
+  timedOut: boolean;
   /** One line per row or batch that failed. */
   errors: string[];
 }
@@ -297,7 +310,7 @@ async function callWithBackoff(
     try {
       const vectors = await embedder.embed(texts, 'document');
       if (vectors.length !== texts.length) {
-        throw new EmbedError(`asked for ${texts.length} vectors and got ${vectors.length}`, false);
+        throw new EmbedError(`asked for ${texts.length} vectors and got ${vectors.length}`, false, undefined, true);
       }
       return { tries, vectors };
     } catch (error) {
@@ -347,11 +360,18 @@ interface Outcome {
  * A retryable failure that uses up its tries does not split either. The
  * provider failed, not the text, and every later batch would fail the same way,
  * so it halts the run too.
+ *
+ * A split that ends with every row of the batch failing and none embedded is a
+ * provider fault as well: a refusal the provider gives every text, such as a
+ * renamed model. It halts the run and charges no row. Only the whole batch is
+ * judged this way (`whole`), since two bad texts side by side fail together
+ * inside a split without the provider being at fault.
  */
 async function embedBatch(
   embedder: Embedder,
   batch: Pending[],
   sleep: (ms: number) => Promise<void>,
+  whole = true,
 ): Promise<Outcome> {
   const result = await callWithBackoff(embedder, batch.map((row) => row.text), sleep);
   if (result.vectors) {
@@ -365,14 +385,18 @@ async function embedBatch(
   }
   if (result.retryable === false && batch.length > 1) {
     const middle = Math.ceil(batch.length / 2);
-    const first = await embedBatch(embedder, batch.slice(0, middle), sleep);
+    const first = await embedBatch(embedder, batch.slice(0, middle), sleep, false);
     if (first.halt !== null) return first;
-    const second = await embedBatch(embedder, batch.slice(middle), sleep);
-    return {
+    const second = await embedBatch(embedder, batch.slice(middle), sleep, false);
+    const merged = {
       done: [...first.done, ...second.done],
       failed: [...first.failed, ...second.failed],
       halt: second.halt,
     };
+    if (whole && merged.halt === null && merged.done.length === 0) {
+      return { done: [], failed: [], halt: `every text of a batch of ${batch.length} was refused: ${merged.failed[0]?.error ?? result.error}` };
+    }
+    return merged;
   }
   // One row the provider refused on its own text, with nothing left to split.
   return { done: [], failed: [{ rows: batch, error: result.error ?? 'unknown error', tries: result.tries }], halt: null };
@@ -386,8 +410,14 @@ async function embedRows(
   rows: Pending[],
   sleep: (ms: number) => Promise<void>,
   into: Embedded,
+  clock: { now: () => number; start: number; budgetMs: number },
 ): Promise<void> {
+  const { now, start, budgetMs } = clock;
   for (let from = 0; from < rows.length; from += BATCH) {
+    if (now() - start >= budgetMs) {
+      into.timedOut = true;
+      return;
+    }
     const outcome = await embedBatch(embedder, rows.slice(from, from + BATCH), sleep);
 
     await client.query('BEGIN');
@@ -433,12 +463,14 @@ export async function embedPending(
   options: Options = {},
 ): Promise<Embedded> {
   const sleep = options.sleep ?? wait;
-  const result: Embedded = { embedded: 0, failed: 0, skipped: 0, superseded: 0, halted: null, errors: [] };
+  const now = options.now ?? Date.now;
+  const clock = { now, start: now(), budgetMs: options.budgetMs ?? Infinity };
+  const result: Embedded = { embedded: 0, failed: 0, skipped: 0, superseded: 0, halted: null, timedOut: false, errors: [] };
 
-  await embedRows(client, embedder, 'source_chunks', due(await pendingChunks(client), result), sleep, result);
-  // A halted run stops here: the facts would meet the same refusal or outage.
-  if (result.halted === null) {
-    await embedRows(client, embedder, 'facts', due(await pendingFacts(client), result), sleep, result);
+  await embedRows(client, embedder, 'source_chunks', due(await pendingChunks(client), result), sleep, result, clock);
+  // A halted or timed out run stops here: the facts would meet the same refusal or outage, or the same clock.
+  if (result.halted === null && !result.timedOut) {
+    await embedRows(client, embedder, 'facts', due(await pendingFacts(client), result), sleep, result, clock);
   }
   return result;
 }

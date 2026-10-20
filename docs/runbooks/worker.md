@@ -288,6 +288,19 @@ few ticks of any outage and leave them skipped after it ended.
 memory.embed: facts: voyage answered 503: busy
 ```
 
+**A refusal every row meets stops the run too, and charges no row.** A 400, 402,
+404 or 422 for every text, a renamed model for one, or a reply of the wrong count
+or width, is Voyage's fault and not the rows'. The run splits the first batch to
+look for a bad row. When the split ends with every row refused and none embedded,
+the run halts and charges nothing. A reply of the wrong count or width halts at
+once, with no split. A batch where some rows embed and some are refused is not
+this case: only the refused rows are charged. The fix is the cause, such as the
+model name in `src/embedding.ts`, and the next tick embeds everything.
+
+```
+memory.embed: facts: every text of a batch of 64 was refused: voyage answered 404: model not found
+```
+
 **A poison row is left alone after ten attempts.** Voyage refuses its text with a
 non-retryable answer, such as a 400. The run splits the batch until that one row
 is alone, the good rows embed, and the poison row is charged one attempt. At ten
@@ -302,6 +315,25 @@ UPDATE source_chunks SET embed_attempts = 0 WHERE embed_attempts >= 10;
 **The job opens its own database connection for each run.** It holds a
 transaction across several statements, and on the worker's shared client another
 job's query would run inside it.
+
+**A run stops picking batches after 300 seconds.** `RUN_BUDGET_SECONDS` in
+`src/worker/embed.ts` is the budget, and the queue expires a run at
+`EXPIRE_IN_SECONDS`, 600, so a run never meets the expiry. A batch already begun
+finishes, and the longest takes about 100 seconds. The log says the budget is
+spent, and the next tick continues. Without a budget, a run that outlived the
+expiry would free the exclusive queue and a second run would start beside it.
+
+```
+memory.embed: the 300 s time budget is spent, so the next run continues
+```
+
+**A lost database connection fails the run, and in the worker it ends the
+process.** The run's client is idle while Voyage answers, so a restart of the
+database in that window is logged as `memory.embed: database connection lost`
+and the job fails. The worker's shared client does the same on loss: it logs
+`kpa-worker: database connection lost` and exits 1, and the supervisor
+(`restart: unless-stopped` under Docker) starts it again. pg-boss holds the
+queued jobs in Postgres, so none are lost.
 
 ## Under Docker
 
