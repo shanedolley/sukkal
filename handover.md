@@ -26,6 +26,15 @@ chunks from 30 sources, and 19 facts. Sources 12 and 27 hold one byte or none,
 so they have no chunk. A fact edited after embedding is not embedded again until
 KPA-114 puts the embedder on the queue.
 
+**KPA-114 puts the embedder on the queue.** The worker runs `memory.embed` at
+start-up and every five minutes. Migration 034 records the hash of the text each
+vector came from, so an edited chunk or fact is embedded again, and a write lands
+only while the row still holds that text. A rejected key or a Voyage outage stops
+the run and charges no row; only a row Voyage refuses on its own text counts
+toward the give-up limit of ten. Shane did not rule on that last rule: the
+orchestrator settled it on 20 October 2026, because the ticket's "a failed call
+increments the count" would park every row within twenty minutes of an outage.
+
 **No story was built between 1 and 13 October.** `git log` shows no commit from
 2 to 12 October, and the commits of 13 October are documents. What moved was the
 board, the workflow, and two stories closed by a read. KPA-167 was built on

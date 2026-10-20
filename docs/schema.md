@@ -1175,6 +1175,34 @@ so they have to be rebuilt. A test asserts the schema and that file agree.
 
 Today: `voyage-4` at 1024 dimensions.
 
+## What an embedding describes
+
+`source_chunks` and `facts` each carry `embedded_hash`, the SHA-256 in hex of
+the text their vector was made from (migration 034, KPA-114). For a chunk that
+is the bytes of its range in `sources.body`. For a fact it is the title, a blank
+line and the description.
+
+A row needs a vector when `embedding` is null, or when the text it holds now no
+longer hashes to `embedded_hash`. KPA-12 kept a chunk's vector whenever its byte
+range was unchanged, so a body edited in place kept a vector for the old words,
+and an edited fact was never embedded again.
+
+The embedder writes a vector only while the row still hashes to the text it
+embedded, so two runs at once cannot leave a vector for text a row has stopped
+holding.
+
+A check on each table holds hash and vector together: a hash with no vector, or
+a value that is not 64 lowercase hex digits, is refused. The column is null on a
+row embedded before the migration, which reads as stale and is embedded once
+more.
+
+`embed_attempts` counts the embedding calls made since the row's last success,
+the successful one included. A success resets it, so an edited row is not given
+up on for the edits before it. Only a row the provider refuses on its own text
+(a non-retryable failure the split has narrowed to that row) is charged an
+attempt. A provider fault, a rejected key or a retryable failure that uses up
+its tries, charges nothing and stops the run, so an outage parks no row.
+
 ## Applying it
 
 ```
