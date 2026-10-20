@@ -231,7 +231,7 @@ export const PROVIDERS: Provider[] = [
         // runs out is asked for here. A credential nobody can date is a
         // credential nobody renews, and the briefing is where a lapsing one
         // belongs.
-        hint: "The fallback for a site where OAuth is not set up. Atlassian expires an API token, so type the date it runs out and the briefing will raise it before it does.",
+        hint: "One connection per site, and the site must be an atlassian.net address. Atlassian expires an API token, so type the date it runs out and the briefing will raise it before it does.",
         fields: [
           SITE,
           {

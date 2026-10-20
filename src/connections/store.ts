@@ -37,6 +37,12 @@ export interface NewConnection {
    * card without one.
    */
   sendFrom?: string | null;
+  /**
+   * The https origin of the site a connection reaches, and null on a provider
+   * with none. `migrations/035_connection_site.sql` holds it to an
+   * atlassian.net origin and to one connection per site. KPA-105.
+   */
+  site?: string | null;
 }
 
 /** The dates the provider named, and neither is compulsory. */
@@ -69,6 +75,8 @@ export interface Connection {
   /** The address a sending connection's mail comes from. Null on one that
    *  sends nothing. KPA-160. */
   sendFrom: string | null;
+  /** The site a connection reaches. Null on a provider with none. KPA-105. */
+  site: string | null;
 }
 
 interface Row {
@@ -84,6 +92,7 @@ interface Row {
   verdict: string | null;
   verified_ok: boolean | null;
   send_from: string | null;
+  site: string | null;
 }
 
 /** Adds one account and returns its id. The table refuses a second account of
@@ -93,8 +102,8 @@ export async function addConnection(
   connection: NewConnection,
 ): Promise<string> {
   const added = await client.query<{ id: string }>(
-    `INSERT INTO connections (provider, name, method, services, send_from)
-     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+    `INSERT INTO connections (provider, name, method, services, send_from, site)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
     [
       connection.provider,
       connection.name,
@@ -103,6 +112,7 @@ export async function addConnection(
       // An empty box is no address rather than an empty one, which the column's
       // own check would refuse anyway.
       connection.sendFrom?.trim() || null,
+      connection.site ?? null,
     ],
   );
 
@@ -286,7 +296,7 @@ export async function recordVerification(
  */
 export async function listConnections(client: ClientBase): Promise<Connection[]> {
   const rows = await client.query<Row>(
-    `SELECT c.id, c.provider, c.name, c.method, c.services, c.send_from,
+    `SELECT c.id, c.provider, c.name, c.method, c.services, c.send_from, c.site,
             (k.connection IS NOT NULL) AS has_secret,
             k.issued_on, k.expires_on, k.verified_on, k.verdict, k.verified_ok
        FROM connections c
@@ -307,6 +317,7 @@ export async function listConnections(client: ClientBase): Promise<Connection[]>
     verdict: row.verdict,
     verifiedOk: row.verified_ok,
     sendFrom: row.send_from,
+    site: row.site,
   }));
 }
 

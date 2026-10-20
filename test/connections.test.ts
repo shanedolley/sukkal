@@ -230,7 +230,7 @@ describe('connections and their credentials', { skip: url ? false : 'DATABASE_UR
     // fails here rather than reaching a screen.
     assert.deepEqual(Object.keys(row).sort(), [
       'expiresOn', 'hasSecret', 'id', 'issuedOn', 'method',
-      'name', 'provider', 'sendFrom', 'services', 'verdict', 'verifiedOk', 'verifiedOn',
+      'name', 'provider', 'sendFrom', 'services', 'site', 'verdict', 'verifiedOk', 'verifiedOn',
     ]);
     assert.equal(row.hasSecret, true);
     assert.equal(JSON.stringify(listed).includes(SECRET), false);

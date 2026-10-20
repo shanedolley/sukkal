@@ -56,6 +56,8 @@ interface Due {
   provider: string;
   name: string;
   method: string;
+  /** The site a Jira connection reaches. Null on a provider with none. */
+  site: string | null;
 }
 
 /** The reason a thrown error gave, which names a fault and never a token. */
@@ -112,7 +114,7 @@ export async function checkOne(
     return verifySubscription(secret, run);
   }
 
-  const probe = probeFor(connection.provider, secret);
+  const probe = probeFor(connection.provider, secret, connection.site);
   if (probe === null || probe.cost === 'metered') {
     return null;
   }
@@ -137,7 +139,7 @@ export async function recheck(
   run?: Runner,
 ): Promise<Checked[]> {
   const due = await client.query<Due>(
-    `SELECT c.id, c.provider, c.name, c.method
+    `SELECT c.id, c.provider, c.name, c.method, c.site
        FROM connections c
        JOIN connection_credentials k ON k.connection = c.id
       WHERE k.verified_at IS NULL

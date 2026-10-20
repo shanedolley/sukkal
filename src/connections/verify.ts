@@ -24,6 +24,7 @@
  * schedule lands.
  */
 import { InferenceError, viaCli, type Runner } from '../memory/inference-live.ts';
+import { jiraAuthorization, jiraSite } from './jira.ts';
 
 /** What a verification would send. It holds a secret and is never logged. */
 export interface Probe {
@@ -54,6 +55,17 @@ export interface Probe {
    * Leave it unset and nothing reads the body, which is what the other four
    * probes want: a body is one more thing to fail on.
    */
+  /**
+   * Set to refuse a redirect, on a probe whose credential must reach one host
+   * and no other. The answer is then a 3xx, which reads as a failure.
+   */
+  redirect?: 'manual';
+  /**
+   * Names the account an accepted answer belongs to, from the answer's JSON,
+   * or null when it names none. The verdict then reads "accepted the key for
+   * <who>". Jira answers `/myself` with the account the token authenticated as.
+   */
+  who?: (body: unknown) => string | null;
   alive?: {
     /** The status that carries the proof, and only that status. */
     status: number;
@@ -85,10 +97,30 @@ const VOYAGE_PROBE_MODEL = 'voyage-4';
  * subscription token only inside its own tools. `verifySubscription` is the
  * check for that token, and `recheck.ts` picks between the two by method.
  */
-export function probeFor(provider: string, secret: string): Probe | null {
+export function probeFor(provider: string, secret: string, site?: string | null): Probe | null {
   if (secret.trim() === '') return null;
 
   switch (provider) {
+    case 'jira': {
+      // The token goes to the site and to nowhere else. A row naming any other
+      // host gets no probe, which the caller records as unchecked.
+      const origin = site == null ? null : jiraSite(site);
+      const authorization = jiraAuthorization(secret);
+      if (origin === null || origin !== site || authorization === null) return null;
+      return {
+        url: `${origin}/rest/api/3/myself`,
+        method: 'GET',
+        headers: { authorization, accept: 'application/json' },
+        cost: 'free',
+        asks: 'which account the token belongs to',
+        redirect: 'manual',
+        who: (body) => {
+          const name = (body as { displayName?: unknown } | null)?.displayName;
+          return typeof name === 'string' && name.trim() !== '' ? name : null;
+        },
+      };
+    }
+
     case 'openrouter':
       return {
         url: 'https://openrouter.ai/api/v1/key',
@@ -224,6 +256,7 @@ export async function verify(
       method: probe.method,
       headers: probe.headers,
       ...(probe.body === undefined ? {} : { body: probe.body }),
+      ...(probe.redirect === undefined ? {} : { redirect: probe.redirect }),
     });
     const read = readStatus(answer.status);
     const host = new URL(probe.url).host;
@@ -235,6 +268,11 @@ export async function verify(
       if ((await named(answer)) === probe.alive.name) {
         return { ok: true, verdict: `${host} ${probe.alive.says}` };
       }
+    }
+
+    if (read.ok && probe.who !== undefined) {
+      const who = probe.who(await answer.json().catch(() => null));
+      if (who !== null) return { ok: true, verdict: `${host} accepted the key for ${who}` };
     }
 
     return { ok: read.ok, verdict: `${host} ${read.says}` };

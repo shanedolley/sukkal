@@ -46,6 +46,8 @@ export interface Connection {
   /** The address a sending connection's mail comes from. Null on one that
    *  sends nothing. KPA-160. */
   sendFrom: string | null;
+  /** The Jira site a connection reaches. Null on a provider with none. KPA-105. */
+  site: string | null;
 }
 
 /** What the dialog collected. The secret is passed on and never kept. */
@@ -64,6 +66,9 @@ export interface NewConnection {
    * "Sukkal Resend <no-reply@sukkal.app>". KPA-158.
    */
   sendFrom?: string | null;
+  /** The Jira site and the account email, on a Jira token card. KPA-105. */
+  site?: string;
+  email?: string;
 }
 
 const store = createRemoteStore<Connection[]>(URL, []);
@@ -79,9 +84,14 @@ export function reloadConnections(): Promise<void> {
   return store.reload();
 }
 
-/** Adds one account, with its key when the method took one. */
-export function addConnection(connection: NewConnection): void {
-  void send(store, URL, "POST", connection);
+/**
+ * Adds one account, with its key when the method took one, and answers why
+ * not when the server refused. The dialog stays open on a refusal and shows
+ * it: a mistyped site or a second connection to one is the likeliest mistake,
+ * and a dialog that closed on it said nothing. KPA-105.
+ */
+export function addConnection(connection: NewConnection): Promise<string | null> {
+  return send(store, URL, "POST", connection);
 }
 
 /**
