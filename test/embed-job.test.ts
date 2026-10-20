@@ -12,7 +12,7 @@ import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 import { EMBEDDING } from '../src/embedding.ts';
 import { EMBED, EMBED_CRON, EXPIRE_IN_SECONDS, RUN_BUDGET_SECONDS, run, schedule, work } from '../src/worker/embed.ts';
-import { QUEUE_SCHEMA, queue } from '../src/worker/index.ts';
+import { QUEUE_SCHEMA, leave, queue } from '../src/worker/index.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const INDEX = path.join(import.meta.dirname, '..', 'src', 'worker', 'index.ts');
@@ -268,6 +268,26 @@ describe('the embedding job', { skip: url ? false : 'DATABASE_URL_TEST is unset'
       await client.query('DELETE FROM pgboss.job');
       await client.query('DELETE FROM pgboss.schedule');
     }
+  });
+
+  test('a lost connection stops the queue before it exits, and exits even when the stop hangs', async () => {
+    mock.method(console, 'error', () => {});
+    const exits: number[] = [];
+    let stopped: unknown;
+    const stops = { stop: (options?: unknown) => ((stopped = options), Promise.resolve()) };
+    await leave(stops, new Error('gone'), (code) => exits.push(code), 50);
+    assert.deepEqual(exits, [1]);
+    assert.ok(stopped, 'the queue was stopped first');
+
+    const hung = { stop: () => new Promise<void>(() => {}) };
+    const started = Date.now();
+    await leave(hung, new Error('gone'), (code) => exits.push(code), 50);
+    assert.deepEqual(exits, [1, 1]);
+    assert.ok(Date.now() - started < 2000, 'a hung stop does not hold the exit');
+
+    const broken = { stop: () => Promise.reject(new Error('stop failed')) };
+    await leave(broken, new Error('gone'), (code) => exits.push(code), 50);
+    assert.deepEqual(exits, [1, 1, 1]);
   });
 
   test('main() calls the embed schedule at start-up', async () => {

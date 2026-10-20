@@ -529,22 +529,95 @@ describe('embedding', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
     assert.equal(spent.rows[0]?.['n'], '0', 'no row was charged');
   });
 
-  test('a refusal every row of a batch meets halts the run and charges no row', async () => {
+  test('a 402 or 404 halts at once, with no split and no charge', async () => {
     for (let i = 0; i < 70; i += 1) await fact(`f${i}.md`, `title ${i}`, 'A description.');
-    // A 400, 402, 404 or 422 for every text: a renamed model, say.
-    const provider = failing(new EmbedError('voyage answered 404: model not found', false));
+    for (const status of [402, 404]) {
+      const provider = failing(new EmbedError(`voyage answered ${status}: refused`, false, undefined, true));
+
+      const result = await embedPending(client, provider, { sleep });
+
+      assert.equal(provider.calls, 1, String(status));
+      assert.deepEqual([result.embedded, result.failed], [0, 0]);
+      assert.match(result.halted ?? '', new RegExp(String(status)));
+    }
+    const spent = await client.query('SELECT count(*) AS n FROM facts WHERE embed_attempts <> 0');
+    assert.equal(spent.rows[0]?.['n'], '0', 'no row was charged');
+  });
+
+  test('a 400 for every text, the canary too, halts the run and charges no row', async () => {
+    for (let i = 0; i < 70; i += 1) await fact(`f${i}.md`, `title ${i}`, 'A description.');
+    const provider = failing(new EmbedError('voyage answered 400: invalid model', false));
 
     const result = await embedPending(client, provider, { sleep });
 
-    assert.ok(provider.calls <= 127, `only the first batch is split, and it cost ${provider.calls} calls`);
+    assert.ok(provider.calls <= 128, `only the first batch is split, then the canary: ${provider.calls} calls`);
     assert.deepEqual([result.embedded, result.failed, result.skipped], [0, 0, 0]);
-    assert.match(result.halted ?? '', /^facts: .*404/);
+    assert.match(result.halted ?? '', /^facts: .*canary.*400/);
     const spent = await client.query('SELECT count(*) AS n FROM facts WHERE embed_attempts <> 0');
     assert.equal(spent.rows[0]?.['n'], '0', 'no row was charged');
 
     for (let tick = 0; tick < GIVE_UP_AFTER + 1; tick += 1) await embedPending(client, provider, { sleep });
     const later = await embedPending(client, fake(), { sleep });
     assert.deepEqual([later.embedded, later.skipped], [70, 0], 'eleven ticks later every row still embeds');
+  });
+
+  test('poison chunks beside a good fact: the chunks are charged to GIVE_UP_AFTER and the fact embeds at once', async () => {
+    await source('a.md', 'POISON one.\n');
+    await source('b.md', 'POISON two.\n');
+    const goodFact = await fact('f.md', 'A title', 'A description.');
+    const calls: string[][] = [];
+    const picky: Embedder = {
+      embed(texts) {
+        calls.push(texts);
+        return texts.some((text) => text.includes('POISON'))
+          ? Promise.reject(new EmbedError('voyage answered 400: bad text', false))
+          : Promise.resolve(texts.map(vectorFor));
+      },
+    };
+    const attempts = async (): Promise<number[]> =>
+      (await client.query<{ n: number }>('SELECT embed_attempts AS n FROM source_chunks ORDER BY id')).rows.map((r) => r.n);
+
+    await chunkSources(client);
+    const first = await embedPending(client, picky, { sleep });
+
+    assert.equal(first.halted, null, 'two poison chunks are not a provider fault');
+    assert.deepEqual([first.embedded, first.failed], [1, 2]);
+    assert.deepEqual(await attempts(), [1, 1]);
+    assert.notEqual((await rowOf('facts', goodFact)).embedded_hash, null, 'the fact embeds on the first run');
+    for (let run = 2; run <= GIVE_UP_AFTER; run += 1) {
+      const again = await embedPending(client, picky, { sleep });
+      assert.equal(again.halted, null, `run ${run}`);
+    }
+    assert.deepEqual(await attempts(), [GIVE_UP_AFTER, GIVE_UP_AFTER]);
+    const last = await embedPending(client, picky, { sleep });
+    assert.deepEqual([last.failed, last.skipped, last.halted], [0, 2, null]);
+    assert.ok(calls.some((texts) => texts.length === 1 && texts[0] === 'canary'), 'the canary was sent');
+  });
+
+  test('a canary that embeds leaves no trace in the database', async () => {
+    await source('a.md', 'POISON one.\n');
+    await source('b.md', 'POISON two.\n');
+    await chunkSources(client);
+    const rows = async (): Promise<unknown> =>
+      (await client.query('SELECT id, embedding::text AS e, embedded_hash FROM source_chunks ORDER BY id')).rows;
+    const tables = async (): Promise<string> =>
+      JSON.stringify((await client.query("SELECT count(*) AS n FROM nodes UNION ALL SELECT count(*) FROM facts UNION ALL SELECT count(*) FROM source_chunks")).rows);
+    const before = await tables();
+    const picky: Embedder = {
+      embed: (texts) =>
+        texts.some((text) => text.includes('POISON'))
+          ? Promise.reject(new EmbedError('voyage answered 400: bad text', false))
+          : Promise.resolve(texts.map(vectorFor)),
+    };
+
+    await embedPending(client, picky, { sleep });
+
+    assert.deepEqual((await rows() as Array<{ e: string | null }>).map((r) => r.e), [null, null], 'no vector was written');
+    assert.equal(await tables(), before, 'no row was added');
+    assert.equal(
+      (await client.query('SELECT count(*) AS n FROM source_chunks WHERE embedded_hash IS NOT NULL')).rows[0]?.['n'],
+      '0',
+    );
   });
 
   test('a refusal every row meets on the chunks stops the facts too', async () => {
@@ -970,7 +1043,7 @@ describe('voyage', () => {
     const answer = (status: number): typeof fetch =>
       (() => Promise.resolve(new Response(JSON.stringify({ detail: 'nope' }), { status }))) as typeof fetch;
 
-    for (const [status, fatal] of [[401, true], [403, true], [400, false], [422, false], [429, false], [503, false]] as const) {
+    for (const [status, fatal] of [[401, true], [402, true], [403, true], [404, true], [400, false], [422, false], [429, false], [503, false]] as const) {
       await assert.rejects(voyage(key, answer(status)).embed(['a'], 'document'), (error: unknown) => {
         assert.ok(error instanceof EmbedError);
         assert.equal(error.fatal, fatal, String(status));

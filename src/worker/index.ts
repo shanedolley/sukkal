@@ -147,23 +147,46 @@ export async function register(
   await boss.schedule(DRAIN, DRAIN_CRON);
 }
 
+/** How long a lost connection waits for the queue to stop before the process leaves anyway. */
+export const LOSS_STOP_MS = 5000;
+
+/**
+ * The worker's answer to a lost connection: log it, stop the queue so that a
+ * running job is failed and handed back rather than held until it expires, then
+ * exit 1 for the supervisor to restart. A stop that hangs cannot keep the
+ * process alive, because the exit does not wait past `boundMs`. `exit` is
+ * replaced in a test.
+ */
+export async function leave(
+  boss: Pick<PgBoss, 'stop'>,
+  error: Error,
+  exit: (code: number) => void = process.exit,
+  boundMs: number = LOSS_STOP_MS,
+): Promise<void> {
+  console.error('kpa-worker: database connection lost:', error.message);
+  let timer: NodeJS.Timeout | undefined;
+  const bound = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, boundMs);
+  });
+  // The timeout option bounds pg-boss's own wait for running jobs. The race bounds a stop that hangs outright.
+  await Promise.race([boss.stop({ timeout: boundMs }).catch(() => {}), bound]);
+  clearTimeout(timer);
+  exit(1);
+}
+
 async function main(): Promise<void> {
   // ponytail: one client for the worker's own queries, alongside the pool
   // pg-boss opens for the queue. node-postgres serialises on a client, so
   // this is correct and serial. Give it a pool when a job needs two queries
   // running at once.
   const client = connect('DATABASE_URL');
+  const boss = queue('DATABASE_URL');
+  boss.on('error', (error) => console.error('pg-boss:', error));
   // Nothing in the worker survives this client, and the queue holds every job in
   // Postgres. So a lost connection ends the process, and the supervisor restarts
   // it. Without a listener the same error ends it with no word of why.
-  client.on('error', (error) => {
-    console.error('kpa-worker: database connection lost:', error.message);
-    process.exit(1);
-  });
+  client.on('error', (error) => void leave(boss, error));
   await client.connect();
-
-  const boss = queue('DATABASE_URL');
-  boss.on('error', (error) => console.error('pg-boss:', error));
 
   await boss.start();
   await register(boss, client, HANDLERS);

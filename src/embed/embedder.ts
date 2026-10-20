@@ -32,14 +32,15 @@
  * own text the provider refuses: a non-retryable failure that the split of a
  * batch has narrowed to that one row. That failure adds its call to
  * `embed_attempts`. A provider fault is not the row's fault, so it charges
- * nothing, and it stops the run. Four kinds: a rejected key (401, 403), a
+ * nothing, and it stops the run. Four kinds: a refused key, payment or model (401, 402, 403, 404), a
  * retryable failure that uses up its tries (429, 5xx, a timeout, a network
  * error, an unreadable answer), a reply of the wrong count or width, and a
- * refusal that the split of a batch finds every row meeting (a 400, 402, 404 or
- * 422 for each text, such as a renamed model). The provider fails every later
- * batch as well, so the run halts, keeps what it has written, skips the facts
- * after a halt in the chunks, and reports why in `halted`. The next tick tries
- * again.
+ * refusal to every text that a canary shows (see `embedBatch`). The answers 401,
+ * 402, 403 and 404 halt at once, and so does a wrong count or width. A 400 or
+ * 422 may be one bad text, so a batch refused with those is split, and halts only
+ * if a canary text is refused as well. The provider fails every later batch as
+ * well, so the run halts, keeps what it has written, skips the facts after a
+ * halt in the chunks, and reports why in `halted`. The next tick tries again.
  * A count that charged these would give up on every row within a few ticks of
  * the queue, during any outage of the provider, and leave them skipped after it
  * ended; a run that went on would spend `TRIES_PER_RUN` calls on every batch of
@@ -361,11 +362,13 @@ interface Outcome {
  * provider failed, not the text, and every later batch would fail the same way,
  * so it halts the run too.
  *
- * A split that ends with every row of the batch failing and none embedded is a
- * provider fault as well: a refusal the provider gives every text, such as a
- * renamed model. It halts the run and charges no row. Only the whole batch is
- * judged this way (`whole`), since two bad texts side by side fail together
- * inside a split without the provider being at fault.
+ * A split that ends with every row of the batch failing and none embedded may
+ * be a provider that refuses every text, or a batch of poison rows, and a status
+ * code cannot say which. So one more call settles it: the `CANARY` text. If the
+ * provider refuses that too, it halts the run and charges no row. If it embeds,
+ * the rows are poison and are charged as usual, and the run goes on. Only the
+ * whole batch is judged this way (`whole`), since two bad texts side by side
+ * fail together inside a split without the provider being at fault.
  */
 async function embedBatch(
   embedder: Embedder,
@@ -394,13 +397,26 @@ async function embedBatch(
       halt: second.halt,
     };
     if (whole && merged.halt === null && merged.done.length === 0) {
-      return { done: [], failed: [], halt: `every text of a batch of ${batch.length} was refused: ${merged.failed[0]?.error ?? result.error}` };
+      // Every text was refused. A bad text and a provider that refuses all of
+      // them look the same, since Voyage answers 400 for both. A text that is
+      // fine settles it, and its vector is thrown away.
+      const canary = await callWithBackoff(embedder, [CANARY], sleep);
+      if (!canary.vectors) {
+        return {
+          done: [],
+          failed: [],
+          halt: `every text of a batch of ${batch.length} was refused, and so was a canary: ${canary.error ?? 'unknown error'}`,
+        };
+      }
     }
     return merged;
   }
   // One row the provider refused on its own text, with nothing left to split.
   return { done: [], failed: [{ rows: batch, error: result.error ?? 'unknown error', tries: result.tries }], halt: null };
 }
+
+/** A short text no provider has cause to refuse. Sent to tell a provider fault from bad rows. */
+const CANARY = 'canary';
 
 /** `table` is one of two literals below, never input. */
 async function embedRows(
