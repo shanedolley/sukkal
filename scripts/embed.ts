@@ -20,11 +20,14 @@ try {
 
   const chunked = await chunkSources(client);
   console.log(`chunked ${chunked.sources} sources into ${chunked.chunks} chunks`);
+  for (const failure of chunked.failures) {
+    console.error(`source ${failure.sourceId} not chunked: ${failure.reason}`);
+  }
 
   const done = await embedPending(client, await voyageFromConnection(client));
   console.log(`embedded ${done.embedded}, failed ${done.failed}, skipped ${done.skipped}`);
   for (const line of done.errors) console.error(line);
-  process.exitCode = done.failed > 0 ? 1 : 0;
+  process.exitCode = done.failed > 0 || chunked.failures.length > 0 ? 1 : 0;
 } finally {
   await client.end();
 }

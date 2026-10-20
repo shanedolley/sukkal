@@ -12,7 +12,8 @@
  * is longer than that on its own is cut inside, and it is cut at a line end,
  * then a sentence end, then a space, so a sentence is cut only when a single
  * sentence outgrows the limit. A fenced code block is one paragraph however many
- * blank lines or `#` lines it holds.
+ * blank lines or `#` lines it holds, but a block longer than `MAX_CHARS` is cut
+ * like any other long paragraph.
  *
  * Leading frontmatter is skipped. It is metadata the sources table already
  * holds in columns, and it would embed as noise.

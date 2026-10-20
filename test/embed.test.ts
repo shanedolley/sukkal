@@ -13,9 +13,10 @@ import {
   embedPending,
   GIVE_UP_AFTER,
   type InputKind,
+  MAX_WAIT_MS,
   TRIES_PER_RUN,
 } from '../src/embed/embedder.ts';
-import { voyage } from '../src/embed/voyage.ts';
+import { parseRetryAfter, voyage } from '../src/embed/voyage.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const url = process.env['DATABASE_URL_TEST'];
@@ -139,7 +140,7 @@ describe('embedding', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
     await seed();
     const chunked = await chunkSources(client);
 
-    assert.deepEqual(chunked, { sources: 2, chunks: 3 });
+    assert.deepEqual(chunked, { sources: 2, chunks: 3, failures: [] });
     const rows = await client.query<{ path: string; ordinal: number; text: string }>(
       `SELECT s.path, c.ordinal,
               convert_from(substring(convert_to(s.body, 'UTF8') FROM c.byte_start + 1
@@ -181,21 +182,163 @@ describe('embedding', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
     assert.deepEqual(embedder.calls, [['A title\n\nA description.']]);
   });
 
-  test('keeps an embedding when the range is unchanged and drops it when the range moves', async () => {
+  test('keeps an embedding when the range is unchanged and replaces the row when the range moves', async () => {
     const id = await source('a.md', `# One\n\n${section('alpha')}\n`);
     await chunkSources(client);
     await embedPending(client, fake(), { sleep });
+    const kept = await client.query<{ id: string }>('SELECT id FROM source_chunks');
     await chunkSources(client);
     assert.equal((await counts()).chunksEmbedded, 1, 'unchanged range keeps its vector');
+    assert.deepEqual((await client.query('SELECT id FROM source_chunks')).rows, kept.rows, 'and its id');
 
     await client.query('UPDATE sources SET body = $2 WHERE id = $1', [id, `# One\n\n${section('omega')}\nmore.\n`]);
-    await chunkSources(client);
-    const after = await client.query<{ embedding: string | null; embed_attempts: number }>(
-      'SELECT embedding, embed_attempts FROM source_chunks',
+    const result = await chunkSources(client);
+    assert.deepEqual(result.failures, []);
+    const after = await client.query<{ id: string; embedding: string | null; embed_attempts: number }>(
+      'SELECT id, embedding, embed_attempts FROM source_chunks',
     );
-    assert.equal(after.rowCount, 1, 'updated in place');
+    assert.equal(after.rowCount, 1);
+    assert.notEqual(after.rows[0]?.id, kept.rows[0]?.id, 'an uncited moved chunk gets a new id');
     assert.equal(after.rows[0]?.embedding, null, 'the vector described other text');
     assert.equal(after.rows[0]?.embed_attempts, 0);
+  });
+
+  /** A fact citing one chunk of a source, the way a derived_from edge does. */
+  async function cite(sourceId: string): Promise<string> {
+    const chunk = await client.query<{ id: string }>('SELECT id FROM source_chunks WHERE source_id = $1', [sourceId]);
+    await client.query('BEGIN');
+    const from = await node('fact');
+    await client.query(
+      `INSERT INTO facts (id, path, type, title, description, space, state, valid_from)
+       VALUES ($1, 'cites.md', 'reference', 't', 'd', 'shared', 'proposed', '2026-01-01')`,
+      [from],
+    );
+    await client.query("INSERT INTO edges (from_id, to_id, kind, chunk_id) VALUES ($1, $2, 'derived_from', $3)", [
+      from,
+      sourceId,
+      chunk.rows[0]!.id,
+    ]);
+    await client.query('COMMIT');
+    return chunk.rows[0]!.id;
+  }
+
+  const passage = async (chunkId: string): Promise<string> =>
+    (
+      await client.query<{ text: string }>(
+        `SELECT convert_from(substring(convert_to(s.body, 'UTF8') FROM c.byte_start + 1
+                                       FOR c.byte_end - c.byte_start), 'UTF8') AS text
+           FROM source_chunks c JOIN sources s ON s.id = c.source_id WHERE c.id = $1`,
+        [chunkId],
+      )
+    ).rows[0]!.text;
+
+  test('a cited chunk whose range moves fails its source and keeps the citation on the old text', async () => {
+    const body = `# One\n\n${section('alpha')}\n`;
+    const id = await source('a.md', body);
+    await chunkSources(client);
+    const chunkId = await cite(id);
+    const range = await client.query('SELECT byte_start, byte_end FROM source_chunks WHERE id = $1', [chunkId]);
+
+    await client.query('UPDATE sources SET body = $2 WHERE id = $1', [id, `${body}\nmore.\n`]);
+    const result = await chunkSources(client);
+
+    assert.equal(result.failures.length, 1);
+    assert.equal(result.failures[0]?.sourceId, id);
+    assert.match(result.failures[0]?.reason ?? '', /foreign key/);
+    const edge = await client.query('SELECT chunk_id FROM edges');
+    assert.deepEqual(edge.rows, [{ chunk_id: chunkId }], 'the citation is unchanged');
+    assert.deepEqual(
+      await client.query('SELECT byte_start, byte_end FROM source_chunks WHERE id = $1', [chunkId]),
+      range,
+      'the row still holds the cited range',
+    );
+    assert.equal((await passage(chunkId)).slice(0, 5), '# One');
+  });
+
+  test('one failing source does not stop the sources after it', async () => {
+    const body = `# One\n\n${section('alpha')}\n`;
+    const first = await source('a.md', body);
+    await chunkSources(client);
+    await cite(first);
+    await client.query('UPDATE sources SET body = $2 WHERE id = $1', [first, `${body}\nmore.\n`]);
+    const later = await source('b.md', `# Two\n\n${section('beta')}\n`);
+
+    const result = await chunkSources(client);
+
+    assert.deepEqual(result.failures.map((failure) => failure.sourceId), [first]);
+    assert.equal(result.sources, 2);
+    assert.equal(result.chunks, 1, 'counts the chunks of the source that succeeded');
+    const written = await client.query('SELECT 1 FROM source_chunks WHERE source_id = $1', [later]);
+    assert.equal(written.rowCount, 1, 'the later source was chunked');
+  });
+
+  test('one bad text does not fail the rest of its batch', async () => {
+    const ids: string[] = [];
+    for (const [i, label] of ['a', 'b', 'POISON', 'd', 'e'].entries()) {
+      ids.push(await fact(`f${i}.md`, `title ${label}`, 'A description.'));
+    }
+    const calls: string[][] = [];
+    const picky: Embedder = {
+      embed(texts) {
+        calls.push(texts);
+        if (texts.some((text) => text.includes('POISON'))) {
+          return Promise.reject(new EmbedError('voyage answered 400: bad text', false));
+        }
+        return Promise.resolve(texts.map(vectorFor));
+      },
+    };
+
+    const result = await embedPending(client, picky, { sleep });
+
+    assert.deepEqual([result.embedded, result.failed], [4, 1]);
+    assert.equal(result.errors.length, 1);
+    assert.ok(result.errors[0]?.includes(ids[2]!), 'names the bad row');
+    const rows = await client.query<{ title: string; embedded: boolean; embed_attempts: number }>(
+      'SELECT title, embedding IS NOT NULL AS embedded, embed_attempts FROM facts ORDER BY path',
+    );
+    assert.deepEqual(
+      rows.rows.map((row) => [row.title.slice(-1), row.embedded]),
+      [['a', true], ['b', true], ['N', false], ['d', true], ['e', true]],
+    );
+    assert.equal(rows.rows.find((row) => row.title.endsWith('N'))?.embed_attempts, 1, 'one try on the bad row');
+    for (const row of rows.rows.filter((r) => r.embedded)) {
+      assert.equal(row.embed_attempts, 1, 'a good row counts only its own successful call');
+    }
+    assert.ok(calls.length <= 1 + 2 * Math.ceil(Math.log2(5)) + 1, `${calls.length} calls`);
+    assert.deepEqual(sleeps, [], 'a refusal that would repeat waits for nothing');
+  });
+
+  /** Throws each of `errors` in turn, then answers. */
+  function flaky(errors: EmbedError[]): Embedder {
+    let call = 0;
+    return {
+      embed(texts) {
+        const error = errors[call++];
+        return error ? Promise.reject(error) : Promise.resolve(texts.map(vectorFor));
+      },
+    };
+  }
+
+  test('waits for Retry-After when it is longer than the backoff', async () => {
+    await fact('f.md', 'A title', 'A description.');
+    const provider = flaky([
+      new EmbedError('voyage answered 429: slow down', true, BACKOFF_MS * 5),
+      new EmbedError('voyage answered 429: slow down', true, 10),
+    ]);
+
+    const result = await embedPending(client, provider, { sleep });
+
+    assert.equal(result.embedded, 1);
+    assert.deepEqual(sleeps, [BACKOFF_MS * 5, BACKOFF_MS * 2], 'the ask wins, then the backoff when it is longer');
+  });
+
+  test('never waits longer than MAX_WAIT_MS, whatever Retry-After asks', async () => {
+    await fact('f.md', 'A title', 'A description.');
+    const provider = flaky([new EmbedError('voyage answered 503: busy', true, 60 * 60 * 1000)]);
+
+    await embedPending(client, provider, { sleep });
+
+    assert.deepEqual(sleeps, [MAX_WAIT_MS]);
   });
 
   test('a failing provider leaves rows null and counts every try', async () => {
@@ -313,6 +456,61 @@ describe('voyage', () => {
     await assert.rejects(voyage(key, unreachable).embed(['a'], 'document'), (error: unknown) =>
       error instanceof EmbedError && error.retryable,
     );
+  });
+
+  test('reads Retry-After as seconds or as an HTTP date', async () => {
+    assert.equal(parseRetryAfter('7'), 7000);
+    assert.equal(parseRetryAfter(' 0 '), 0);
+    const now = Date.parse('2026-10-20T00:00:00Z');
+    assert.equal(parseRetryAfter('Tue, 20 Oct 2026 00:00:20 GMT', now), 20_000);
+    assert.equal(parseRetryAfter('Mon, 19 Oct 2026 00:00:00 GMT', now), 0, 'a date in the past is no wait');
+    assert.equal(parseRetryAfter('soon', now), undefined);
+    assert.equal(parseRetryAfter(null, now), undefined);
+  });
+
+  test('carries Retry-After from a 429 or 503 onto the error, and from nothing else', async () => {
+    const answer = (status: number, headers: Record<string, string>): typeof fetch =>
+      (() => Promise.resolve(new Response('{"detail":"x"}', { status, headers }))) as typeof fetch;
+
+    for (const status of [429, 503]) {
+      await assert.rejects(voyage(key, answer(status, { 'retry-after': '7' })).embed(['a'], 'document'), (error: unknown) => {
+        assert.ok(error instanceof EmbedError);
+        assert.equal(error.retryAfterMs, 7000, String(status));
+        return true;
+      });
+    }
+    const date = new Date(Date.now() + 20_000).toUTCString();
+    await assert.rejects(voyage(key, answer(429, { 'retry-after': date })).embed(['a'], 'document'), (error: unknown) => {
+      assert.ok(error instanceof EmbedError);
+      assert.ok(error.retryAfterMs !== undefined && error.retryAfterMs > 17_000 && error.retryAfterMs <= 20_000);
+      return true;
+    });
+    await assert.rejects(voyage(key, answer(401, { 'retry-after': '7' })).embed(['a'], 'document'), (error: unknown) =>
+      error instanceof EmbedError && error.retryAfterMs === undefined,
+    );
+  });
+
+  test('gives each request a timeout, and a timeout is retryable', async () => {
+    let signal: AbortSignal | null | undefined;
+    const hangs = ((_url: string, init: RequestInit) => {
+      signal = init.signal;
+      return new Promise<Response>((_resolve, reject) => {
+        // Without a signal the fake gives up on its own, so a missing timeout fails the test rather than hanging it.
+        const bail = setTimeout(() => reject(new Error('no signal given')), 500);
+        signal?.addEventListener('abort', () => {
+          clearTimeout(bail);
+          reject(signal?.reason);
+        });
+      });
+    }) as typeof fetch;
+
+    await assert.rejects(voyage(key, hangs, 20).embed(['a'], 'document'), (error: unknown) => {
+      assert.ok(error instanceof EmbedError);
+      assert.equal(error.retryable, true);
+      assert.match(error.message, /timed out after 20 ms/);
+      return true;
+    });
+    assert.ok(signal);
   });
 
   test('refuses a vector of the wrong width', async () => {
