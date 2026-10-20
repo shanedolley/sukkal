@@ -71,7 +71,7 @@ the box reads it.
 | `GOOGLE_OAUTH_CLIENT_SECRET` | The same client as the Mac |
 | `NABIUM_WEBHOOK_SECRET` | The secret nabium signs with. See *Known limits* |
 | `SUKKAL_INFERENCE` | Optional. `subscription` (the default) or `api`, the order the two Claude credentials are tried in |
-| `SUKKAL_INFERENCE_MODE` | Set `live`. Left unset it reads `recorded`, no model is called, and every judged gate rejects its candidate |
+| `SUKKAL_INFERENCE_MODE` | Set `live`. Left unset it reads `recorded`, no inference runs, and every judged gate rejects its candidate. The hourly credential recheck ignores it and still runs a small Haiku probe through the CLI |
 
 Leave out `DATABASE_URL_TEST` and `VAULT_PATH`. No test runs on the box and no
 vault reaches it.
