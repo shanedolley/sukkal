@@ -70,9 +70,10 @@ export function voyage(
 
       if (!answer.ok) {
         // 429 and 5xx pass with time. Any other refusal would repeat. A bad or
-        // forbidden key is refused for every text, so it is fatal to the run.
+        // forbidden key, no payment, or no such model is refused for every text, so
+        // it is fatal to the run. A 400 or 422 may be one bad text, so it is not.
         const retryable = answer.status === 429 || answer.status >= 500;
-        const fatal = answer.status === 401 || answer.status === 403;
+        const fatal = [401, 402, 403, 404].includes(answer.status);
         const wait = retryable ? parseRetryAfter(answer.headers.get('retry-after')) : undefined;
         throw new EmbedError(`voyage answered ${answer.status}: ${await reason(answer)}`, retryable, wait, fatal);
       }
@@ -92,6 +93,8 @@ export function voyage(
         throw new EmbedError(
           `voyage returned ${data.length} vectors for ${texts.length} texts, or a width other than ${EMBEDDING.dimension}`,
           false,
+          undefined,
+          true, // fatal: a provider that miscounts or mis-sizes does so for every text
         );
       }
       return data.map((row) => row.embedding);

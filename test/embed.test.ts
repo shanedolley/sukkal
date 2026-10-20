@@ -509,14 +509,201 @@ describe('embedding', { skip: url ? false : 'DATABASE_URL_TEST is unset' }, () =
     assert.equal(row.rows[0]?.embed_attempts, 1);
   });
 
-  test('a reply with the wrong number of vectors writes nothing', async () => {
-    await fact('f.md', 'A title', 'A description.');
-    const short: Embedder = { embed: () => Promise.resolve([]) };
+  test('a reply with the wrong number of vectors halts the run and charges no row', async () => {
+    for (let i = 0; i < 70; i += 1) await fact(`f${i}.md`, `title ${i}`, 'A description.');
+    let calls = 0;
+    const short: Embedder = {
+      embed: () => {
+        calls += 1;
+        return Promise.resolve([]);
+      },
+    };
 
     const result = await embedPending(client, short, { sleep });
 
-    assert.equal(result.failed, 1);
+    assert.equal(calls, 1, 'a provider that miscounts does so for every batch, so the batch is not split');
+    assert.deepEqual([result.embedded, result.failed], [0, 0]);
+    assert.match(result.halted ?? '', /facts: asked for 64 vectors and got 0/);
     assert.equal((await counts()).factsEmbedded, 0);
+    const spent = await client.query('SELECT count(*) AS n FROM facts WHERE embed_attempts <> 0');
+    assert.equal(spent.rows[0]?.['n'], '0', 'no row was charged');
+  });
+
+  test('a 402 or 404 halts at once, with no split and no charge', async () => {
+    for (let i = 0; i < 70; i += 1) await fact(`f${i}.md`, `title ${i}`, 'A description.');
+    for (const status of [402, 404]) {
+      const provider = failing(new EmbedError(`voyage answered ${status}: refused`, false, undefined, true));
+
+      const result = await embedPending(client, provider, { sleep });
+
+      assert.equal(provider.calls, 1, String(status));
+      assert.deepEqual([result.embedded, result.failed], [0, 0]);
+      assert.match(result.halted ?? '', new RegExp(String(status)));
+    }
+    const spent = await client.query('SELECT count(*) AS n FROM facts WHERE embed_attempts <> 0');
+    assert.equal(spent.rows[0]?.['n'], '0', 'no row was charged');
+  });
+
+  test('a 400 for every text, the canary too, halts the run and charges no row', async () => {
+    for (let i = 0; i < 70; i += 1) await fact(`f${i}.md`, `title ${i}`, 'A description.');
+    const provider = failing(new EmbedError('voyage answered 400: invalid model', false));
+
+    const result = await embedPending(client, provider, { sleep });
+
+    assert.ok(provider.calls <= 128, `only the first batch is split, then the canary: ${provider.calls} calls`);
+    assert.deepEqual([result.embedded, result.failed, result.skipped], [0, 0, 0]);
+    assert.match(result.halted ?? '', /^facts: .*canary.*400/);
+    const spent = await client.query('SELECT count(*) AS n FROM facts WHERE embed_attempts <> 0');
+    assert.equal(spent.rows[0]?.['n'], '0', 'no row was charged');
+
+    for (let tick = 0; tick < GIVE_UP_AFTER + 1; tick += 1) await embedPending(client, provider, { sleep });
+    const later = await embedPending(client, fake(), { sleep });
+    assert.deepEqual([later.embedded, later.skipped], [70, 0], 'eleven ticks later every row still embeds');
+  });
+
+  test('poison chunks beside a good fact: the chunks are charged to GIVE_UP_AFTER and the fact embeds at once', async () => {
+    await source('a.md', 'POISON one.\n');
+    await source('b.md', 'POISON two.\n');
+    const goodFact = await fact('f.md', 'A title', 'A description.');
+    const calls: string[][] = [];
+    const picky: Embedder = {
+      embed(texts) {
+        calls.push(texts);
+        return texts.some((text) => text.includes('POISON'))
+          ? Promise.reject(new EmbedError('voyage answered 400: bad text', false))
+          : Promise.resolve(texts.map(vectorFor));
+      },
+    };
+    const attempts = async (): Promise<number[]> =>
+      (await client.query<{ n: number }>('SELECT embed_attempts AS n FROM source_chunks ORDER BY id')).rows.map((r) => r.n);
+
+    await chunkSources(client);
+    const first = await embedPending(client, picky, { sleep });
+
+    assert.equal(first.halted, null, 'two poison chunks are not a provider fault');
+    assert.deepEqual([first.embedded, first.failed], [1, 2]);
+    assert.deepEqual(await attempts(), [1, 1]);
+    assert.notEqual((await rowOf('facts', goodFact)).embedded_hash, null, 'the fact embeds on the first run');
+    for (let run = 2; run <= GIVE_UP_AFTER; run += 1) {
+      const again = await embedPending(client, picky, { sleep });
+      assert.equal(again.halted, null, `run ${run}`);
+    }
+    assert.deepEqual(await attempts(), [GIVE_UP_AFTER, GIVE_UP_AFTER]);
+    const last = await embedPending(client, picky, { sleep });
+    assert.deepEqual([last.failed, last.skipped, last.halted], [0, 2, null]);
+    assert.ok(calls.some((texts) => texts.length === 1 && texts[0] === 'canary'), 'the canary was sent');
+  });
+
+  test('a canary that embeds leaves no trace in the database', async () => {
+    await source('a.md', 'POISON one.\n');
+    await source('b.md', 'POISON two.\n');
+    await chunkSources(client);
+    const rows = async (): Promise<unknown> =>
+      (await client.query('SELECT id, embedding::text AS e, embedded_hash FROM source_chunks ORDER BY id')).rows;
+    const tables = async (): Promise<string> =>
+      JSON.stringify((await client.query("SELECT count(*) AS n FROM nodes UNION ALL SELECT count(*) FROM facts UNION ALL SELECT count(*) FROM source_chunks")).rows);
+    const before = await tables();
+    const picky: Embedder = {
+      embed: (texts) =>
+        texts.some((text) => text.includes('POISON'))
+          ? Promise.reject(new EmbedError('voyage answered 400: bad text', false))
+          : Promise.resolve(texts.map(vectorFor)),
+    };
+
+    await embedPending(client, picky, { sleep });
+
+    assert.deepEqual((await rows() as Array<{ e: string | null }>).map((r) => r.e), [null, null], 'no vector was written');
+    assert.equal(await tables(), before, 'no row was added');
+    assert.equal(
+      (await client.query('SELECT count(*) AS n FROM source_chunks WHERE embedded_hash IS NOT NULL')).rows[0]?.['n'],
+      '0',
+    );
+  });
+
+  test('a refusal every row meets on the chunks stops the facts too', async () => {
+    await seed();
+    await chunkSources(client);
+    const provider = failing(new EmbedError('voyage answered 422: bad input', false));
+
+    const result = await embedPending(client, provider, { sleep });
+
+    assert.match(result.halted ?? '', /^source_chunks: /);
+    assert.deepEqual(await counts(), { chunks: 3, facts: 1, chunksEmbedded: 0, factsEmbedded: 0 });
+  });
+
+  test('two bad texts side by side are still charged, and the run goes on', async () => {
+    for (const [i, label] of ['POISON', 'POISON', 'c', 'd'].entries()) {
+      await fact(`f${i}.md`, `title ${label} ${i}`, 'A description.');
+    }
+    const picky: Embedder = {
+      embed(texts) {
+        return texts.some((text) => text.includes('POISON'))
+          ? Promise.reject(new EmbedError('voyage answered 400: bad text', false))
+          : Promise.resolve(texts.map(vectorFor));
+      },
+    };
+
+    const result = await embedPending(client, picky, { sleep });
+
+    assert.deepEqual([result.embedded, result.failed], [2, 2]);
+    assert.equal(result.halted, null, 'a pair that fails inside a split is not a provider fault');
+    const rows = await client.query<{ embed_attempts: number }>(
+      "SELECT embed_attempts FROM facts WHERE title LIKE '%POISON%'",
+    );
+    assert.deepEqual(rows.rows.map((row) => row.embed_attempts), [1, 1]);
+  });
+
+  test('stops picking batches once the time budget is spent, and the next run continues', async () => {
+    for (let i = 0; i < 130; i += 1) await fact(`f${i}.md`, `title ${i}`, 'A description.');
+    let clock = 0;
+    const slow: Embedder = {
+      embed(texts) {
+        clock += 400;
+        return Promise.resolve(texts.map(vectorFor));
+      },
+    };
+
+    const result = await embedPending(client, slow, { sleep, budgetMs: 500, now: () => clock });
+
+    assert.equal(result.embedded, 128, 'the batch begun at 400 ms ran; the one at 800 ms did not');
+    assert.equal(result.timedOut, true);
+    assert.equal(result.halted, null, 'running out of time is not a fault');
+    assert.equal((await counts()).factsEmbedded, 128);
+
+    const next = await embedPending(client, slow, { sleep, budgetMs: 500, now: () => clock });
+    assert.deepEqual([next.embedded, next.timedOut], [2, false]);
+  });
+
+  test('a spent budget on the chunks leaves the facts for the next run', async () => {
+    await seed();
+    await chunkSources(client);
+    let clock = 0;
+    const slow: Embedder = {
+      embed(texts) {
+        clock += 1000;
+        return Promise.resolve(texts.map(vectorFor));
+      },
+    };
+
+    const result = await embedPending(client, slow, { sleep, budgetMs: 500, now: () => clock });
+
+    assert.equal(result.timedOut, true);
+    assert.deepEqual(await counts(), { chunks: 3, facts: 1, chunksEmbedded: 3, factsEmbedded: 0 });
+  });
+
+  test('no budget means no limit', async () => {
+    for (let i = 0; i < 130; i += 1) await fact(`f${i}.md`, `title ${i}`, 'A description.');
+    let clock = 0;
+    const slow: Embedder = {
+      embed(texts) {
+        clock += 1e9;
+        return Promise.resolve(texts.map(vectorFor));
+      },
+    };
+
+    const result = await embedPending(client, slow, { sleep, now: () => clock });
+
+    assert.deepEqual([result.embedded, result.timedOut], [130, false]);
   });
 
   test('leaves a row alone once it has failed GIVE_UP_AFTER times', async () => {
@@ -856,7 +1043,7 @@ describe('voyage', () => {
     const answer = (status: number): typeof fetch =>
       (() => Promise.resolve(new Response(JSON.stringify({ detail: 'nope' }), { status }))) as typeof fetch;
 
-    for (const [status, fatal] of [[401, true], [403, true], [400, false], [422, false], [429, false], [503, false]] as const) {
+    for (const [status, fatal] of [[401, true], [402, true], [403, true], [404, true], [400, false], [422, false], [429, false], [503, false]] as const) {
       await assert.rejects(voyage(key, answer(status)).embed(['a'], 'document'), (error: unknown) => {
         assert.ok(error instanceof EmbedError);
         assert.equal(error.fatal, fatal, String(status));
@@ -951,7 +1138,12 @@ describe('voyage', () => {
     assert.ok(signal);
   });
 
-  test('refuses a vector of the wrong width', async () => {
-    await assert.rejects(voyage(key, ok([[1, 2, 3]])).embed(['a'], 'document'), /width/);
+  test('refuses a vector of the wrong width, and calls that fatal to the run', async () => {
+    await assert.rejects(voyage(key, ok([[1, 2, 3]])).embed(['a'], 'document'), (error: unknown) => {
+      assert.ok(error instanceof EmbedError);
+      assert.match(error.message, /width/);
+      assert.equal(error.fatal, true, 'a provider that returns the wrong width does so for every text');
+      return true;
+    });
   });
 });

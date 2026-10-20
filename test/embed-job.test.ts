@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { after, afterEach, before, beforeEach, describe, mock, test } from 'node:test';
@@ -10,8 +11,8 @@ import { addConnection, removeConnection, setCredential } from '../src/connectio
 import { connect, refuseProduction } from '../src/db/connect.ts';
 import { down, up } from '../src/db/migrate.ts';
 import { EMBEDDING } from '../src/embedding.ts';
-import { EMBED, EMBED_CRON, run, schedule, work } from '../src/worker/embed.ts';
-import { QUEUE_SCHEMA, queue } from '../src/worker/index.ts';
+import { EMBED, EMBED_CRON, EXPIRE_IN_SECONDS, RUN_BUDGET_SECONDS, run, schedule, work } from '../src/worker/embed.ts';
+import { QUEUE_SCHEMA, leave, queue } from '../src/worker/index.ts';
 
 const MIGRATIONS = path.join(import.meta.dirname, '..', 'migrations');
 const INDEX = path.join(import.meta.dirname, '..', 'src', 'worker', 'index.ts');
@@ -214,6 +215,81 @@ describe('the embedding job', { skip: url ? false : 'DATABASE_URL_TEST is unset'
     assert.equal(await until(open, (n) => n <= before), before);
   });
 
+  /** Ends every other session on the test database: the one under test, idle between its statements. */
+  async function terminateOthers(): Promise<void> {
+    await client.query(
+      'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()',
+    );
+    // The socket closes a moment later, and the listener hears of it then.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+
+  test('a connection lost while the run waits on Voyage fails the run and leaves the process alive', async () => {
+    await voyageConnection();
+    await source('a.md', '# One\n\nSome text.\n');
+    const logged = mock.method(console, 'error', () => {});
+    mock.method(console, 'log', () => {});
+    const voyage = voyageFetch();
+    const killing = (async (target: string | URL | Request, init?: RequestInit) => {
+      await terminateOthers();
+      return voyage.fetcher(target, init);
+    }) as typeof fetch;
+
+    await assert.rejects(work('DATABASE_URL_TEST', killing)());
+
+    assert.match(String(logged.mock.calls[0]?.arguments[0]), /memory\.embed: database connection lost/);
+  });
+
+  test('the time budget is below the queue expiry', () => {
+    assert.ok(RUN_BUDGET_SECONDS < EXPIRE_IN_SECONDS);
+  });
+
+  test('the worker exits non-zero when its shared connection is lost', async () => {
+    const child = spawn(process.execPath, [INDEX], {
+      env: { ...process.env, DATABASE_URL: url },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let output = '';
+    child.stdout.on('data', (chunk: Buffer) => (output += String(chunk)));
+    child.stderr.on('data', (chunk: Buffer) => (output += String(chunk)));
+    const exited = new Promise<number | null>((resolve) => child.on('exit', resolve));
+    const killer = setTimeout(() => child.kill('SIGKILL'), 30_000);
+    try {
+      await until(
+        () => Promise.resolve(output),
+        (text) => text.includes(`${EMBED} at ${EMBED_CRON}`),
+      );
+      await terminateOthers();
+      assert.equal(await exited, 1, output);
+      assert.match(output, /kpa-worker: database connection lost/);
+    } finally {
+      clearTimeout(killer);
+      child.kill('SIGKILL');
+      await client.query('DELETE FROM pgboss.job');
+      await client.query('DELETE FROM pgboss.schedule');
+    }
+  });
+
+  test('a lost connection stops the queue before it exits, and exits even when the stop hangs', async () => {
+    mock.method(console, 'error', () => {});
+    const exits: number[] = [];
+    let stopped: unknown;
+    const stops = { stop: (options?: unknown) => ((stopped = options), Promise.resolve()) };
+    await leave(stops, new Error('gone'), (code) => exits.push(code), 50);
+    assert.deepEqual(exits, [1]);
+    assert.ok(stopped, 'the queue was stopped first');
+
+    const hung = { stop: () => new Promise<void>(() => {}) };
+    const started = Date.now();
+    await leave(hung, new Error('gone'), (code) => exits.push(code), 50);
+    assert.deepEqual(exits, [1, 1]);
+    assert.ok(Date.now() - started < 2000, 'a hung stop does not hold the exit');
+
+    const broken = { stop: () => Promise.reject(new Error('stop failed')) };
+    await leave(broken, new Error('gone'), (code) => exits.push(code), 50);
+    assert.deepEqual(exits, [1, 1, 1]);
+  });
+
   test('main() calls the embed schedule at start-up', async () => {
     const text = await readFile(INDEX, 'utf8');
     assert.match(text, /schedule as scheduleEmbed\s*\}\s*from\s*'\.\/embed\.ts'/, 'index.ts imports it');
@@ -244,6 +320,11 @@ describe('the embedding job', { skip: url ? false : 'DATABASE_URL_TEST is unset'
 
       const cron = await client.query<{ cron: string }>(`SELECT cron FROM ${QUEUE_SCHEMA}.schedule WHERE name = $1`, [EMBED]);
       assert.equal(cron.rows[0]?.cron, EMBED_CRON, 'the backlog sweep is on a cron');
+      const expiry = await client.query<{ expire_seconds: number }>(
+        `SELECT expire_seconds FROM ${QUEUE_SCHEMA}.queue WHERE name = $1`,
+        [EMBED],
+      );
+      assert.equal(expiry.rows[0]?.expire_seconds, EXPIRE_IN_SECONDS, 'the queue sets its own expiry');
 
       const states = (): Promise<Record<string, number>> =>
         client

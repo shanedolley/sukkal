@@ -38,7 +38,18 @@
  * 429, a 5xx or a timeout that uses up its tries, halts the run after that one
  * batch, logs it at error level and charges no row, so the first tick after
  * Voyage recovers embeds everything. Only a row whose own text Voyage refuses
- * counts toward `GIVE_UP_AFTER`.
+ * counts toward `GIVE_UP_AFTER`. So does a refusal every text of a batch meets,
+ * a renamed model for one: the run halts and charges nothing.
+ *
+ * A RUN HAS A TIME BUDGET BELOW THE QUEUE'S EXPIRY. A backlog is embedded in
+ * batches, and a run that outlived `EXPIRE_IN_SECONDS` would be expired by
+ * pg-boss while it still worked, freeing the exclusive queue for a second run
+ * beside it. So the run stops picking batches at `RUN_BUDGET_SECONDS`, says so,
+ * and the next tick continues.
+ *
+ * A LOST CONNECTION FAILS THE RUN. The client sits idle during every call to
+ * Voyage, so a restart of the database in that window raises `error` on it. The
+ * listener logs it, and the run's next query throws and fails the job.
  */
 import type { PgBoss } from 'pg-boss';
 import type { ClientBase } from 'pg';
@@ -57,6 +68,22 @@ export const EMBED = 'memory.embed';
 
 /** Every five minutes: the longest a source waits when nothing sent `EMBED`. */
 export const EMBED_CRON = '*/5 * * * *';
+
+/**
+ * The time a run may spend before it picks another batch. A batch already begun
+ * runs to its end, and the longest one costs about 100 seconds: three calls of
+ * 30 seconds and the waits between them. The rest of `EXPIRE_IN_SECONDS` covers it.
+ */
+export const RUN_BUDGET_SECONDS = 300;
+
+/**
+ * When pg-boss expires a run that has not finished: the budget, then the room for
+ * the batch in flight. It is named here so that the budget has a known limit to
+ * stay below, and a run never meets the expiry that frees the exclusive queue
+ * for a second run beside it. A job lost with a crashed worker holds the queue
+ * until this long has passed.
+ */
+export const EXPIRE_IN_SECONDS = 600;
 
 /** What one run did. */
 export interface Run {
@@ -78,7 +105,7 @@ export async function run(client: ClientBase, fetcher: typeof fetch = fetch): Pr
     throw error;
   }
   const chunked = await chunkSources(client);
-  const embedded = await embedPending(client, embedder);
+  const embedded = await embedPending(client, embedder, { budgetMs: RUN_BUDGET_SECONDS * 1000 });
   return { chunked, embedded };
 }
 
@@ -92,6 +119,9 @@ function report(found: Run): void {
   );
   for (const failure of chunked.failures) {
     console.warn(`${EMBED}: source ${failure.sourceId} not chunked: ${failure.reason}`);
+  }
+  if (embedded.timedOut) {
+    console.warn(`${EMBED}: the ${RUN_BUDGET_SECONDS} s time budget is spent, so the next run continues`);
   }
   for (const line of embedded.errors) {
     // The line that stopped the run is the one to notice.
@@ -115,8 +145,10 @@ export function work(
 
   return async () => {
     const client = connect(variable);
-    await client.connect();
+    // Without a listener, an error on an idle client ends the process.
+    client.on('error', (error) => console.error(`${EMBED}: database connection lost: ${error.message}`));
     try {
+      await client.connect();
       const found = await run(client, fetcher);
       if (found === null) {
         if (!said) {
@@ -138,7 +170,7 @@ export async function schedule(
   variable = 'DATABASE_URL',
   fetcher: typeof fetch = fetch,
 ): Promise<void> {
-  await boss.createQueue(EMBED, { policy: 'exclusive' });
+  await boss.createQueue(EMBED, { policy: 'exclusive', expireInSeconds: EXPIRE_IN_SECONDS });
 
   await boss.work(EMBED, work(variable, fetcher));
 
