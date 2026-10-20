@@ -124,7 +124,7 @@ describe('the subscription path', () => {
   test('hands the child an allow-listed environment, so an API key cannot outrank the token', async () => {
     const held = { ...process.env };
     process.env['ANTHROPIC_API_KEY'] = API_KEY;
-    process.env['DATABASE_URL'] = 'postgresql://user:password@host/db';
+    process.env['DATABASE_URL'] = 'postgresql://user:PLACEHOLDER@host/db';
     process.env['SUKKAL_SECRET_KEY'] = 'sealing-key';
     try {
       const child = fakeChild(reply('ok'));

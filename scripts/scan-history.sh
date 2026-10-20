@@ -122,6 +122,11 @@ reviewed=(
   # test and works on nothing. The runbook no longer spells it out, so this
   # match ends with commit 6c93cda.
   "postgresql://kpa:hunter2SuperSecret@192.168.20.110:5432/kpa"
+
+  # test/inference-live.test.ts sets this to prove the CLI child never sees
+  # DATABASE_URL. Commit d817405 added it, the host is the word host, and
+  # nothing connects. The working tree now reads PLACEHOLDER.
+  "postgresql://user:password@host/db"
 )
 
 hits=$(git grep -nE '(postgres(ql)?|mysql|mongodb(\+srv)?|redis|amqp)://[^/@[:space:]]+:[^/@[:space:]]+@' \

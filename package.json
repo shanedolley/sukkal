@@ -15,6 +15,7 @@
     "worker": "node --env-file-if-exists=$HOME/.config/sukkal/env src/worker/index.ts",
     "test": "node --env-file-if-exists=$HOME/.config/sukkal/env --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "lint": "oxlint src test scripts --import-plugin --deny-warnings",
+    "embed": "node --env-file-if-exists=$HOME/.config/sukkal/env scripts/embed.ts",
     "decisions": "node --experimental-strip-types scripts/decision-register.ts",
     "build": "tsc --noEmit"
   },
