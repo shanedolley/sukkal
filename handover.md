@@ -10,13 +10,21 @@ and the tunnel token stays as it is. The existing `cloudflared` container serves
 another domain, so Sukkal gets a second tunnel in its own compose file. The
 commit that recorded this is the last one made straight to `main`.
 
-**The Claude subscription path is built, and waits on a setup token.** Shane
+**The Claude subscription path is built, and its token is proved.** Shane
 ruled on 19 October 2026 that Sukkal uses his subscription for everything, with
 the API key as the fallback. ADR-0027 records it and supersedes ADR-0016. The
-ruling is not yet on KPA-86, because project management is on hold. Shane runs
-`claude setup-token` on his own machine and pastes the token into the Claude
-card's Subscription method. Nothing calls `live()` in
+ruling is not yet on KPA-86, because project management is on hold. Shane pasted a
+`claude setup-token` token into `sukkal_local` on 19 October 2026, and one live
+call through `live()` answered with no API key present. No job calls `live()` in
 `src/memory/inference-live.ts` yet.
+
+**KPA-12 is built: the sources chunk and embed through Voyage.** `npm run embed`
+chunks every source on its structure and embeds the pending chunks and facts,
+with the key read from the Voyage connection in the database `DATABASE_URL`
+names. On 20 October 2026 it embedded the frozen vault in `sukkal_verify`: 101
+chunks from 30 sources, and 19 facts. Sources 12 and 27 hold one byte or none,
+so they have no chunk. A fact edited after embedding is not embedded again until
+KPA-114 puts the embedder on the queue.
 
 **No story was built between 1 and 13 October.** `git log` shows no commit from
 2 to 12 October, and the commits of 13 October are documents. What moved was the
