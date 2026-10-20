@@ -21,6 +21,7 @@ import {
 } from "../../../src/connections/store.ts";
 import { EMBEDDING } from "../../../src/embedding.ts";
 import { db } from "../lib/db.ts";
+import { createRemoteStore, send } from "../lib/remote-store.ts";
 import {
   asUrl,
   initialValues,
@@ -318,6 +319,45 @@ assert.match(
   "the dialog collects the Send from address and posts none of it"
 );
 
+// 9b. A refused add keeps the dialog open and says why. KPA-105. A mistyped
+//     Jira site, a second connection to one, and a bad email are all 400s the
+//     route answers with a sentence, and the dialog closed on every one of
+//     them without showing it. `send` already returns the message; the fault
+//     was `addConnection` throwing the answer away.
+const realFetch = globalThis.fetch;
+const realError = console.error;
+try {
+  globalThis.fetch = (async (_url: string, init?: RequestInit) =>
+    init?.method === "POST"
+      ? new Response(JSON.stringify({ error: "That site already has a connection." }), {
+          status: 400,
+        })
+      : new Response("[]", { status: 200 })) as unknown as typeof fetch;
+  console.error = () => {};
+  assert.equal(
+    await send(createRemoteStore("/api/connections", []), "/api/connections", "POST", {}),
+    "That site already has a connection.",
+    "a refused write did not answer with the server's sentence"
+  );
+} finally {
+  globalThis.fetch = realFetch;
+  console.error = realError;
+}
+// `lib/connections.ts` imports `./remote-store` without its extension, as the
+// web tier does under `bundler`, so node cannot load it. Its source is read.
+const screenStore = await readFile(path.join(import.meta.dirname, "..", "lib", "connections.ts"), "utf8");
+assert.match(
+  screenStore,
+  /export function addConnection\(connection: NewConnection\): Promise<string \| null> \{\s+return send\(/,
+  "addConnection throws the server's answer away"
+);
+assert.match(
+  dialog,
+  /const said = await addConnection\(connection\);\s+if \(said === null\) close\(\);/,
+  "the dialog closes whether or not the server took the connection"
+);
+console.log("refused add OK: the server's sentence reaches the dialog, which stays open");
+
 // 10. Every card draws a mark. `BrandMark` returns null for an id it holds
 //     none for, so a tenth provider added without one draws an empty tile and
 //     nothing says so. The source is read rather than imported: node strips
@@ -456,7 +496,7 @@ console.log(
 // here, and each one is silent when it breaks.
 //
 // The read narrows. `listConnections` names its columns, so its answer holds
-// the twelve fields below and no secret.
+// the thirteen fields below and no secret.
 //
 // The plaintext is nowhere in the answer. Searching the serialised read for
 // the secret itself catches a column carrying it under another name, which
@@ -490,9 +530,10 @@ const pool = db();
 const client = await pool.connect();
 const SECRET = "sk-or-v1-a-key-shaped-string";
 
-/** The twelve fields a screen may see. The sealed bytes are not among them.
+/** The thirteen fields a screen may see. The sealed bytes are not among them.
  *  Counted from this array on 1 October 2026: the comment above it read "ten"
- *  while the array held eleven, and KPA-160 added the twelfth. */
+ *  while the array held eleven, and KPA-160 added the twelfth. KPA-105 added
+ *  `site`, the thirteenth. */
 const SEEN = [
   "expiresOn",
   "hasSecret",
@@ -503,6 +544,7 @@ const SEEN = [
   "provider",
   "sendFrom",
   "services",
+  "site",
   "verdict",
   "verifiedOk",
   "verifiedOn",
@@ -555,7 +597,7 @@ try {
   }
 
   console.log(
-    `connection rows OK: ${list.length} read, twelve fields each, and no secret among them`,
+    `connection rows OK: ${list.length} read, thirteen fields each, and no secret among them`,
   );
 } finally {
   if (added) await removeConnection(client, added);

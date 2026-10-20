@@ -155,7 +155,8 @@ function ConnectionForm({
 }: {
   chosen: Provider;
   onBack: () => void;
-  onAdd: (connection: NewConnection) => void;
+  /** Answers why the server refused, or null when it took the connection. */
+  onAdd: (connection: NewConnection) => Promise<string | null>;
 }) {
   const nameId = useId();
   const [name, setName] = useState("");
@@ -261,7 +262,9 @@ function ConnectionForm({
     const key = fields.find((field) => field.kind === "secret");
     const expiry = fields.find((field) => field.kind === "date");
     const from = fields.find((field) => field.kind === "email");
-    onAdd({
+    setBusy(true);
+    setFault("");
+    void onAdd({
       provider: chosen.id,
       name: name.trim(),
       method,
@@ -269,6 +272,14 @@ function ConnectionForm({
       secret: key ? value(key.id) : undefined,
       expiresOn: expiry ? (value(expiry.id) || null) : null,
       sendFrom: from ? (value(from.id) || null) : null,
+      // A Jira token card names its site and the account the token belongs to.
+      // The route checks both; the boxes only collect them.
+      ...(chosen.id === "jira" && method === "token"
+        ? { site: value("site"), email: value("email") }
+        : {}),
+    }).then((said) => {
+      setBusy(false);
+      if (said !== null) setFault(said);
     });
   }
 
@@ -427,7 +438,9 @@ function ConnectionForm({
         </DialogClose>
         <Button type="submit" disabled={!ready || busy}>
           {busy
-            ? `Opening ${chosen.name}...`
+            ? grant
+              ? `Opening ${chosen.name}...`
+              : "Adding..."
             : chosenMethod.signIn
               ? `Sign in to ${chosen.name}`
               : "Add connection"}
@@ -483,9 +496,10 @@ function AddConnection() {
           <ConnectionForm
             chosen={chosen}
             onBack={() => setChosen(null)}
-            onAdd={(connection) => {
-              addConnection(connection);
-              close();
+            onAdd={async (connection) => {
+              const said = await addConnection(connection);
+              if (said === null) close();
+              return said;
             }}
           />
         ) : (
@@ -737,6 +751,7 @@ function ConnectionDetail({
           }
         />
         {connection.sendFrom && <Field label="Send from" value={connection.sendFrom} />}
+        {connection.site && <Field label="Site" value={connection.site} />}
       </div>
 
       {/* No rename here, and no hint that a reconnect is one. A grant under a

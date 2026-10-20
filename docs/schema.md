@@ -43,7 +43,7 @@ check constraint here rather than an instruction in a prompt.
 | `issues` | A cache of the issues a tracker owns, keyed by workspace and key, carrying the tracker's own `updated` stamp |
 | `issue_blocks` | One blocking link, stored once from the blocker |
 | `issue_writes` | A write the tracker has not accepted, with the stamp it expected and, on a conflict, the one it found |
-| `connections` | One account on one provider. Provider, name, method, the services it may be reached for, and the address it sends mail from |
+| `connections` | One account on one provider. Provider, name, method, the services it may be reached for, the address it sends mail from, and the site it reaches |
 | `connection_credentials` | The sealed secret for one connection, with the dates the provider named, the last verdict, and whether it worked |
 | `workspaces` | One Jira tracker and the space it belongs to. The id is stable, the name is not, and nothing files anything under the name |
 | `projects` | One piece of work inside a workspace, and the one rule that matches its issues: a Jira label, or a Jira key prefix |
@@ -401,6 +401,18 @@ no residue and still sends. A name that is empty after trimming is dropped the
 same way. A missing name is therefore not a failure and a missing address is:
 `deliver` logs and answers `ok: false` when `send_from` is null, because
 nothing can go in `from`.
+
+**The site a connection reaches is `site`**, added by
+`migrations/035_connection_site.sql` for KPA-105. It is nullable, because only
+Jira has a site. A check holds it to one lowercase
+`https://<name>.atlassian.net` origin, and a unique partial index on
+`(provider, site) WHERE site IS NOT NULL` makes a second connection to the same
+site a constraint violation (`connections_one_per_site`) whatever the card is
+called. A Jira token connection seals `email:token` as one credential.
+`src/connections/jira.ts` holds the guard, `jiraSite`, which the route runs
+before it writes a row and `probeFor` runs again before it builds a request. The
+hourly recheck reads `site` and sends `GET {site}/rest/api/3/myself` with Basic
+auth, and refuses a redirect. The verdict names the account's display name.
 
 **Nothing is unique on provider alone.** Shane holds a Microsoft account at BHP
 and another at Sydney Water. `UNIQUE (provider, name)` is what separates them,

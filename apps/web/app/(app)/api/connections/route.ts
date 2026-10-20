@@ -44,6 +44,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { isEmail, needsSendFrom, PROVIDERS } from "@/lib/providers";
 import { requireOwner } from "@/lib/session";
+import {
+  jiraSecret,
+  jiraSite,
+  replaceJiraToken,
+} from "../../../../../../src/connections/jira.ts";
 import { revokeConnection } from "../../../../../../src/connections/oauth.ts";
 import {
   addConnection,
@@ -83,6 +88,19 @@ function refusedByTable(cause: unknown): boolean {
   );
 }
 
+/** The one-per-site index, which `migrations/035_connection_site.sql` names. */
+function siteTaken(cause: unknown): boolean {
+  return (
+    typeof cause === "object" &&
+    cause !== null &&
+    (cause as { constraint?: unknown }).constraint === "connections_one_per_site"
+  );
+}
+
+/** A Jira token card is the one method whose credential is two values. */
+const isJiraToken = (provider: string, method: string): boolean =>
+  provider === "jira" && method === "token";
+
 export async function GET(): Promise<Response> {
   // The proxy already refused a stranger. This is the second check Next's
   // documentation asks for, because a matcher change removes the first
@@ -121,7 +139,7 @@ export async function POST(request: Request): Promise<Response> {
   > | null;
   if (!body) return bad("Send a JSON body.");
 
-  const { provider, name, method, services, secret, expiresOn, sendFrom } =
+  const { provider, name, method, services, secret, expiresOn, sendFrom, site, email } =
     body;
 
   if (
@@ -171,6 +189,24 @@ export async function POST(request: Request): Promise<Response> {
     return bad("Give it the address the mail comes from.");
   }
 
+  // A JIRA TOKEN CARD IS A SITE, AN ACCOUNT EMAIL AND A TOKEN, and the token
+  // is sent to the site. `jiraSite` is the guard that keeps it on an
+  // atlassian.net origin, and it runs here before any row exists. The email
+  // and token are sealed as one credential.
+  let sealed = key;
+  let origin: string | null = null;
+  if (isJiraToken(provider, method.trim())) {
+    origin = jiraSite(typeof site === "string" ? site : "");
+    if (origin === null) {
+      return bad("Give the Jira site as https://your-team.atlassian.net.");
+    }
+    if (typeof email !== "string" || !isEmail(email)) {
+      return bad("Give the email of the Atlassian account.");
+    }
+    if (key.trim() === "") return bad("Paste the API token.");
+    sealed = jiraSecret(email, key);
+  }
+
   const client = await db().connect();
   try {
     await client.query("BEGIN");
@@ -180,9 +216,10 @@ export async function POST(request: Request): Promise<Response> {
       method: method.trim(),
       services: chosen as string[],
       sendFrom: address === "" ? null : address,
+      site: origin,
     });
-    if (key.trim() !== "") {
-      await setCredential(client, id, key, {
+    if (sealed.trim() !== "") {
+      await setCredential(client, id, sealed, {
         expiresOn: (expiresOn as string | undefined) ?? null,
       });
     }
@@ -190,6 +227,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true });
   } catch (cause) {
     await client.query("ROLLBACK").catch(() => {});
+    if (siteTaken(cause)) return bad("That site already has a connection.");
     if (refusedByTable(cause)) {
       return bad("That account is already on this provider.");
     }
@@ -296,9 +334,13 @@ export async function PATCH(request: Request): Promise<Response> {
     await client.query("BEGIN");
     if (newName !== null) await renameConnection(client, id, newName);
     if (newSecret !== null) {
-      await setCredential(client, id, newSecret, {
-        expiresOn: (expiresOn as string | undefined) ?? null,
-      });
+      const dates = { expiresOn: (expiresOn as string | undefined) ?? null };
+      // A Jira card keeps its account email and takes the token alone.
+      if (isJiraToken(row.provider, row.method)) {
+        await replaceJiraToken(client, id, newSecret, dates);
+      } else {
+        await setCredential(client, id, newSecret, dates);
+      }
     }
     await client.query("COMMIT");
     return NextResponse.json({ ok: true });
