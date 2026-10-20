@@ -25,7 +25,7 @@ is for, where it comes from, and what breaks without it.
 | `GOOGLE_OAUTH_CLIENT_SECRET` | `src/connections/oauth.ts` | The callback cannot exchange a code |
 | `SUKKAL_URL` | `src/connections/oauth.ts` | The grant redirects to `http://localhost:3000` |
 | `SUKKAL_INFERENCE` | `src/memory/inference-live.ts` | The subscription is tried first, then the API key. Set `api` to reverse the order |
-| `SUKKAL_INFERENCE_MODE` | `src/memory/inference-select.ts` | Read as `recorded`: no model call is made and every judged gate rejects its candidate. The worker on amaterasu sets `live`. A value other than `live` or `recorded` is refused |
+| `SUKKAL_INFERENCE_MODE` | `src/memory/inference-select.ts` | Read as `recorded`: no inference runs and every judged gate rejects its candidate. The worker on amaterasu sets `live`. A value other than `live` or `recorded` is refused. The hourly credential recheck ignores it and runs the real `claude` CLI with a small Haiku probe, because it checks the token and runs no inference (`verifySubscription`, ADR-0027) |
 | `VAULT_PATH` | `src/vault-mapping.ts` | Nothing. The reader falls back to a path under `$HOME` |
 
 `REUI_LICENSE_KEY` belongs to the web tier and sits in `apps/web/.env.example`.

@@ -29,6 +29,8 @@ subscription.
   Haiku call through the same CLI. `src/connections/recheck.ts` never sends the
   token to `probeFor`, which would have posted it to `api.anthropic.com` as an
   API key.
+  The probe ignores `SUKKAL_INFERENCE_MODE`: it checks the credential and runs
+  no inference, so it runs in every mode.
 
 ## Rule: the token never reaches api.anthropic.com from Sukkal's code
 
