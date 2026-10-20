@@ -69,13 +69,24 @@ export function voyage(
       }
 
       if (!answer.ok) {
-        // 429 and 5xx pass with time. Any other refusal would repeat.
+        // 429 and 5xx pass with time. Any other refusal would repeat. A bad or
+        // forbidden key is refused for every text, so it is fatal to the run.
         const retryable = answer.status === 429 || answer.status >= 500;
+        const fatal = answer.status === 401 || answer.status === 403;
         const wait = retryable ? parseRetryAfter(answer.headers.get('retry-after')) : undefined;
-        throw new EmbedError(`voyage answered ${answer.status}: ${await reason(answer)}`, retryable, wait);
+        throw new EmbedError(`voyage answered ${answer.status}: ${await reason(answer)}`, retryable, wait, fatal);
       }
 
-      const body = (await answer.json()) as { data?: Array<{ index: number; embedding: number[] }> };
+      // The timeout covers the body as well as the headers, so it can fire here.
+      let body: { data?: Array<{ index: number; embedding: number[] }> };
+      try {
+        body = (await answer.json()) as typeof body;
+      } catch (error) {
+        if ((error as Error).name === 'TimeoutError') {
+          throw new EmbedError(`voyage timed out after ${timeoutMs} ms`, true);
+        }
+        throw new EmbedError(`voyage answer could not be read: ${(error as Error).message}`, true);
+      }
       const data = [...(body.data ?? [])].sort((a, b) => a.index - b.index);
       if (data.length !== texts.length || data.some((row) => row.embedding.length !== EMBEDDING.dimension)) {
         throw new EmbedError(
@@ -88,12 +99,24 @@ export function voyage(
   };
 }
 
+/** No `voyage` connection holds a key. The queue job treats this as nothing to do, and a script as an error. */
+export class NoVoyageKeyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NoVoyageKeyError';
+  }
+}
+
 /**
  * The embedder for the first `voyage` connection that holds a key.
  *
- * Throws, naming the Connections screen, when there is none.
+ * Throws `NoVoyageKeyError`, naming the Connections screen, when there is none.
+ * `fetchImpl` is replaced in a test, so no suite reaches Voyage.
  */
-export async function voyageFromConnection(client: ClientBase): Promise<Embedder> {
+export async function voyageFromConnection(
+  client: ClientBase,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Embedder> {
   const found = await client.query<{ id: string }>(
     `SELECT c.id FROM connections c
        JOIN connection_credentials k ON k.connection = c.id
@@ -101,11 +124,11 @@ export async function voyageFromConnection(client: ClientBase): Promise<Embedder
   );
   const id = found.rows[0]?.id;
   if (id === undefined) {
-    throw new Error('no voyage connection holds a key. Add one on the Connections screen.');
+    throw new NoVoyageKeyError('no voyage connection holds a key. Add one on the Connections screen.');
   }
   const secret = await secretFor(client, id);
   if (secret === null) {
-    throw new Error(`voyage connection ${id} holds no key.`);
+    throw new NoVoyageKeyError(`voyage connection ${id} holds no key.`);
   }
-  return voyage(secret);
+  return voyage(secret, fetchImpl);
 }

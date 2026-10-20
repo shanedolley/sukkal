@@ -17,7 +17,7 @@ this process. They meet at the database and nowhere else.
 | Command | `npm run worker` |
 | Reads | `DATABASE_URL`, from `~/.config/sukkal/env` on the Mac and `/etc/sukkal/env` on amaterasu |
 | Queue | pg-boss, in the `pgboss` schema of the same database |
-| Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, `nightly.review` at 03:30 Sydney, `connections.recheck` at five past every hour, and `expired.sweep` at quarter past four |
+| Jobs today | `deliveries.drain` every minute, `deliveries.take` on demand, `nightly.review` at 03:30 Sydney, `connections.recheck` at five past every hour, `expired.sweep` at quarter past four, and `memory.embed` every five minutes |
 
 ## Before you start it
 
@@ -224,6 +224,84 @@ count beside it reads `failed` rather than a number.
 expired.sweep: sessions failed, grants 1
 expired.sweep: sessions sweep failed: error: relation "sessions" does not exist
 ```
+
+## The embedding job
+
+`memory.embed` runs every five minutes and once when the worker starts, in
+`src/worker/embed.ts`. It chunks every source and embeds each chunk and fact
+that needs a vector. KPA-114. `npm run embed` runs the same code by hand, and
+the two may run together.
+
+```
+memory.embed: chunked 30 sources into 101 chunks, embedded 4, failed 0, skipped 0, superseded 0
+```
+
+**A row needs a vector when it has none, or when its text has changed since it
+was embedded.** `embedded_hash` on `source_chunks` and `facts` holds the SHA-256
+of the text the vector was made from (migration 034), and the job compares it
+with the text the row holds now. So a fact whose title or description is edited,
+or a source body edited in place under an unchanged chunk range, is embedded
+again. A row embedded before that migration has no hash and is embedded once
+more.
+
+**An ingestion job that writes a source or a fact starts a run at once** with
+`await boss.send(EMBED, {})`, importing `EMBED` from `src/worker/embed.ts`. The
+queue is `exclusive`, so a send while a run is queued or active adds nothing,
+and the rows written in the meantime wait for the five-minute sweep.
+
+**The vector is written only if the row is still the one that was read.** The
+update names the hash of the text that was embedded and matches only a row that
+still holds that text and still needs the vector. A write that matches nothing
+counts as `superseded`, and the run that holds the current text embeds the row.
+Two workers, or the job beside `npm run embed`, never leave a vector for text a
+row no longer holds.
+
+**No Voyage key means nothing to do.** With no `voyage` connection holding a
+key, the job logs that once, writes nothing and completes. It logs again only
+after a key was there and went. Add the key on the Connections screen.
+
+```
+memory.embed: no voyage connection holds a key, so nothing is embedded. Add one on the Connections screen.
+```
+
+**A rejected key stops the run.** Voyage answering 401 or 403 stops the run
+after one call and logs an error. No row is charged an attempt, so fixing the
+key resumes the backlog. The job completes rather than fails, because pg-boss
+would retry it at once with the same key. Nothing else flags a dead Voyage key,
+because the hourly recheck skips Voyage as metered.
+
+```
+memory.embed: source_chunks: voyage answered 401: Provided API key is invalid.
+```
+
+**A Voyage outage stops the run too, and charges no row.** A 429, a 5xx, a
+timeout, a network error or an unreadable answer is Voyage's fault and not the
+row's. When a batch uses up its three tries on one, Voyage is down for every
+later batch as well, so the run halts there: what it has already written stays,
+the facts are skipped if the chunks halted, and the error is logged. An outage
+costs three calls a tick, whatever the backlog. The next tick tries again, and
+the first tick after Voyage recovers embeds everything. `embed_attempts` is left
+where it was, because a count that charged these would park every row within a
+few ticks of any outage and leave them skipped after it ended.
+
+```
+memory.embed: facts: voyage answered 503: busy
+```
+
+**A poison row is left alone after ten attempts.** Voyage refuses its text with a
+non-retryable answer, such as a 400. The run splits the batch until that one row
+is alone, the good rows embed, and the poison row is charged one attempt. At ten
+it is counted as `skipped` and never sent again. `embed_attempts` counts the
+calls made since the row's last success. To try parked rows again:
+
+```sql
+UPDATE facts SET embed_attempts = 0 WHERE embed_attempts >= 10;
+UPDATE source_chunks SET embed_attempts = 0 WHERE embed_attempts >= 10;
+```
+
+**The job opens its own database connection for each run.** It holds a
+transaction across several statements, and on the worker's shared client another
+job's query would run inside it.
 
 ## Under Docker
 

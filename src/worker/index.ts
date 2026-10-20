@@ -9,9 +9,10 @@
  * This process imports nothing from `apps/web`, and `apps/web` imports
  * nothing from here. The two meet at the database and nowhere else.
  *
- * Four jobs run today: the backlog over `inbound_deliveries`, every minute,
+ * Five jobs run today: the backlog over `inbound_deliveries`, every minute,
  * the nightly review in `./nightly.ts`, the hourly credential recheck in
- * `./recheck.ts`, and the daily expiry sweep in `./sweep.ts`. Every other scheduled job in the
+ * `./recheck.ts`, the daily expiry sweep in `./sweep.ts`, and the embedding of
+ * new sources and facts in `./embed.ts`. Every other scheduled job in the
  * project waits on this file for somewhere to run, and each belongs to the
  * epic whose work it does rather than to this one.
  */
@@ -20,6 +21,7 @@ import { PgBoss } from 'pg-boss';
 import type { ClientBase } from 'pg';
 import { connect, connectionString } from '../db/connect.ts';
 import { backlog, read, runDelivery, type Handler } from './deliveries.ts';
+import { EMBED, EMBED_CRON, schedule as scheduleEmbed } from './embed.ts';
 import { NIGHTLY, NIGHTLY_CRON, schedule as scheduleNightly } from './nightly.ts';
 import { RECHECK, RECHECK_CRON, schedule as scheduleRecheck } from './recheck.ts';
 import { EXPIRY, EXPIRY_CRON, schedule as scheduleExpiry } from './sweep.ts';
@@ -161,10 +163,11 @@ async function main(): Promise<void> {
   await scheduleNightly(boss, client);
   await scheduleRecheck(boss, client);
   await scheduleExpiry(boss, client);
+  await scheduleEmbed(boss);
   console.log(
     `kpa-worker: ${DRAIN} every minute, ${TAKE} on demand, ` +
       `${NIGHTLY} at ${NIGHTLY_CRON}, ${RECHECK} at ${RECHECK_CRON}, ` +
-      `${EXPIRY} at ${EXPIRY_CRON}`,
+      `${EXPIRY} at ${EXPIRY_CRON}, ${EMBED} at ${EMBED_CRON}`,
   );
 
   const stop = async (signal: string): Promise<void> => {
