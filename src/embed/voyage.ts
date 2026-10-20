@@ -17,6 +17,17 @@ import { EmbedError, type Embedder, type InputKind } from './embedder.ts';
 
 const URL = 'https://api.voyageai.com/v1/embeddings';
 
+/** A request that has not finished by now is abandoned and counted as retryable. */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
+/** `Retry-After` as milliseconds. It is whole seconds or an HTTP date, and anything else is no ask. */
+export function parseRetryAfter(value: string | null, now: number = Date.now()): number | undefined {
+  if (value === null || value.trim() === '') return undefined;
+  if (/^\d+$/.test(value.trim())) return Number(value.trim()) * 1000;
+  const at = Date.parse(value);
+  return Number.isNaN(at) ? undefined : Math.max(0, at - now);
+}
+
 /** The reason Voyage gave, which it writes as `{ "detail": "..." }`. */
 async function reason(answer: Response): Promise<string> {
   try {
@@ -28,8 +39,12 @@ async function reason(answer: Response): Promise<string> {
   }
 }
 
-/** `fetchImpl` is replaced in a test of this file only. */
-export function voyage(apiKey: string, fetchImpl: typeof fetch = fetch): Embedder {
+/** `fetchImpl` and `timeoutMs` are replaced in a test of this file only. */
+export function voyage(
+  apiKey: string,
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Embedder {
   return {
     async embed(texts: string[], kind: InputKind): Promise<number[][]> {
       let answer: Response;
@@ -43,8 +58,12 @@ export function voyage(apiKey: string, fetchImpl: typeof fetch = fetch): Embedde
             input_type: kind,
             output_dimension: EMBEDDING.dimension,
           }),
+          signal: AbortSignal.timeout(timeoutMs),
         });
       } catch (error) {
+        if ((error as Error).name === 'TimeoutError') {
+          throw new EmbedError(`voyage timed out after ${timeoutMs} ms`, true);
+        }
         // fetch's own message names the host and nothing secret.
         throw new EmbedError(`voyage unreachable: ${(error as Error).message}`, true);
       }
@@ -52,7 +71,8 @@ export function voyage(apiKey: string, fetchImpl: typeof fetch = fetch): Embedde
       if (!answer.ok) {
         // 429 and 5xx pass with time. Any other refusal would repeat.
         const retryable = answer.status === 429 || answer.status >= 500;
-        throw new EmbedError(`voyage answered ${answer.status}: ${await reason(answer)}`, retryable);
+        const wait = retryable ? parseRetryAfter(answer.headers.get('retry-after')) : undefined;
+        throw new EmbedError(`voyage answered ${answer.status}: ${await reason(answer)}`, retryable, wait);
       }
 
       const body = (await answer.json()) as { data?: Array<{ index: number; embedding: number[] }> };

@@ -13,9 +13,9 @@
  * `GIVE_UP_AFTER` it is left alone rather than retried for ever, and the
  * result counts it as `skipped`.
  *
- * A second run is a no-op. `chunkSources` upserts on `(source_id, ordinal)`,
- * and keeps an embedding unless the byte range under it changed. The embedder
- * selects only rows with a null embedding.
+ * A second run is a no-op. `chunkSources` keeps a row whose byte range is
+ * unchanged, embedding included, and replaces any other. The embedder selects
+ * only rows with a null embedding.
  *
  * A fact is embedded as its title and description. The body of a note is not
  * stored (see `src/migrate/load.ts`), and a fact edited after it was embedded
@@ -36,10 +36,13 @@ export interface Embedder {
 /** What an `Embedder` throws. `retryable` is false for a refusal that would repeat. */
 export class EmbedError extends Error {
   readonly retryable: boolean;
-  constructor(message: string, retryable: boolean) {
+  /** How long the provider asked us to wait, from `Retry-After`. */
+  readonly retryAfterMs: number | undefined;
+  constructor(message: string, retryable: boolean, retryAfterMs?: number) {
     super(message);
     this.name = 'EmbedError';
     this.retryable = retryable;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -47,7 +50,10 @@ export class EmbedError extends Error {
 export const TRIES_PER_RUN = 3;
 
 /** The first wait, doubled before each further try. */
-export const BACKOFF_MS = 500;
+export const BACKOFF_MS = 1000;
+
+/** The longest single wait, whatever `Retry-After` asks. A longer ask is left for the next run. */
+export const MAX_WAIT_MS = 30_000;
 
 /** `embed_attempts` at which a row is left alone. */
 export const GIVE_UP_AFTER = 10;
@@ -60,28 +66,36 @@ export interface Options {
   sleep?: (ms: number) => Promise<void>;
 }
 
+/** A source whose chunks were not written. Its transaction rolled back and the run went on. */
+export interface ChunkFailure {
+  sourceId: string;
+  reason: string;
+}
+
 export interface Chunked {
   sources: number;
+  /** Chunks of the sources that succeeded. */
   chunks: number;
+  failures: ChunkFailure[];
 }
 
 export interface Embedded {
   embedded: number;
   failed: number;
   skipped: number;
-  /** One line per batch that failed every try. */
+  /** One line per row or batch that failed. */
   errors: string[];
 }
 
 /**
- * Writes the chunks of every source, in place.
+ * Writes the chunks of every source, one transaction per source.
  *
- * Re-running it adds no row. A chunk whose range is unchanged keeps its
- * embedding. One whose range moved is reset to unembedded, because the vector
- * describes other text. A chunk past the new end is deleted, and a citation
- * still pointing at it stops the delete with a foreign key error: that is the
- * right outcome, since the passage a person cited would otherwise vanish
- * silently. Sources are verbatim, so this only happens to a source rewritten.
+ * Re-running it adds no row. A chunk id always means one byte range: a chunk
+ * whose range is unchanged keeps its row and its embedding, and any other row
+ * at that ordinal is deleted and a new one inserted, so a citation never
+ * follows an id to other text. A row still cited stops its delete with a
+ * foreign key error. That source rolls back whole and is returned in
+ * `failures`, and the run goes on to the next source.
  */
 export async function chunkSources(client: ClientBase): Promise<Chunked> {
   const sources = await client.query<{ id: string; body: string }>(
@@ -89,38 +103,39 @@ export async function chunkSources(client: ClientBase): Promise<Chunked> {
   );
 
   let chunks = 0;
+  const failures: ChunkFailure[] = [];
   for (const source of sources.rows) {
     const ranges = chunkBody(source.body);
+    const wanted = [
+      ranges.map((_, ordinal) => ordinal),
+      ranges.map((range) => range.byteStart),
+      ranges.map((range) => range.byteEnd),
+    ];
     await client.query('BEGIN');
     try {
-      for (const [ordinal, range] of ranges.entries()) {
-        await client.query(
-          `INSERT INTO source_chunks (source_id, ordinal, byte_start, byte_end)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (source_id, ordinal) DO UPDATE
-              SET embedding = CASE WHEN source_chunks.byte_start = EXCLUDED.byte_start
-                                    AND source_chunks.byte_end = EXCLUDED.byte_end
-                                   THEN source_chunks.embedding END,
-                  embed_attempts = CASE WHEN source_chunks.byte_start = EXCLUDED.byte_start
-                                         AND source_chunks.byte_end = EXCLUDED.byte_end
-                                        THEN source_chunks.embed_attempts ELSE 0 END,
-                  byte_start = EXCLUDED.byte_start,
-                  byte_end = EXCLUDED.byte_end`,
-          [source.id, ordinal, range.byteStart, range.byteEnd],
-        );
-      }
-      await client.query('DELETE FROM source_chunks WHERE source_id = $1 AND ordinal >= $2', [
-        source.id,
-        ranges.length,
-      ]);
+      await client.query(
+        `DELETE FROM source_chunks c
+          WHERE c.source_id = $1
+            AND NOT EXISTS (
+              SELECT 1 FROM unnest($2::int[], $3::int[], $4::int[]) AS n(ordinal, byte_start, byte_end)
+               WHERE n.ordinal = c.ordinal AND n.byte_start = c.byte_start AND n.byte_end = c.byte_end)`,
+        [source.id, ...wanted],
+      );
+      await client.query(
+        `INSERT INTO source_chunks (source_id, ordinal, byte_start, byte_end)
+         SELECT $1, ordinal, byte_start, byte_end FROM unnest($2::int[], $3::int[], $4::int[])
+           AS n(ordinal, byte_start, byte_end)
+         ON CONFLICT (source_id, ordinal) DO NOTHING`,
+        [source.id, ...wanted],
+      );
       await client.query('COMMIT');
+      chunks += ranges.length;
     } catch (error) {
       await client.query('ROLLBACK');
-      throw error;
+      failures.push({ sourceId: source.id, reason: error instanceof Error ? error.message : String(error) });
     }
-    chunks += ranges.length;
   }
-  return { sources: sources.rows.length, chunks };
+  return { sources: sources.rows.length, chunks, failures };
 }
 
 interface Pending {
@@ -153,12 +168,24 @@ async function pendingFacts(client: ClientBase): Promise<Pending[]> {
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** One batch, retried with doubling waits. `tries` counts the calls made. */
+interface Call {
+  tries: number;
+  vectors?: number[][];
+  error?: string;
+  /** False when the last error would repeat, so a smaller batch may succeed. */
+  retryable?: boolean;
+}
+
+/**
+ * One batch, retried with doubling waits. `tries` counts the calls made.
+ * A wait is the longer of the backoff and the provider's `Retry-After`, never
+ * more than `MAX_WAIT_MS`.
+ */
 async function callWithBackoff(
   embedder: Embedder,
   texts: string[],
   sleep: (ms: number) => Promise<void>,
-): Promise<{ tries: number; vectors?: number[][]; error?: string }> {
+): Promise<Call> {
   for (let tries = 1; ; tries += 1) {
     try {
       const vectors = await embedder.embed(texts, 'document');
@@ -169,11 +196,49 @@ async function callWithBackoff(
     } catch (error) {
       const retryable = !(error instanceof EmbedError) || error.retryable;
       if (!retryable || tries >= TRIES_PER_RUN) {
-        return { tries, error: error instanceof Error ? error.message : String(error) };
+        return { tries, error: error instanceof Error ? error.message : String(error), retryable };
       }
-      await sleep(BACKOFF_MS * 2 ** (tries - 1));
+      const asked = error instanceof EmbedError ? (error.retryAfterMs ?? 0) : 0;
+      await sleep(Math.min(MAX_WAIT_MS, Math.max(BACKOFF_MS * 2 ** (tries - 1), asked)));
     }
   }
+}
+
+interface Done {
+  row: Pending;
+  vector: number[];
+  tries: number;
+}
+
+interface Failed {
+  rows: Pending[];
+  error: string;
+  tries: number;
+}
+
+/**
+ * Embeds a batch. A refusal that would repeat splits the batch in halves and
+ * tries each half, so the good rows embed and only the bad text keeps its
+ * failure. Halving costs about log2(n) extra calls for one bad text, where
+ * one-by-one costs n.
+ */
+async function embedBatch(
+  embedder: Embedder,
+  batch: Pending[],
+  sleep: (ms: number) => Promise<void>,
+): Promise<{ done: Done[]; failed: Failed[] }> {
+  const result = await callWithBackoff(embedder, batch.map((row) => row.text), sleep);
+  if (result.vectors) {
+    const vectors = result.vectors;
+    return { done: batch.map((row, i) => ({ row, vector: vectors[i]!, tries: result.tries })), failed: [] };
+  }
+  if (result.retryable === false && batch.length > 1) {
+    const middle = Math.ceil(batch.length / 2);
+    const first = await embedBatch(embedder, batch.slice(0, middle), sleep);
+    const second = await embedBatch(embedder, batch.slice(middle), sleep);
+    return { done: [...first.done, ...second.done], failed: [...first.failed, ...second.failed] };
+  }
+  return { done: [], failed: [{ rows: batch, error: result.error ?? 'unknown error', tries: result.tries }] };
 }
 
 /** `table` is one of two literals below, never input. */
@@ -186,27 +251,25 @@ async function embedRows(
   into: Embedded,
 ): Promise<void> {
   for (let from = 0; from < rows.length; from += BATCH) {
-    const batch = rows.slice(from, from + BATCH);
-    const result = await callWithBackoff(embedder, batch.map((row) => row.text), sleep);
+    const outcome = await embedBatch(embedder, rows.slice(from, from + BATCH), sleep);
 
     await client.query('BEGIN');
     try {
-      if (result.vectors) {
-        for (const [i, row] of batch.entries()) {
-          await client.query(
-            `UPDATE ${table} SET embedding = $2::vector, embed_attempts = embed_attempts + $3
-              WHERE id = $1`,
-            [row.id, JSON.stringify(result.vectors[i]), result.tries],
-          );
-        }
-        into.embedded += batch.length;
-      } else {
+      for (const { row, vector, tries } of outcome.done) {
+        await client.query(
+          `UPDATE ${table} SET embedding = $2::vector, embed_attempts = embed_attempts + $3
+            WHERE id = $1`,
+          [row.id, JSON.stringify(vector), tries],
+        );
+      }
+      into.embedded += outcome.done.length;
+      for (const { rows: bad, error, tries } of outcome.failed) {
         await client.query(
           `UPDATE ${table} SET embed_attempts = embed_attempts + $2 WHERE id = ANY($1::bigint[])`,
-          [batch.map((row) => row.id), result.tries],
+          [bad.map((row) => row.id), tries],
         );
-        into.failed += batch.length;
-        into.errors.push(`${table}: ${result.error ?? 'unknown error'}`);
+        into.failed += bad.length;
+        into.errors.push(`${table} ${bad.map((row) => row.id).join(',')}: ${error}`);
       }
       await client.query('COMMIT');
     } catch (error) {
