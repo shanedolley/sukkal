@@ -67,6 +67,12 @@ Shane and never Claude Code, and end with the `Claude-Session` line.
 | `./scripts/reset-password.sh` | Sets the owner's password on the box itself. `--link` prints a reset link, `--unlock` ends a run of failed sign-ins |
 | `npm run decisions` | Rebuilds `docs/decisions.md` from the decision blocks in Jira |
 | `./scripts/verify-migration.sh` | Loads the frozen vault into a fresh `sukkal_verify` and diffs it against `check.py`. `docs/runbooks/migration-verification.md` |
+| `npm run ci:local` | Runs `.github/workflows/ci.yml` in Docker Desktop through `act`, both jobs, and exits non-zero when one fails. Needs `brew install act`; `.actrc` sets the runner image. About 2 minutes once the images are pulled |
+
+`act` copies the working tree as it stands, uncommitted and untracked files
+included, and the copy has no vault, so it fails where CI would fail rather
+than where the Mac suite would. Its PostgreSQL runs in its own container, so
+host port 5432 and the Homebrew databases stay untouched.
 
 Run the lint, the build and the tests before you report anything finished, and
 watch the run afterwards with `gh run list --limit 1`. A push nobody watches is

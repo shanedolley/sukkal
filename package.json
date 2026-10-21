@@ -17,7 +17,8 @@
     "lint": "oxlint src test scripts --import-plugin --deny-warnings",
     "embed": "node --env-file-if-exists=$HOME/.config/sukkal/env scripts/embed.ts",
     "decisions": "node --experimental-strip-types scripts/decision-register.ts",
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "ci:local": "act push"
   },
   "dependencies": {
     "pg": "^8.23.0",
