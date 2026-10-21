@@ -102,7 +102,7 @@ export interface Provider {
  * opens the provider's front door. The hint follows it, because the two do
  * different things and a person deserves to know which they are about to get.
  */
-function oauth(signIn: string, fields: Field[] = [], grant = false): Method {
+function oauth(signIn: string, grant = false): Method {
   return {
     id: "oauth",
     label: "OAuth",
@@ -110,7 +110,7 @@ function oauth(signIn: string, fields: Field[] = [], grant = false): Method {
       ? "The button sends you to the provider to consent. The token comes back to the server and never to this screen."
       : "The button opens the provider's own sign-in page, so no secret passes through this screen.",
     signIn,
-    fields,
+    fields: [],
     grant,
   };
 }
@@ -193,7 +193,7 @@ export const PROVIDERS: Provider[] = [
     // The one provider Sukkal runs a real grant for. `src/connections/oauth.ts`
     // holds the urls and the scopes, and the sign-in address here is what a
     // person reads rather than where the grant goes.
-    methods: [oauth("https://accounts.google.com/signin", [], true)],
+    methods: [oauth("https://accounts.google.com/signin", true)],
   },
   {
     id: "microsoft",
@@ -221,9 +221,6 @@ export const PROVIDERS: Provider[] = [
     blurb: "Issues, sprints and boards on one Atlassian site.",
     services: [],
     methods: [
-      // The site you name is the site you sign in to, so the button opens it
-      // rather than the Atlassian front door.
-      oauth("https://id.atlassian.com/login", [SITE]),
       {
         id: "token",
         label: "API token",
@@ -408,12 +405,17 @@ export function initialValues(method: Method): Record<string, string> {
  *
  * The site comes from a box anybody can type in, and a tab is opened at
  * whatever it holds. A `javascript:` address in that box would run on the
- * page that opened it, so only the two web protocols pass.
+ * page that opened it, so only the two web protocols pass. The host must look
+ * like a host name too, because a pasted API token parses as a host and a tab
+ * would open at the token.
  */
 export function web(value: string): boolean {
   try {
-    const { protocol } = new URL(value);
-    return protocol === "https:" || protocol === "http:";
+    const { protocol, hostname } = new URL(value);
+    return (
+      (protocol === "https:" || protocol === "http:") &&
+      (hostname === "localhost" || /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(hostname))
+    );
   } catch {
     return false;
   }
@@ -452,6 +454,13 @@ export function signInTarget(
   // the provider's front door would open a page nobody asked for.
   if (typed) return asUrl(typed);
   return web(method.signIn) ? method.signIn : null;
+}
+
+/** Why the route refuses this method for this provider, or null when it takes it. */
+export function refusedMethod(provider: string, method: string): string | null {
+  return provider === "jira" && method !== "token"
+    ? "Jira connects by API token."
+    : null;
 }
 
 export function provider(id: ProviderId): Provider | undefined {
