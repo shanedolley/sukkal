@@ -42,7 +42,12 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { isEmail, needsSendFrom, PROVIDERS } from "@/lib/providers";
+import {
+  isEmail,
+  needsSendFrom,
+  PROVIDERS,
+  refusedMethod,
+} from "@/lib/providers";
 import { requireOwner } from "@/lib/session";
 import {
   jiraSecret,
@@ -154,6 +159,10 @@ export async function POST(request: Request): Promise<Response> {
   if (typeof method !== "string" || method.trim() === "") {
     return bad("Choose a method.");
   }
+  // Before any row exists: a method the card does not offer stores a hollow
+  // row with no credential, which is what the Jira OAuth box did.
+  const refusal = refusedMethod(provider, method.trim());
+  if (refusal) return bad(refusal);
   const chosen = services ?? [];
   if (
     !Array.isArray(chosen) ||

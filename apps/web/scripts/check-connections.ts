@@ -26,8 +26,10 @@ import {
   asUrl,
   initialValues,
   isEmail,
+  type Method,
   needsSendFrom,
   PROVIDERS,
+  refusedMethod,
   signInTarget,
   web,
 } from "../lib/providers.ts";
@@ -61,30 +63,50 @@ assert.equal(asUrl("javascript:alert(1)"), null);
 assert.equal(asUrl("javascript://evil.example"), null);
 assert.equal(asUrl("data:text/html,<script>alert(1)</script>"), null);
 assert.equal(asUrl(""), null);
+// A pasted API token is not a host. It once opened a tab at the token.
+assert.equal(asUrl("ATATT3xFAKE=00000000"), null);
+// A host with no dot is no site, localhost apart.
+assert.equal(asUrl("intranet"), null);
+assert.equal(asUrl("localhost"), "https://localhost");
 
 // 3. A method that signs you in opens the site typed into it, and its own
 //    address when no site was asked for.
+//    No provider ships a method that does both now, so the method is built
+//    here.
 const jira = PROVIDERS.find((entry) => entry.id === "jira")!;
-const jiraOauth = jira.methods.find((method) => method.id === "oauth")!;
 const jiraToken = jira.methods.find((method) => method.id === "token")!;
+const siteSignIn: Method = {
+  id: "oauth",
+  label: "OAuth",
+  hint: "",
+  signIn: "https://id.atlassian.com/login",
+  fields: [{ id: "site", label: "Site", placeholder: "", kind: "url" }],
+};
 
 assert.equal(
-  signInTarget(jiraOauth, { site: "https://koinon.atlassian.net" }),
+  signInTarget(siteSignIn, { site: "https://koinon.atlassian.net" }),
   "https://koinon.atlassian.net"
 );
 assert.equal(
-  signInTarget(jiraOauth, { site: "koinon.atlassian.net" }),
+  signInTarget(siteSignIn, { site: "koinon.atlassian.net" }),
   "https://koinon.atlassian.net"
 );
-assert.equal(signInTarget(jiraOauth, {}), jiraOauth.signIn);
+assert.equal(signInTarget(siteSignIn, {}), siteSignIn.signIn);
 
 // A site that is not an address opens nothing, rather than opening the
 // fallback the person did not choose.
-assert.equal(signInTarget(jiraOauth, { site: "javascript:alert(1)" }), null);
+assert.equal(signInTarget(siteSignIn, { site: "javascript:alert(1)" }), null);
+assert.equal(signInTarget(siteSignIn, { site: "ATATT3xFAKE=00000000" }), null);
 
 // 4. A method that takes a key sends the browser nowhere, even though it asks
 //    for the same site.
 assert.equal(signInTarget(jiraToken, { site: "https://koinon.atlassian.net" }), null);
+
+// Jira connects by API token alone, in the catalogue and at the route.
+assert.deepEqual(jira.methods.map((method) => method.id), ["token"]);
+assert.equal(refusedMethod("jira", "oauth"), "Jira connects by API token.");
+assert.equal(refusedMethod("jira", "token"), null);
+assert.equal(refusedMethod("linear", "oauth"), null);
 
 // 5. Every method either signs you in or asks for something. One that does
 //    neither is a button that does nothing.
