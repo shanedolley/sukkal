@@ -70,8 +70,10 @@ Shane and never Claude Code, and end with the `Claude-Session` line.
 | `npm run ci:local` | Runs `.github/workflows/ci.yml` in Docker Desktop through `act`, both jobs, and exits non-zero when one fails. Needs `brew install act`; `.actrc` sets the runner image. About 2 minutes once the images are pulled |
 
 `act` copies the working tree as it stands, uncommitted and untracked files
-included, and the copy has no vault, so it fails where CI would fail rather
-than where the Mac suite would. Its PostgreSQL runs in its own container, so
+included but gitignored files not, and the copy has no vault, so it fails where
+CI would fail rather than where the Mac suite would. `.actrc` stops `act`
+loading a root `.env` into the job and `.secrets` as secrets, because CI has
+neither. Its PostgreSQL runs in its own container, so
 host port 5432 and the Homebrew databases stay untouched.
 
 Run the lint, the build and the tests before you report anything finished, and
